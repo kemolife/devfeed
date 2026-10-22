@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-bg: #0b0f14;
+  --color-surface: #121821;
+  --color-surface-2: #18202b;
+  --color-line: #233041;
+  --color-fg: #e6edf3;
+  --color-muted: #8b98a5;
+  --color-accent: #f5a524;
+  --color-ok: #3fb950;
+  --color-bad: #f85149;
+
+  --color-syn-kw: #ff7b72;
+  --color-syn-type: #79c0ff;
+  --color-syn-num: #f2cc60;
+  --color-syn-str: #a5d6ff;
+  --color-syn-com: #6e7681;
+  --color-syn-fn: #d2a8ff;
+  --color-syn-macro: #ffa657;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* Show "->" and "!=" as typed: code reading practice needs the real characters. */
+.font-mono,
+pre {
+  font-variant-ligatures: none;
+  font-feature-settings: 'calt' 0, 'liga' 0;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-pop {
+  animation: pop-in 220ms ease-out both;
+}

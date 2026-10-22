@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#0b0f14"/>
+  <!-- chip body -->
+  <rect x="136" y="136" width="240" height="240" rx="28" fill="#18202b" stroke="#f5a524" stroke-width="16"/>
+  <!-- pins -->
+  <g stroke="#f5a524" stroke-width="16" stroke-linecap="round">
+    <path d="M196 96v40M256 96v40M316 96v40M196 376v40M256 376v40M316 376v40M96 196h40M96 256h40M96 316h40M376 196h40M376 256h40M376 316h40"/>
+  </g>
+  <!-- bits -->
+  <text x="256" y="292" text-anchor="middle" font-family="Menlo, monospace" font-weight="700" font-size="104" fill="#e6edf3">01</text>
+</svg>
