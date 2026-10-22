@@ -1,419 +1,624 @@
 [
   {
-    "id": "c-u8-wrap",
-    "type": "quiz",
-    "topic": "c",
-    "tags": ["integer-overflow", "truncation"],
-    "difficulty": 1,
-    "title": "What does this print?",
-    "lang": "c",
+    "answer": 1,
     "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint8_t a = 200, b = 100;\n    uint8_t c = a + b;\n    printf(\"%u\\n\", c);\n}",
-    "options": ["300", "44", "255", "Undefined behavior"],
-    "answer": 1,
+    "difficulty": 1,
     "explain": "a + b is done in int (integer promotion), so the sum is 300. Storing 300 in uint8_t keeps only the low 8 bits: 300 mod 256 = 44. Unsigned narrowing is well defined, but it is a silent bug. Watch for sensor sums and checksums stored in small types.",
-    "verify": { "lang": "c", "expect": "44" }
+    "id": "c-u8-wrap",
+    "lang": "c",
+    "options": [
+      "300",
+      "44",
+      "255",
+      "Undefined behavior"
+    ],
+    "tags": [
+      "integer-overflow",
+      "truncation"
+    ],
+    "title": "What does this print?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "44",
+      "lang": "c"
+    }
   },
   {
-    "id": "c-signed-unsigned",
-    "type": "quiz",
-    "topic": "c",
-    "tags": ["signed-unsigned"],
-    "difficulty": 2,
-    "title": "What does this print?",
-    "lang": "c",
+    "answer": 1,
     "code": "#include <stdio.h>\n\nint main(void) {\n    unsigned int len = 1;\n    int offset = -1;\n    if (offset < len) puts(\"less\");\n    else puts(\"greater\");\n}",
-    "options": ["less", "greater", "Compile error", "Nothing"],
-    "answer": 1,
+    "difficulty": 2,
     "explain": "When int meets unsigned int, the int is converted to unsigned. -1 becomes 0xFFFFFFFF, which is bigger than 1. Typical place: comparing a signed return value (like -1 for error) with a size_t length. Enable -Wsign-compare.",
-    "verify": { "lang": "c", "expect": "greater" }
+    "id": "c-signed-unsigned",
+    "lang": "c",
+    "options": [
+      "less",
+      "greater",
+      "Compile error",
+      "Nothing"
+    ],
+    "tags": [
+      "signed-unsigned"
+    ],
+    "title": "What does this print?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "greater",
+      "lang": "c"
+    }
   },
   {
-    "id": "c-array-decay",
-    "type": "quiz",
-    "topic": "c",
-    "tags": ["array-decay"],
-    "difficulty": 2,
-    "title": "On STM32 (32-bit ARM), what is printed?",
-    "lang": "c",
+    "answer": 1,
     "code": "void dump(uint8_t buf[64]) {\n    printf(\"%u\\n\", (unsigned)sizeof(buf));\n}\n\nuint8_t rx[64];\ndump(rx);",
-    "options": ["64", "4", "8", "256"],
-    "answer": 1,
-    "explain": "An array parameter is really a pointer. The [64] is ignored. sizeof(buf) is the size of a pointer: 4 bytes on Cortex-M (8 on your PC). Pass the length as a separate parameter. GCC warns with -Wsizeof-array-argument."
+    "difficulty": 2,
+    "explain": "An array parameter is really a pointer. The [64] is ignored. sizeof(buf) is the size of a pointer: 4 bytes on Cortex-M (8 on your PC). Pass the length as a separate parameter. GCC warns with -Wsizeof-array-argument.",
+    "id": "c-array-decay",
+    "lang": "c",
+    "options": [
+      "64",
+      "4",
+      "8",
+      "256"
+    ],
+    "tags": [
+      "array-decay"
+    ],
+    "title": "On STM32 (32-bit ARM), what is printed?",
+    "topic": "c",
+    "type": "quiz"
   },
   {
-    "id": "c-bit-precedence",
-    "type": "quiz",
-    "topic": "c",
-    "tags": ["bit-manipulation"],
-    "difficulty": 2,
-    "title": "Goal: clear bit 4 and set bit 0. What is printed?",
-    "lang": "c",
+    "answer": 1,
     "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint32_t reg = 0xF0;\n    reg &= ~(1u << 4) | (1u << 0);\n    printf(\"0x%X\\n\", (unsigned)reg);\n}",
-    "options": ["0xE1", "0xE0", "0xF1", "0xEF"],
-    "answer": 1,
+    "difficulty": 2,
     "explain": "~(1<<4) | 1 is 0xFFFFFFEF. ANDing with that only clears bit 4. Setting a bit with AND never works. Correct: reg = (reg & ~(1u << 4)) | (1u << 0); Clear and set are two different operations.",
-    "verify": { "lang": "c", "expect": "0xE0" }
+    "id": "c-bit-precedence",
+    "lang": "c",
+    "options": [
+      "0xE1",
+      "0xE0",
+      "0xF1",
+      "0xEF"
+    ],
+    "tags": [
+      "bit-manipulation"
+    ],
+    "title": "Goal: clear bit 4 and set bit 0. What is printed?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "0xE0",
+      "lang": "c"
+    }
   },
   {
-    "id": "c-macro-parens",
-    "type": "quiz",
-    "topic": "c",
-    "tags": ["macro"],
-    "difficulty": 1,
-    "title": "What does this print?",
-    "lang": "c",
+    "answer": 1,
     "code": "#include <stdio.h>\n#define MS_TO_TICKS(ms) ms * 4\n\nint main(void) {\n    printf(\"%d\\n\", MS_TO_TICKS(5 + 5));\n}",
-    "options": ["40", "25", "20", "Compile error"],
-    "answer": 1,
+    "difficulty": 1,
     "explain": "Macros replace text. MS_TO_TICKS(5 + 5) becomes 5 + 5 * 4 = 25. Always put parentheses around each parameter and the whole body: #define MS_TO_TICKS(ms) ((ms) * 4). Or use a static inline function.",
-    "verify": { "lang": "c", "expect": "25" }
+    "id": "c-macro-parens",
+    "lang": "c",
+    "options": [
+      "40",
+      "25",
+      "20",
+      "Compile error"
+    ],
+    "tags": [
+      "macro"
+    ],
+    "title": "What does this print?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "25",
+      "lang": "c"
+    }
   },
   {
-    "id": "c-shift-ub",
-    "type": "quiz",
-    "topic": "c",
-    "tags": ["shift-ub"],
-    "difficulty": 3,
-    "title": "uint32_t mask = 1 << 31;  — what is this in C?",
-    "lang": "c",
-    "code": "uint32_t mask = 1 << 31;",
-    "options": ["Always 0x80000000", "Undefined behavior", "Compile error", "0"],
     "answer": 1,
-    "explain": "1 is a signed int. Shifting a 1 into the sign bit of int is undefined behavior in C. It usually 'works', until the optimizer uses it. Write 1u << 31 or UINT32_C(1) << 31. Register header files use the u suffix for this reason."
-  },
-  {
-    "id": "c-struct-padding",
-    "type": "quiz",
-    "topic": "cpp",
-    "tags": ["struct-padding", "memory-layout"],
-    "difficulty": 2,
-    "title": "sizeof(Packet) on ARM Cortex-M?",
-    "lang": "c",
-    "code": "#include <stdio.h>\n#include <stdint.h>\n\nstruct Packet {\n    uint8_t  type;\n    uint32_t value;\n    uint8_t  crc;\n};\n\nint main(void) {\n    printf(\"%u\\n\", (unsigned)sizeof(struct Packet));\n}",
-    "options": ["6", "8", "12", "16"],
-    "answer": 2,
-    "explain": "uint32_t needs 4-byte alignment. So: type(1) + 3 padding + value(4) + crc(1) + 3 tail padding = 12. Reordering fields (value, type, crc) gives 8. Never send a struct over UART or SPI with memcpy: padding and endianness differ between devices.",
-    "verify": { "lang": "c", "expect": "12" }
-  },
-  {
-    "id": "rs-wrapping-checked",
-    "type": "quiz",
-    "topic": "rust",
-    "tags": ["integer-overflow"],
-    "difficulty": 1,
-    "title": "What does this print?",
-    "lang": "rust",
-    "code": "fn main() {\n    let x: u8 = 255;\n    let y = x.wrapping_add(1);\n    let z = x.checked_add(1);\n    println!(\"{} {:?}\", y, z);\n}",
-    "options": ["0 None", "256 Some(256)", "Panic", "0 Some(0)"],
-    "answer": 0,
-    "explain": "wrapping_add wraps to 0. checked_add returns None on overflow. In firmware, choose on purpose: wrapping_* for counters and timers, checked_* for sizes and lengths, saturating_* for sensor values.",
-    "verify": { "lang": "rust", "expect": "0 None" }
-  },
-  {
-    "id": "rs-overflow-const",
-    "type": "quiz",
-    "topic": "rust",
-    "tags": ["integer-overflow"],
-    "difficulty": 2,
-    "title": "What happens?",
-    "lang": "rust",
-    "code": "fn main() {\n    let x: u8 = 255;\n    let y = x + 1;\n    println!(\"{}\", y);\n}",
-    "options": ["Prints 0", "Prints 256", "Panics at runtime", "Compile error"],
-    "answer": 3,
-    "explain": "The compiler sees the constant values and the deny-by-default lint arithmetic_overflow stops the build. With values only known at runtime: debug builds panic, release builds wrap (unless overflow-checks = true). Many firmware profiles turn overflow-checks on in release too.",
-    "verify": { "lang": "rust", "compileFail": true }
-  },
-  {
-    "id": "rs-drop-order",
-    "type": "quiz",
-    "topic": "rust",
-    "tags": ["drop-order", "raii"],
+    "code": "uint32_t mask = 1 << 31;",
     "difficulty": 3,
-    "title": "What does this print?",
-    "lang": "rust",
-    "code": "struct Pin(&'static str);\n\nimpl Drop for Pin {\n    fn drop(&mut self) { print!(\"{} \", self.0); }\n}\n\nfn main() {\n    let _a = Pin(\"a\");\n    let _b = Pin(\"b\");\n    let _ = Pin(\"c\");\n    println!();\n}",
-    "options": ["a b ⏎ c", "c b a ⏎", "c ⏎ b a", "b a ⏎ c"],
-    "answer": 3,
-    "explain": "let _ = ... does not bind. The value drops at once, so 'c ' prints first. Then println!() prints a newline. At the end of main, locals drop in reverse order: b, then a. Danger in embedded: let _ = cs_guard(); releases a lock or chip-select at once. Use let _guard = ... instead.",
-    "verify": { "lang": "rust", "expect": "c \nb a" }
-  },
-  {
-    "id": "rs-as-truncate",
-    "type": "quiz",
-    "topic": "rust",
-    "tags": ["truncation"],
-    "difficulty": 1,
-    "title": "12-bit ADC value. What does this print?",
-    "lang": "rust",
-    "code": "fn main() {\n    let adc: u16 = 4095;\n    let b = adc as u8;\n    println!(\"{}\", b);\n}",
-    "options": ["255", "4095", "Panic", "Compile error"],
-    "answer": 0,
-    "explain": "as never fails. It silently keeps the low bits: 0x0FFF becomes 0xFF = 255. A value of 4096 would give 0! Use u8::try_from(adc) to catch it, or scale on purpose: (adc >> 4) as u8.",
-    "verify": { "lang": "rust", "expect": "255" }
-  },
-  {
-    "id": "bug-volatile-isr",
-    "type": "bug",
-    "topic": "embedded",
-    "tags": ["volatile", "isr"],
-    "difficulty": 1,
-    "title": "Works with -O0, hangs with -O2. Tap the bug.",
+    "explain": "1 is a signed int. Shifting a 1 into the sign bit of int is undefined behavior in C. It usually 'works', until the optimizer uses it. Write 1u << 31 or UINT32_C(1) << 31. Register header files use the u suffix for this reason.",
+    "id": "c-shift-ub",
     "lang": "c",
-    "code": "static bool data_ready = false;\nstatic uint8_t rx_byte;\n\nvoid USART1_IRQHandler(void) {\n    rx_byte = USART1->DR;\n    data_ready = true;\n}\n\nint main(void) {\n    uart_init();\n    while (!data_ready) { }\n    process(rx_byte);\n}",
-    "bugLines": [1],
-    "explain": "data_ready is changed in an ISR, but the compiler does not know that. With -O2 it reads the flag once and the loop becomes while(1). Mark flags shared with an ISR as volatile. Note: volatile prevents caching, but it does NOT make multi-byte access atomic.",
-    "fix": "static volatile bool data_ready = false;"
-  },
-  {
-    "id": "bug-ring-off-by-one",
-    "type": "bug",
+    "options": [
+      "Always 0x80000000",
+      "Undefined behavior",
+      "Compile error",
+      "0"
+    ],
+    "tags": [
+      "shift-ub"
+    ],
+    "title": "uint32_t mask = 1 << 31;  — what is this in C?",
     "topic": "c",
-    "tags": ["off-by-one", "buffer-overflow"],
-    "difficulty": 1,
-    "title": "Ring buffer. Memory after buf gets corrupted. Tap the bug.",
+    "type": "quiz"
+  },
+  {
+    "answer": 2,
+    "code": "#include <stdio.h>\n#include <stdint.h>\n\nstruct Packet {\n    uint8_t  type;\n    uint32_t value;\n    uint8_t  crc;\n};\n\nint main(void) {\n    printf(\"%u\\n\", (unsigned)sizeof(struct Packet));\n}",
+    "difficulty": 2,
+    "explain": "uint32_t needs 4-byte alignment. So: type(1) + 3 padding + value(4) + crc(1) + 3 tail padding = 12. Reordering fields (value, type, crc) gives 8. Never send a struct over UART or SPI with memcpy: padding and endianness differ between devices.",
+    "id": "c-struct-padding",
     "lang": "c",
+    "options": [
+      "6",
+      "8",
+      "12",
+      "16"
+    ],
+    "tags": [
+      "struct-padding",
+      "memory-layout"
+    ],
+    "title": "sizeof(Packet) on ARM Cortex-M?",
+    "topic": "cpp",
+    "type": "quiz",
+    "verify": {
+      "expect": "12",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "fn main() {\n    let x: u8 = 255;\n    let y = x.wrapping_add(1);\n    let z = x.checked_add(1);\n    println!(\"{} {:?}\", y, z);\n}",
+    "difficulty": 1,
+    "explain": "wrapping_add wraps to 0. checked_add returns None on overflow. In firmware, choose on purpose: wrapping_* for counters and timers, checked_* for sizes and lengths, saturating_* for sensor values.",
+    "id": "rs-wrapping-checked",
+    "lang": "rust",
+    "options": [
+      "0 None",
+      "256 Some(256)",
+      "Panic",
+      "0 Some(0)"
+    ],
+    "tags": [
+      "integer-overflow"
+    ],
+    "title": "What does this print?",
+    "topic": "rust",
+    "type": "quiz",
+    "verify": {
+      "expect": "0 None",
+      "lang": "rust"
+    }
+  },
+  {
+    "answer": 3,
+    "code": "fn main() {\n    let x: u8 = 255;\n    let y = x + 1;\n    println!(\"{}\", y);\n}",
+    "difficulty": 2,
+    "explain": "The compiler sees the constant values and the deny-by-default lint arithmetic_overflow stops the build. With values only known at runtime: debug builds panic, release builds wrap (unless overflow-checks = true). Many firmware profiles turn overflow-checks on in release too.",
+    "id": "rs-overflow-const",
+    "lang": "rust",
+    "options": [
+      "Prints 0",
+      "Prints 256",
+      "Panics at runtime",
+      "Compile error"
+    ],
+    "tags": [
+      "integer-overflow"
+    ],
+    "title": "What happens?",
+    "topic": "rust",
+    "type": "quiz",
+    "verify": {
+      "compileFail": true,
+      "lang": "rust"
+    }
+  },
+  {
+    "answer": 3,
+    "code": "struct Pin(&'static str);\n\nimpl Drop for Pin {\n    fn drop(&mut self) { print!(\"{} \", self.0); }\n}\n\nfn main() {\n    let _a = Pin(\"a\");\n    let _b = Pin(\"b\");\n    let _ = Pin(\"c\");\n    println!();\n}",
+    "difficulty": 3,
+    "explain": "let _ = ... does not bind. The value drops at once, so 'c ' prints first. Then println!() prints a newline. At the end of main, locals drop in reverse order: b, then a. Danger in embedded: let _ = cs_guard(); releases a lock or chip-select at once. Use let _guard = ... instead.",
+    "id": "rs-drop-order",
+    "lang": "rust",
+    "options": [
+      "a b ⏎ c",
+      "c b a ⏎",
+      "c ⏎ b a",
+      "b a ⏎ c"
+    ],
+    "tags": [
+      "drop-order",
+      "raii"
+    ],
+    "title": "What does this print?",
+    "topic": "rust",
+    "type": "quiz",
+    "verify": {
+      "expect": "c \nb a",
+      "lang": "rust"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "fn main() {\n    let adc: u16 = 4095;\n    let b = adc as u8;\n    println!(\"{}\", b);\n}",
+    "difficulty": 1,
+    "explain": "as never fails. It silently keeps the low bits: 0x0FFF becomes 0xFF = 255. A value of 4096 would give 0! Use u8::try_from(adc) to catch it, or scale on purpose: (adc >> 4) as u8.",
+    "id": "rs-as-truncate",
+    "lang": "rust",
+    "options": [
+      "255",
+      "4095",
+      "Panic",
+      "Compile error"
+    ],
+    "tags": [
+      "truncation"
+    ],
+    "title": "12-bit ADC value. What does this print?",
+    "topic": "rust",
+    "type": "quiz",
+    "verify": {
+      "expect": "255",
+      "lang": "rust"
+    }
+  },
+  {
+    "bugLines": [
+      1
+    ],
+    "code": "static bool data_ready = false;\nstatic uint8_t rx_byte;\n\nvoid USART1_IRQHandler(void) {\n    rx_byte = USART1->DR;\n    data_ready = true;\n}\n\nint main(void) {\n    uart_init();\n    while (!data_ready) { }\n    process(rx_byte);\n}",
+    "difficulty": 1,
+    "explain": "data_ready is changed in an ISR, but the compiler does not know that. With -O2 it reads the flag once and the loop becomes while(1). Mark flags shared with an ISR as volatile. Note: volatile prevents caching, but it does NOT make multi-byte access atomic.",
+    "fix": "static volatile bool data_ready = false;",
+    "id": "bug-volatile-isr",
+    "lang": "c",
+    "tags": [
+      "volatile",
+      "isr"
+    ],
+    "title": "Works with -O0, hangs with -O2. Tap the bug.",
+    "topic": "embedded",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      8
+    ],
     "code": "#define BUF_SIZE 64\nstatic uint8_t buf[BUF_SIZE];\nstatic volatile uint16_t head;\n\nvoid push(uint8_t b) {\n    buf[head] = b;\n    head++;\n    if (head > BUF_SIZE) head = 0;\n}",
-    "bugLines": [8],
+    "difficulty": 1,
     "explain": "When head == 64 it does not reset, so the next push writes buf[64], one byte past the end. Valid indices are 0..63, so the check must be >=. Tip: with a power-of-2 size, use head = (head + 1) & (BUF_SIZE - 1);",
-    "fix": "if (head >= BUF_SIZE) head = 0;"
+    "fix": "if (head >= BUF_SIZE) head = 0;",
+    "id": "bug-ring-off-by-one",
+    "lang": "c",
+    "tags": [
+      "off-by-one",
+      "buffer-overflow"
+    ],
+    "title": "Ring buffer. Memory after buf gets corrupted. Tap the bug.",
+    "topic": "c",
+    "type": "bug"
   },
   {
-    "id": "bug-odr-rmw",
-    "type": "bug",
-    "topic": "embedded",
-    "tags": ["rmw-race", "isr", "gpio"],
-    "difficulty": 2,
-    "title": "LED on PA5 sometimes stops blinking. Tap the bug.",
-    "lang": "c",
+    "bugLines": [
+      8,
+      10
+    ],
     "code": "void TIM2_IRQHandler(void) {\n    TIM2->SR = ~TIM_SR_UIF;\n    GPIOA->ODR ^= (1u << 5);   // blink LED\n}\n\nint main(void) {\n    for (;;) {\n        GPIOA->ODR |= (1u << 6);\n        do_work();\n        GPIOA->ODR &= ~(1u << 6);\n    }\n}",
-    "bugLines": [8, 10],
+    "difficulty": 2,
     "explain": "ODR |= is read-modify-write: load, OR, store. If the timer ISR toggles PA5 between the load and the store, main writes back the old PA5 value and the toggle is lost. On STM32 use BSRR. It sets or resets single pins in one atomic write.",
-    "fix": "GPIOA->BSRR = (1u << 6);          // set PA6\nGPIOA->BSRR = (1u << (6 + 16));   // reset PA6"
+    "fix": "GPIOA->BSRR = (1u << 6);          // set PA6\nGPIOA->BSRR = (1u << (6 + 16));   // reset PA6",
+    "id": "bug-odr-rmw",
+    "lang": "c",
+    "tags": [
+      "rmw-race",
+      "isr",
+      "gpio"
+    ],
+    "title": "LED on PA5 sometimes stops blinking. Tap the bug.",
+    "topic": "embedded",
+    "type": "bug"
   },
   {
-    "id": "bug-avr-torn-read",
-    "type": "bug",
-    "topic": "embedded",
-    "tags": ["torn-read", "atomicity", "isr"],
-    "difficulty": 2,
-    "title": "AVR (8-bit). millis() sometimes jumps by 256. Tap the bug.",
-    "lang": "c",
+    "bugLines": [
+      8
+    ],
     "code": "volatile uint32_t ms_ticks;\n\nISR(TIMER0_COMPA_vect) {\n    ms_ticks++;\n}\n\nuint32_t millis(void) {\n    return ms_ticks;\n}",
-    "bugLines": [8],
+    "difficulty": 2,
     "explain": "On an 8-bit MCU, reading a uint32_t takes 4 separate loads. If the ISR fires in the middle (for example 0x000000FF to 0x00000100), you get a mix of old and new bytes. volatile does not help here. Read it with interrupts disabled.",
-    "fix": "uint32_t m;\nATOMIC_BLOCK(ATOMIC_RESTORESTATE) { m = ms_ticks; }\nreturn m;"
+    "fix": "uint32_t m;\nATOMIC_BLOCK(ATOMIC_RESTORESTATE) { m = ms_ticks; }\nreturn m;",
+    "id": "bug-avr-torn-read",
+    "lang": "c",
+    "tags": [
+      "torn-read",
+      "atomicity",
+      "isr"
+    ],
+    "title": "AVR (8-bit). millis() sometimes jumps by 256. Tap the bug.",
+    "topic": "embedded",
+    "type": "bug"
   },
   {
-    "id": "bug-spi-cs-early",
-    "type": "bug",
-    "topic": "embedded",
-    "tags": ["peripheral-timing", "spi"],
-    "difficulty": 2,
-    "title": "Sensor ignores every SPI command. Tap the bug.",
-    "lang": "c",
+    "bugLines": [
+      4
+    ],
     "code": "void spi_write(uint8_t b) {\n    CS_LOW();\n    SPI1->DR = b;\n    CS_HIGH();\n}",
-    "bugLines": [4],
-    "explain": "Writing DR only puts the byte in the TX buffer. The shift out happens later. CS goes high before the bits leave, so the sensor drops the frame. Wait for TXE and then for BSY == 0 before releasing CS.",
-    "fix": "SPI1->DR = b;\nwhile (!(SPI1->SR & SPI_SR_TXE)) { }\nwhile (SPI1->SR & SPI_SR_BSY) { }\nCS_HIGH();"
-  },
-  {
-    "id": "bug-freertos-stack",
-    "type": "bug",
-    "topic": "embedded",
-    "tags": ["stack-overflow", "freertos"],
     "difficulty": 2,
-    "title": "FreeRTOS on Cortex-M. Random HardFaults. Tap the bug.",
+    "explain": "Writing DR only puts the byte in the TX buffer. The shift out happens later. CS goes high before the bits leave, so the sensor drops the frame. Wait for TXE and then for BSY == 0 before releasing CS.",
+    "fix": "SPI1->DR = b;\nwhile (!(SPI1->SR & SPI_SR_TXE)) { }\nwhile (SPI1->SR & SPI_SR_BSY) { }\nCS_HIGH();",
+    "id": "bug-spi-cs-early",
     "lang": "c",
+    "tags": [
+      "peripheral-timing",
+      "spi"
+    ],
+    "title": "Sensor ignores every SPI command. Tap the bug.",
+    "topic": "embedded",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      2,
+      9
+    ],
     "code": "void log_task(void *arg) {\n    char line[2048];\n    for (;;) {\n        format_log(line, sizeof line);\n        uart_send(line);\n    }\n}\n\nxTaskCreate(log_task, \"log\", 256, NULL, 1, NULL);",
-    "bugLines": [2, 9],
+    "difficulty": 2,
     "explain": "The stack depth in xTaskCreate is in words, not bytes. 256 words = 1024 bytes on a 32-bit MCU. The local buffer alone is 2048 bytes, so the stack overwrites other memory. Fix: make the buffer static, or give a bigger stack. Turn on configCHECK_FOR_STACK_OVERFLOW = 2 during development.",
-    "fix": "static char line[2048];   // not on the task stack"
-  },
-  {
-    "id": "bug-ignored-hal",
-    "type": "bug",
-    "topic": "embedded",
-    "tags": ["ignored-error", "i2c"],
-    "difficulty": 1,
-    "title": "Unplug the sensor: temperature shows old values. Tap the bug.",
+    "fix": "static char line[2048];   // not on the task stack",
+    "id": "bug-freertos-stack",
     "lang": "c",
-    "code": "uint8_t cmd[2] = { 0x2C, 0x06 };\nuint8_t data[6];\n\nHAL_I2C_Master_Transmit(&hi2c1, ADDR << 1, cmd, 2, 100);\nHAL_I2C_Master_Receive(&hi2c1, ADDR << 1, data, 6, 100);\n\ntemp = (data[0] << 8) | data[1];",
-    "bugLines": [4, 5],
-    "explain": "Both calls return HAL_StatusTypeDef (HAL_OK, HAL_ERROR, HAL_TIMEOUT). The code ignores it, so on a NAK it parses whatever is left in data[]. Check every bus call and report the sensor as offline. Also check the CRC byte that the sensor sends.",
-    "fix": "if (HAL_I2C_Master_Transmit(&hi2c1, ADDR << 1, cmd, 2, 100) != HAL_OK ||\n    HAL_I2C_Master_Receive(&hi2c1, ADDR << 1, data, 6, 100) != HAL_OK) {\n    return SENSOR_OFFLINE;\n}"
+    "tags": [
+      "stack-overflow",
+      "freertos"
+    ],
+    "title": "FreeRTOS on Cortex-M. Random HardFaults. Tap the bug.",
+    "topic": "embedded",
+    "type": "bug"
   },
   {
-    "id": "pr-idx-too-small",
-    "type": "pr",
-    "topic": "embedded",
-    "tags": ["integer-overflow", "buffer-overflow"],
+    "bugLines": [
+      4,
+      5
+    ],
+    "code": "uint8_t cmd[2] = { 0x2C, 0x06 };\nuint8_t data[6];\n\nHAL_I2C_Master_Transmit(&hi2c1, ADDR << 1, cmd, 2, 100);\nHAL_I2C_Master_Receive(&hi2c1, ADDR << 1, data, 6, 100);\n\ntemp = (data[0] << 8) | data[1];",
     "difficulty": 1,
+    "explain": "Both calls return HAL_StatusTypeDef (HAL_OK, HAL_ERROR, HAL_TIMEOUT). The code ignores it, so on a NAK it parses whatever is left in data[]. Check every bus call and report the sensor as offline. Also check the CRC byte that the sensor sends.",
+    "fix": "if (HAL_I2C_Master_Transmit(&hi2c1, ADDR << 1, cmd, 2, 100) != HAL_OK ||\n    HAL_I2C_Master_Receive(&hi2c1, ADDR << 1, data, 6, 100) != HAL_OK) {\n    return SENSOR_OFFLINE;\n}",
+    "id": "bug-ignored-hal",
+    "lang": "c",
+    "tags": [
+      "ignored-error",
+      "i2c"
+    ],
+    "title": "Unplug the sensor: temperature shows old values. Tap the bug.",
+    "topic": "embedded",
+    "type": "bug"
+  },
+  {
+    "diff": "-#define RX_BUF_LEN 200\n+#define RX_BUF_LEN 300\n static uint8_t rx_buf[RX_BUF_LEN];\n static uint8_t rx_idx;\n \n void uart_rx_isr(uint8_t b) {\n     if (rx_idx < RX_BUF_LEN) {\n         rx_buf[rx_idx++] = b;\n     }\n }",
+    "difficulty": 1,
+    "explain": "rx_idx is uint8_t, so it can only count to 255. After 255 it wraps to 0 and overwrites the start of the frame. The check rx_idx < 300 is always true. Pattern: when a size constant changes, check every index and counter type that uses it. Fix: uint16_t rx_idx.",
+    "id": "pr-idx-too-small",
     "lang": "c",
     "pr": {
-      "title": "Increase UART RX buffer to 300 bytes",
       "author": "junior-dev",
       "body": "Long Modbus frames were cut off. Bigger buffer fixes it.",
+      "title": "Increase UART RX buffer to 300 bytes",
       "verdict": "changes"
     },
-    "diff": "-#define RX_BUF_LEN 200\n+#define RX_BUF_LEN 300\n static uint8_t rx_buf[RX_BUF_LEN];\n static uint8_t rx_idx;\n \n void uart_rx_isr(uint8_t b) {\n     if (rx_idx < RX_BUF_LEN) {\n         rx_buf[rx_idx++] = b;\n     }\n }",
-    "explain": "rx_idx is uint8_t, so it can only count to 255. After 255 it wraps to 0 and overwrites the start of the frame. The check rx_idx < 300 is always true. Pattern: when a size constant changes, check every index and counter type that uses it. Fix: uint16_t rx_idx."
+    "tags": [
+      "integer-overflow",
+      "buffer-overflow"
+    ],
+    "topic": "embedded",
+    "type": "pr"
   },
   {
-    "id": "pr-delay-in-isr",
-    "type": "pr",
-    "topic": "embedded",
-    "tags": ["blocking-in-isr", "isr"],
+    "diff": " void EXTI0_IRQHandler(void) {\n+    HAL_Delay(20);   // debounce\n     if (HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_Pin)) {\n         button_pressed = true;\n     }\n     __HAL_GPIO_EXTI_CLEAR_IT(BTN_Pin);\n }",
     "difficulty": 1,
+    "explain": "HAL_Delay counts SysTick interrupts. If EXTI has the same or higher priority than SysTick, the tick never increases and the MCU hangs forever. Even if it works, it blocks all lower interrupts for 20 ms. Pattern: no delays in an ISR. Debounce with a timestamp (ignore edges for 20 ms) or a timer.",
+    "id": "pr-delay-in-isr",
     "lang": "c",
     "pr": {
-      "title": "Fix button bounce",
       "author": "fw-intern",
       "body": "Button triggered 3–4 times per press. Added a 20 ms debounce.",
+      "title": "Fix button bounce",
       "verdict": "changes"
     },
-    "diff": " void EXTI0_IRQHandler(void) {\n+    HAL_Delay(20);   // debounce\n     if (HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_Pin)) {\n         button_pressed = true;\n     }\n     __HAL_GPIO_EXTI_CLEAR_IT(BTN_Pin);\n }",
-    "explain": "HAL_Delay counts SysTick interrupts. If EXTI has the same or higher priority than SysTick, the tick never increases and the MCU hangs forever. Even if it works, it blocks all lower interrupts for 20 ms. Pattern: no delays in an ISR. Debounce with a timestamp (ignore edges for 20 ms) or a timer."
+    "tags": [
+      "blocking-in-isr",
+      "isr"
+    ],
+    "topic": "embedded",
+    "type": "pr"
   },
   {
-    "id": "pr-bsrr-good",
-    "type": "pr",
-    "topic": "embedded",
-    "tags": ["rmw-race", "gpio"],
+    "diff": " void status_led(bool on) {\n-    if (on) GPIOA->ODR |=  (1u << 5);\n-    else    GPIOA->ODR &= ~(1u << 5);\n+    if (on) GPIOA->BSRR = (1u << 5);\n+    else    GPIOA->BSRR = (1u << (5 + 16));\n }",
     "difficulty": 2,
+    "explain": "Good change. BSRR writes are atomic: the low 16 bits set pins, the high 16 bits reset pins, and other pins do not change. No read-modify-write, no race with ISRs. Not every PR has a bug. Learning to approve correct code fast is also a skill.",
+    "id": "pr-bsrr-good",
     "lang": "c",
     "pr": {
-      "title": "Use BSRR for status LED",
       "author": "senior-fw",
       "body": "ODR |= / &= races with the timer ISR that also writes port A.",
+      "title": "Use BSRR for status LED",
       "verdict": "approve"
     },
-    "diff": " void status_led(bool on) {\n-    if (on) GPIOA->ODR |=  (1u << 5);\n-    else    GPIOA->ODR &= ~(1u << 5);\n+    if (on) GPIOA->BSRR = (1u << 5);\n+    else    GPIOA->BSRR = (1u << (5 + 16));\n }",
-    "explain": "Good change. BSRR writes are atomic: the low 16 bits set pins, the high 16 bits reset pins, and other pins do not change. No read-modify-write, no race with ISRs. Not every PR has a bug. Learning to approve correct code fast is also a skill."
+    "tags": [
+      "rmw-race",
+      "gpio"
+    ],
+    "topic": "embedded",
+    "type": "pr"
   },
   {
-    "id": "pr-rust-unwrap",
-    "type": "pr",
-    "topic": "rust",
-    "tags": ["panic-in-firmware", "ignored-error", "i2c"],
+    "diff": " fn read_temp(i2c: &mut I2c) -> f32 {\n     let mut buf = [0u8; 2];\n-    match i2c.write_read(TMP_ADDR, &[REG_TEMP], &mut buf) {\n-        Ok(()) => raw_to_c(buf),\n-        Err(_) => f32::NAN,\n-    }\n+    i2c.write_read(TMP_ADDR, &[REG_TEMP], &mut buf).unwrap();\n+    raw_to_c(buf)\n }",
     "difficulty": 1,
+    "explain": "One I2C NAK (EMI, loose cable, sensor brown-out) now panics. In no_std the panic handler usually halts or resets the whole device. The old code degraded nicely. Pattern: 'X is always there' is not true in the field. Return Result and let the caller decide.",
+    "id": "pr-rust-unwrap",
     "lang": "rust",
     "pr": {
-      "title": "Simplify temperature read",
       "author": "rustacean42",
       "body": "The match was noisy. unwrap() is cleaner, and the sensor is always there.",
+      "title": "Simplify temperature read",
       "verdict": "changes"
     },
-    "diff": " fn read_temp(i2c: &mut I2c) -> f32 {\n     let mut buf = [0u8; 2];\n-    match i2c.write_read(TMP_ADDR, &[REG_TEMP], &mut buf) {\n-        Ok(()) => raw_to_c(buf),\n-        Err(_) => f32::NAN,\n-    }\n+    i2c.write_read(TMP_ADDR, &[REG_TEMP], &mut buf).unwrap();\n+    raw_to_c(buf)\n }",
-    "explain": "One I2C NAK (EMI, loose cable, sensor brown-out) now panics. In no_std the panic handler usually halts or resets the whole device. The old code degraded nicely. Pattern: 'X is always there' is not true in the field. Return Result and let the caller decide."
+    "tags": [
+      "panic-in-firmware",
+      "ignored-error",
+      "i2c"
+    ],
+    "topic": "rust",
+    "type": "pr"
   },
   {
-    "id": "pr-rust-static-mut",
-    "type": "pr",
-    "topic": "rust",
-    "tags": ["data-race", "isr", "critical-section"],
+    "diff": "-static mut TICKS: u32 = 0;\n+static TICKS: Mutex<Cell<u32>> = Mutex::new(Cell::new(0));\n \n #[interrupt]\n fn TIM2() {\n-    unsafe { TICKS += 1; }\n+    critical_section::with(|cs| {\n+        let t = TICKS.borrow(cs);\n+        t.set(t.get() + 1);\n+    });\n }",
     "difficulty": 2,
+    "explain": "Good change. critical_section::Mutex<Cell<T>> is the standard safe way to share small state with an ISR. Alternative on Cortex-M3 and newer: AtomicU32::fetch_add. Cortex-M0 has no atomic read-modify-write, so the critical section is the portable choice.",
+    "id": "pr-rust-static-mut",
     "lang": "rust",
     "pr": {
-      "title": "Remove static mut tick counter",
       "author": "senior-fw",
       "body": "static mut shared between main and the TIM2 ISR is a data race (UB).",
+      "title": "Remove static mut tick counter",
       "verdict": "approve"
     },
-    "diff": "-static mut TICKS: u32 = 0;\n+static TICKS: Mutex<Cell<u32>> = Mutex::new(Cell::new(0));\n \n #[interrupt]\n fn TIM2() {\n-    unsafe { TICKS += 1; }\n+    critical_section::with(|cs| {\n+        let t = TICKS.borrow(cs);\n+        t.set(t.get() + 1);\n+    });\n }",
-    "explain": "Good change. critical_section::Mutex<Cell<T>> is the standard safe way to share small state with an ISR. Alternative on Cortex-M3 and newer: AtomicU32::fetch_add. Cortex-M0 has no atomic read-modify-write, so the critical section is the portable choice."
+    "tags": [
+      "data-race",
+      "isr",
+      "critical-section"
+    ],
+    "topic": "rust",
+    "type": "pr"
   },
   {
-    "id": "pr-cpp-vector-isr",
-    "type": "pr",
-    "topic": "cpp",
-    "tags": ["heap-in-isr", "memory"],
+    "diff": "-static std::array<int16_t, 256> samples;\n-static uint8_t idx;\n+static std::vector<int16_t> samples;\n \n void ADC_IRQHandler() {\n-    samples[idx++] = ADC1->DR;\n+    samples.push_back(ADC1->DR);\n }",
     "difficulty": 1,
+    "explain": "push_back can call malloc inside an ISR: not reentrant, slow, can fail. The vector also grows without limit until the heap is gone. Fixed-size std::array (or a ring buffer) is the right tool here. Pattern: no heap allocation in ISRs, and in hard real-time code no heap after init.",
+    "id": "pr-cpp-vector-isr",
     "lang": "cpp",
     "pr": {
-      "title": "Modernize ADC buffer with std::vector",
       "author": "cpp-fan",
       "body": "Raw arrays are old style. vector is safer and grows when needed.",
+      "title": "Modernize ADC buffer with std::vector",
       "verdict": "changes"
     },
-    "diff": "-static std::array<int16_t, 256> samples;\n-static uint8_t idx;\n+static std::vector<int16_t> samples;\n \n void ADC_IRQHandler() {\n-    samples[idx++] = ADC1->DR;\n+    samples.push_back(ADC1->DR);\n }",
-    "explain": "push_back can call malloc inside an ISR: not reentrant, slow, can fail. The vector also grows without limit until the heap is gone. Fixed-size std::array (or a ring buffer) is the right tool here. Pattern: no heap allocation in ISRs, and in hard real-time code no heap after init."
+    "tags": [
+      "heap-in-isr",
+      "memory"
+    ],
+    "topic": "cpp",
+    "type": "pr"
   },
   {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "I2C lines are open-drain: the pull-up resistor charges the bus capacitance. Rise time ≈ R × C. Long wires mean more C, so you need smaller R (for example 4.7k → 2.2k). Do not go below the sink current limit: 3 mA in standard and fast mode.",
     "id": "el-i2c-pullup",
-    "type": "quiz",
-    "topic": "electronics",
-    "tags": ["i2c", "pull-up"],
-    "difficulty": 2,
+    "options": [
+      "Bigger pull-up resistor",
+      "Smaller pull-up resistor",
+      "Add capacitor on SDA",
+      "Lower the supply voltage"
+    ],
+    "tags": [
+      "i2c",
+      "pull-up"
+    ],
     "title": "I2C at 400 kHz, long wires. Rising edges are too slow on the scope. What do you change?",
-    "options": ["Bigger pull-up resistor", "Smaller pull-up resistor", "Add capacitor on SDA", "Lower the supply voltage"],
-    "answer": 1,
-    "explain": "I2C lines are open-drain: the pull-up resistor charges the bus capacitance. Rise time ≈ R × C. Long wires mean more C, so you need smaller R (for example 4.7k → 2.2k). Do not go below the sink current limit: 3 mA in standard and fast mode."
+    "topic": "electronics",
+    "type": "quiz"
   },
   {
+    "answer": 1,
+    "difficulty": 1,
+    "explain": "R = (Vcc − Vf) / I = (3.3 − 2.0) / 0.010 = 130 Ω. Next standard value: 150 Ω. Also check the GPIO current limit in the datasheet (often around 8–20 mA per pin, plus a total limit per port).",
     "id": "el-led-resistor",
-    "type": "quiz",
-    "topic": "electronics",
-    "tags": ["ohms-law", "gpio"],
-    "difficulty": 1,
+    "options": [
+      "33 Ω",
+      "130 Ω",
+      "330 Ω",
+      "1.3 kΩ"
+    ],
+    "tags": [
+      "ohms-law",
+      "gpio"
+    ],
     "title": "3.3 V GPIO, red LED Vf = 2.0 V, target 10 mA. Resistor?",
-    "options": ["33 Ω", "130 Ω", "330 Ω", "1.3 kΩ"],
-    "answer": 1,
-    "explain": "R = (Vcc − Vf) / I = (3.3 − 2.0) / 0.010 = 130 Ω. Next standard value: 150 Ω. Also check the GPIO current limit in the datasheet (often around 8–20 mA per pin, plus a total limit per port)."
+    "topic": "electronics",
+    "type": "quiz"
   },
   {
-    "id": "el-divider",
-    "type": "quiz",
-    "topic": "electronics",
-    "tags": ["voltage-divider", "adc"],
+    "answer": 2,
     "difficulty": 2,
+    "explain": "Vout = 5 × R2 / (R1 + R2). 18k gives 3.21 V, a safe margin under 3.3 V. (20k gives 3.33 V, too close.) 47k gives 4.12 V and can damage the pin. Also keep the source impedance low enough for the ADC sample time, or add a small cap on the ADC pin.",
+    "id": "el-divider",
+    "options": [
+      "4.7 kΩ",
+      "10 kΩ",
+      "18 kΩ",
+      "47 kΩ"
+    ],
+    "tags": [
+      "voltage-divider",
+      "adc"
+    ],
     "title": "5 V sensor into a 3.3 V ADC. R1 (top) = 10 kΩ. R2 (bottom) = ?",
-    "options": ["4.7 kΩ", "10 kΩ", "18 kΩ", "47 kΩ"],
-    "answer": 2,
-    "explain": "Vout = 5 × R2 / (R1 + R2). 18k gives 3.21 V, a safe margin under 3.3 V. (20k gives 3.33 V, too close.) 47k gives 4.12 V and can damage the pin. Also keep the source impedance low enough for the ADC sample time, or add a small cap on the ADC pin."
+    "topic": "electronics",
+    "type": "quiz"
   },
   {
-    "id": "el-floating-input",
-    "type": "quiz",
-    "topic": "electronics",
-    "tags": ["gpio", "pull-up"],
-    "difficulty": 1,
-    "title": "Button to GND on an input pin. With the button released, the pin reads random 0/1. Why?",
-    "options": ["Button is broken", "Pin is floating: no pull-up", "Clock is too fast", "Need a bigger decoupling cap"],
     "answer": 1,
-    "explain": "A CMOS input has very high impedance. With nothing driving it, it picks up noise. Enable the internal pull-up (GPIO_PULLUP) or add an external 10k to VCC. Then released = 1 and pressed = 0."
-  },
-  {
-    "id": "el-decoupling",
-    "type": "quiz",
+    "difficulty": 1,
+    "explain": "A CMOS input has very high impedance. With nothing driving it, it picks up noise. Enable the internal pull-up (GPIO_PULLUP) or add an external 10k to VCC. Then released = 1 and pressed = 0.",
+    "id": "el-floating-input",
+    "options": [
+      "Button is broken",
+      "Pin is floating: no pull-up",
+      "Clock is too fast",
+      "Need a bigger decoupling cap"
+    ],
+    "tags": [
+      "gpio",
+      "pull-up"
+    ],
+    "title": "Button to GND on an input pin. With the button released, the pin reads random 0/1. Why?",
     "topic": "electronics",
-    "tags": ["decoupling", "pcb"],
-    "difficulty": 1,
-    "title": "Where do you place the 100 nF decoupling capacitor?",
-    "options": ["Anywhere on the 3.3 V net", "Next to the voltage regulator", "As close as possible to each VDD pin, short path to GND", "On the bottom side, far from the MCU"],
-    "answer": 2,
-    "explain": "The cap gives fast current during switching edges. Long traces add inductance and make it useless at high frequency. One 100 nF per VDD/VSS pair, as close as possible, with a short via to the ground plane. Add a bulk cap (for example 4.7–10 µF) near the regulator."
+    "type": "quiz"
   },
   {
-    "id": "concept-isr-shared",
-    "type": "concept",
-    "topic": "embedded",
-    "tags": ["isr", "volatile", "atomicity"],
+    "answer": 2,
     "difficulty": 1,
-    "title": "Data shared with an ISR: 4 rules",
+    "explain": "The cap gives fast current during switching edges. Long traces add inductance and make it useless at high frequency. One 100 nF per VDD/VSS pair, as close as possible, with a short via to the ground plane. Add a bulk cap (for example 4.7–10 µF) near the regulator.",
+    "id": "el-decoupling",
+    "options": [
+      "Anywhere on the 3.3 V net",
+      "Next to the voltage regulator",
+      "As close as possible to each VDD pin, short path to GND",
+      "On the bottom side, far from the MCU"
+    ],
+    "tags": [
+      "decoupling",
+      "pcb"
+    ],
+    "title": "Where do you place the 100 nF decoupling capacitor?",
+    "topic": "electronics",
+    "type": "quiz"
+  },
+  {
     "bullets": [
       "C/C++: mark it volatile, so the compiler re-reads it every time.",
       "volatile is NOT atomic. Wider than the bus (u32 on AVR, u64 on Cortex-M) → read it with interrupts off.",
       "Read-modify-write (x++, |=) in main is a race → critical section, atomics, or BSRR-style registers.",
       "Keep the ISR short: set a flag or push to a ring buffer. Do the work in main or a task."
-    ]
+    ],
+    "difficulty": 1,
+    "id": "concept-isr-shared",
+    "tags": [
+      "isr",
+      "volatile",
+      "atomicity"
+    ],
+    "title": "Data shared with an ISR: 4 rules",
+    "topic": "embedded",
+    "type": "concept"
   },
   {
-    "id": "concept-pr-checklist",
-    "type": "concept",
-    "topic": "embedded",
-    "tags": ["review-checklist"],
-    "difficulty": 1,
-    "title": "Firmware PR review: scan for these 6",
     "bullets": [
       "Shared state: what does an ISR or other task also touch?",
       "Integer widths: does a counter, index or cast lose bits?",
@@ -421,6 +626,216 @@
       "Error paths: ignored return values, unwrap(), missing timeouts?",
       "Peripheral timing: does the code wait for the status flags (TXE, BSY, RXNE)?",
       "Memory: stack size, buffer bounds, heap after init?"
-    ]
+    ],
+    "difficulty": 1,
+    "id": "concept-pr-checklist",
+    "tags": [
+      "review-checklist"
+    ],
+    "title": "Firmware PR review: scan for these 6",
+    "topic": "embedded",
+    "type": "concept"
+  },
+  {
+    "bugLines": [
+      10
+    ],
+    "code": "__attribute__((aligned(32)))\nstatic uint8_t rx[64];\n\nvoid start_rx(void) {\n    HAL_UART_Receive_DMA(&huart1, rx, sizeof rx);\n}\n\nvoid HAL_UART_RxCpltCallback(\n        UART_HandleTypeDef *h) {\n    process(rx, sizeof rx);\n}",
+    "difficulty": 3,
+    "explain": "DMA writes to RAM, but the CPU reads through the D-cache. Old cache lines hide the new data. This is a cache coherency bug. Invalidate the buffer before the CPU reads it. Keep the buffer 32-byte aligned and a multiple of 32 bytes, or put it in a non-cacheable MPU region.",
+    "fix": "SCB_InvalidateDCache_by_Addr(rx, sizeof rx);\nprocess(rx, sizeof rx);",
+    "id": "bug-dma-dcache-rx",
+    "lang": "c",
+    "tags": [
+      "dma",
+      "cache-coherency"
+    ],
+    "title": "STM32H7, D-cache on. DMA RX data is sometimes old. Tap the bug.",
+    "topic": "embedded",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      7
+    ],
+    "code": "struct IrqLock {\n    IrqLock()  { __disable_irq(); }\n    ~IrqLock() { __enable_irq(); }\n};\n\nvoid push(uint8_t b) {\n    IrqLock{};\n    buf[head] = b;\n    head = (head + 1) % N;\n}",
+    "difficulty": 2,
+    "explain": "IrqLock{}; makes a temporary object. It is destroyed at the end of that line, so interrupts are on again before buf and head change. The RAII guard must have a name to live until the end of the scope.",
+    "fix": "IrqLock lock;",
+    "id": "bug-cpp-raii-temp",
+    "lang": "cpp",
+    "tags": [
+      "raii",
+      "critical-section",
+      "isr"
+    ],
+    "title": "Ring buffer still gets corrupted by the UART ISR. Tap the bug.",
+    "topic": "cpp",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      2,
+      4
+    ],
+    "code": "fn start_rx(dma: &mut DmaChannel) {\n    let mut buf = [0u8; 64];\n    unsafe {\n        dma.set_mem_addr(buf.as_mut_ptr() as u32);\n    }\n    dma.set_len(buf.len() as u16);\n    dma.enable();\n}",
+    "difficulty": 2,
+    "explain": "buf lives on the stack. The function returns, but the DMA keeps writing to that address. Now it overwrites other stack data. The borrow checker cannot see a raw address given to hardware. Use a 'static buffer (for example from static_cell). Safe HAL DMA APIs require 'static buffers for this reason.",
+    "fix": "static BUF: StaticCell<[u8; 64]> = StaticCell::new();\nlet buf: &'static mut [u8; 64] = BUF.init([0; 64]);",
+    "id": "bug-rs-dma-stack-buf",
+    "lang": "rust",
+    "tags": [
+      "dma",
+      "buffer-lifetime",
+      "unsafe"
+    ],
+    "title": "After start_rx() returns, other variables get random bytes. Tap the bug.",
+    "topic": "rust",
+    "type": "bug"
+  },
+  {
+    "diff": " void SysTick_Handler(void) {\n     ticks++;\n+    IWDG->KR = 0xAAAA;\n }\n \n int main(void) {\n     init();\n     while (1) {\n-        IWDG->KR = 0xAAAA;\n         poll_sensors();\n         run_control();\n     }\n }",
+    "difficulty": 2,
+    "explain": "SysTick keeps running when the main loop hangs. Now the watchdog is always fed and never catches a stuck loop. The watchdog becomes useless. Kick it only from the code path that proves the system works. For long flash writes, kick between pages or use a longer timeout.",
+    "id": "pr-wdg-kick-systick",
+    "lang": "c",
+    "pr": {
+      "author": "junior-fw",
+      "body": "IWDG resets the board during long flash writes. Kick it from SysTick so it never fires by mistake.",
+      "title": "Stop false watchdog resets",
+      "verdict": "changes"
+    },
+    "tags": [
+      "watchdog",
+      "isr"
+    ],
+    "topic": "embedded",
+    "type": "pr"
+  },
+  {
+    "diff": "-#define UART_BRR (SYSCLK_HZ / BAUD)\n+constexpr uint32_t uart_brr(uint32_t clk,\n+                            uint32_t baud) {\n+    return (clk + baud / 2) / baud;\n+}\n+static_assert(uart_brr(16'000'000, 115'200)\n+              == 139);\n \n void uart_init() {\n-    USART2->BRR = UART_BRR;\n+    USART2->BRR = uart_brr(SYSCLK_HZ, BAUD);\n }",
+    "difficulty": 2,
+    "explain": "Good change. Adding baud/2 before the divide rounds to nearest: 139 gives about 0.08% error, 138 gave 0.64%. The constexpr function has typed parameters, no macro surprises, and static_assert checks the math at build time. It still compiles to a constant.",
+    "id": "pr-cpp-constexpr-brr",
+    "lang": "cpp",
+    "pr": {
+      "author": "senior-fw",
+      "body": "The macro truncates. 16 MHz / 115200 gives 138, which is 0.64% fast. Round to nearest instead.",
+      "title": "Round UART BRR and check it at compile time",
+      "verdict": "approve"
+    },
+    "tags": [
+      "macro",
+      "constexpr"
+    ],
+    "topic": "cpp",
+    "type": "pr"
+  },
+  {
+    "diff": " fn read_temp(i2c: &mut I2c) -> Result<i16, E> {\n     let mut buf = [0u8; 2];\n-    i2c.write_read(ADDR, &[TEMP], &mut buf)?;\n+    critical_section::with(|_| {\n+        i2c.write_read(ADDR, &[TEMP], &mut buf)\n+    })?;\n     Ok(i16::from_be_bytes(buf))\n }",
+    "difficulty": 3,
+    "explain": "A blocking I2C transfer takes about 0.5 ms at 100 kHz, longer with clock stretching. All interrupts are off for that time: UART bytes overrun, timers jitter. If the driver uses interrupts, it can hang. The I2C peripheral does the bit timing itself, so an ISR only delays it. Keep critical sections a few instructions long.",
+    "id": "pr-rs-cs-long-i2c",
+    "lang": "rust",
+    "pr": {
+      "author": "junior-fw",
+      "body": "An ISR could run in the middle of the I2C transfer. Wrap it in a critical section.",
+      "title": "Make sensor read atomic",
+      "verdict": "changes"
+    },
+    "tags": [
+      "critical-section",
+      "latency",
+      "i2c"
+    ],
+    "topic": "rust",
+    "type": "pr"
+  },
+  {
+    "answer": 1,
+    "code": "#include <cstdint>\n#include <cstdio>\n\nint main() {\n    uint8_t x = 0x0F;\n    if (~x == 0xF0)\n        std::puts(\"equal\");\n    else\n        std::puts(\"not equal\");\n}",
+    "difficulty": 2,
+    "explain": "x is promoted to int before ~. So ~x is ~0x0000000F = 0xFFFFFFF0, which is -16, not 0xF0. This is integer promotion. Cast back to the small type before you compare: (uint8_t)~x == 0xF0. Same rule in C.",
+    "id": "cpp-uint8-not-promote",
+    "lang": "cpp",
+    "options": [
+      "equal",
+      "not equal",
+      "Compile error",
+      "Undefined behavior"
+    ],
+    "tags": [
+      "integer-promotion",
+      "bit-manipulation"
+    ],
+    "title": "What does this print?",
+    "topic": "cpp",
+    "type": "quiz",
+    "verify": {
+      "expect": "not equal",
+      "lang": "cpp"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "fn main() {\n    let raw: u16 = 0xFFF0;\n    let a = raw as i32;\n    let b = raw as i16 as i32;\n    println!(\"{} {}\", a, b);\n}",
+    "difficulty": 2,
+    "explain": "as from u16 to i32 zero-extends, so a = 65520. as i16 first keeps the same bits as a signed value (-16). Then i16 to i32 sign-extends. Two's-complement sensor data needs the signed cast first. Even better: i16::from_be_bytes on the raw bytes.",
+    "id": "rs-sign-extend-cast",
+    "lang": "rust",
+    "options": [
+      "65520 -16",
+      "-16 -16",
+      "65520 65520",
+      "Compile error"
+    ],
+    "tags": [
+      "sign-extension",
+      "truncation"
+    ],
+    "title": "Temp sensor sends a signed 16-bit value. What does this print?",
+    "topic": "rust",
+    "type": "quiz",
+    "verify": {
+      "expect": "65520 -16",
+      "lang": "rust"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "fc = 1 / (2π × R × C) = 1 / (2π × 1 ms) ≈ 159 Hz. Signals above this are reduced by 20 dB per decade. Sample well above 2 × fc. The 100 nF cap also gives the ADC sample capacitor a fast charge source, so 10 kΩ is fine here.",
+    "id": "el-rc-cutoff",
+    "options": [
+      "16 Hz",
+      "159 Hz",
+      "1.6 kHz",
+      "10 kHz"
+    ],
+    "tags": [
+      "rc-filter",
+      "adc"
+    ],
+    "title": "RC low-pass before the ADC: R = 10 kΩ, C = 100 nF. Cutoff frequency?",
+    "topic": "electronics",
+    "type": "quiz"
+  },
+  {
+    "bullets": [
+      "The buffer must live for the whole transfer: static memory, never a local on the stack. In Rust: a 'static buffer.",
+      "D-cache (Cortex-M7): clean the cache before DMA TX, invalidate it after DMA RX. Align buffer and size to 32 bytes.",
+      "Or put DMA buffers in non-cacheable memory (MPU). Check the DMA can reach that RAM: on STM32H7, DMA1/2 cannot reach DTCM.",
+      "The CPU must not touch the buffer while DMA owns it. Use half/complete flags and work on the other half."
+    ],
+    "difficulty": 2,
+    "id": "concept-dma-buffers",
+    "tags": [
+      "dma",
+      "cache-coherency",
+      "buffer-lifetime"
+    ],
+    "title": "DMA buffers: 4 rules",
+    "topic": "embedded",
+    "type": "concept"
   }
 ]

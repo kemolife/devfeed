@@ -1,0 +1,204 @@
+[
+  {
+    "id": "bug-dma-dcache-rx",
+    "type": "bug",
+    "topic": "embedded",
+    "tags": [
+      "dma",
+      "cache-coherency"
+    ],
+    "difficulty": 3,
+    "title": "STM32H7, D-cache on. DMA RX data is sometimes old. Tap the bug.",
+    "lang": "c",
+    "code": "__attribute__((aligned(32)))\nstatic uint8_t rx[64];\n\nvoid start_rx(void) {\n    HAL_UART_Receive_DMA(&huart1, rx, sizeof rx);\n}\n\nvoid HAL_UART_RxCpltCallback(\n        UART_HandleTypeDef *h) {\n    process(rx, sizeof rx);\n}",
+    "bugLines": [
+      10
+    ],
+    "explain": "DMA writes to RAM, but the CPU reads through the D-cache. Old cache lines hide the new data. This is a cache coherency bug. Invalidate the buffer before the CPU reads it. Keep the buffer 32-byte aligned and a multiple of 32 bytes, or put it in a non-cacheable MPU region.",
+    "fix": "SCB_InvalidateDCache_by_Addr(rx, sizeof rx);\nprocess(rx, sizeof rx);"
+  },
+  {
+    "id": "bug-cpp-raii-temp",
+    "type": "bug",
+    "topic": "cpp",
+    "tags": [
+      "raii",
+      "critical-section",
+      "isr"
+    ],
+    "difficulty": 2,
+    "title": "Ring buffer still gets corrupted by the UART ISR. Tap the bug.",
+    "lang": "cpp",
+    "code": "struct IrqLock {\n    IrqLock()  { __disable_irq(); }\n    ~IrqLock() { __enable_irq(); }\n};\n\nvoid push(uint8_t b) {\n    IrqLock{};\n    buf[head] = b;\n    head = (head + 1) % N;\n}",
+    "bugLines": [
+      7
+    ],
+    "explain": "IrqLock{}; makes a temporary object. It is destroyed at the end of that line, so interrupts are on again before buf and head change. The RAII guard must have a name to live until the end of the scope.",
+    "fix": "IrqLock lock;"
+  },
+  {
+    "id": "bug-rs-dma-stack-buf",
+    "type": "bug",
+    "topic": "rust",
+    "tags": [
+      "dma",
+      "buffer-lifetime",
+      "unsafe"
+    ],
+    "difficulty": 2,
+    "title": "After start_rx() returns, other variables get random bytes. Tap the bug.",
+    "lang": "rust",
+    "code": "fn start_rx(dma: &mut DmaChannel) {\n    let mut buf = [0u8; 64];\n    unsafe {\n        dma.set_mem_addr(buf.as_mut_ptr() as u32);\n    }\n    dma.set_len(buf.len() as u16);\n    dma.enable();\n}",
+    "bugLines": [
+      2,
+      4
+    ],
+    "explain": "buf lives on the stack. The function returns, but the DMA keeps writing to that address. Now it overwrites other stack data. The borrow checker cannot see a raw address given to hardware. Use a 'static buffer (for example from static_cell). Safe HAL DMA APIs require 'static buffers for this reason.",
+    "fix": "static BUF: StaticCell<[u8; 64]> = StaticCell::new();\nlet buf: &'static mut [u8; 64] = BUF.init([0; 64]);"
+  },
+  {
+    "id": "pr-wdg-kick-systick",
+    "type": "pr",
+    "topic": "embedded",
+    "tags": [
+      "watchdog",
+      "isr"
+    ],
+    "difficulty": 2,
+    "lang": "c",
+    "pr": {
+      "title": "Stop false watchdog resets",
+      "author": "junior-fw",
+      "body": "IWDG resets the board during long flash writes. Kick it from SysTick so it never fires by mistake.",
+      "verdict": "changes"
+    },
+    "diff": " void SysTick_Handler(void) {\n     ticks++;\n+    IWDG->KR = 0xAAAA;\n }\n \n int main(void) {\n     init();\n     while (1) {\n-        IWDG->KR = 0xAAAA;\n         poll_sensors();\n         run_control();\n     }\n }",
+    "explain": "SysTick keeps running when the main loop hangs. Now the watchdog is always fed and never catches a stuck loop. The watchdog becomes useless. Kick it only from the code path that proves the system works. For long flash writes, kick between pages or use a longer timeout."
+  },
+  {
+    "id": "pr-cpp-constexpr-brr",
+    "type": "pr",
+    "topic": "cpp",
+    "tags": [
+      "macro",
+      "constexpr"
+    ],
+    "difficulty": 2,
+    "lang": "cpp",
+    "pr": {
+      "title": "Round UART BRR and check it at compile time",
+      "author": "senior-fw",
+      "body": "The macro truncates. 16 MHz / 115200 gives 138, which is 0.64% fast. Round to nearest instead.",
+      "verdict": "approve"
+    },
+    "diff": "-#define UART_BRR (SYSCLK_HZ / BAUD)\n+constexpr uint32_t uart_brr(uint32_t clk,\n+                            uint32_t baud) {\n+    return (clk + baud / 2) / baud;\n+}\n+static_assert(uart_brr(16'000'000, 115'200)\n+              == 139);\n \n void uart_init() {\n-    USART2->BRR = UART_BRR;\n+    USART2->BRR = uart_brr(SYSCLK_HZ, BAUD);\n }",
+    "explain": "Good change. Adding baud/2 before the divide rounds to nearest: 139 gives about 0.08% error, 138 gave 0.64%. The constexpr function has typed parameters, no macro surprises, and static_assert checks the math at build time. It still compiles to a constant."
+  },
+  {
+    "id": "pr-rs-cs-long-i2c",
+    "type": "pr",
+    "topic": "rust",
+    "tags": [
+      "critical-section",
+      "latency",
+      "i2c"
+    ],
+    "difficulty": 3,
+    "lang": "rust",
+    "pr": {
+      "title": "Make sensor read atomic",
+      "author": "junior-fw",
+      "body": "An ISR could run in the middle of the I2C transfer. Wrap it in a critical section.",
+      "verdict": "changes"
+    },
+    "diff": " fn read_temp(i2c: &mut I2c) -> Result<i16, E> {\n     let mut buf = [0u8; 2];\n-    i2c.write_read(ADDR, &[TEMP], &mut buf)?;\n+    critical_section::with(|_| {\n+        i2c.write_read(ADDR, &[TEMP], &mut buf)\n+    })?;\n     Ok(i16::from_be_bytes(buf))\n }",
+    "explain": "A blocking I2C transfer takes about 0.5 ms at 100 kHz, longer with clock stretching. All interrupts are off for that time: UART bytes overrun, timers jitter. If the driver uses interrupts, it can hang. The I2C peripheral does the bit timing itself, so an ISR only delays it. Keep critical sections a few instructions long."
+  },
+  {
+    "id": "cpp-uint8-not-promote",
+    "type": "quiz",
+    "topic": "cpp",
+    "tags": [
+      "integer-promotion",
+      "bit-manipulation"
+    ],
+    "difficulty": 2,
+    "title": "What does this print?",
+    "lang": "cpp",
+    "code": "#include <cstdint>\n#include <cstdio>\n\nint main() {\n    uint8_t x = 0x0F;\n    if (~x == 0xF0)\n        std::puts(\"equal\");\n    else\n        std::puts(\"not equal\");\n}",
+    "options": [
+      "equal",
+      "not equal",
+      "Compile error",
+      "Undefined behavior"
+    ],
+    "answer": 1,
+    "explain": "x is promoted to int before ~. So ~x is ~0x0000000F = 0xFFFFFFF0, which is -16, not 0xF0. This is integer promotion. Cast back to the small type before you compare: (uint8_t)~x == 0xF0. Same rule in C.",
+    "verify": {
+      "lang": "cpp",
+      "expect": "not equal"
+    }
+  },
+  {
+    "id": "rs-sign-extend-cast",
+    "type": "quiz",
+    "topic": "rust",
+    "tags": [
+      "sign-extension",
+      "truncation"
+    ],
+    "difficulty": 2,
+    "title": "Temp sensor sends a signed 16-bit value. What does this print?",
+    "lang": "rust",
+    "code": "fn main() {\n    let raw: u16 = 0xFFF0;\n    let a = raw as i32;\n    let b = raw as i16 as i32;\n    println!(\"{} {}\", a, b);\n}",
+    "options": [
+      "65520 -16",
+      "-16 -16",
+      "65520 65520",
+      "Compile error"
+    ],
+    "answer": 0,
+    "explain": "as from u16 to i32 zero-extends, so a = 65520. as i16 first keeps the same bits as a signed value (-16). Then i16 to i32 sign-extends. Two's-complement sensor data needs the signed cast first. Even better: i16::from_be_bytes on the raw bytes.",
+    "verify": {
+      "lang": "rust",
+      "expect": "65520 -16"
+    }
+  },
+  {
+    "id": "el-rc-cutoff",
+    "type": "quiz",
+    "topic": "electronics",
+    "tags": [
+      "rc-filter",
+      "adc"
+    ],
+    "difficulty": 2,
+    "title": "RC low-pass before the ADC: R = 10 kΩ, C = 100 nF. Cutoff frequency?",
+    "options": [
+      "16 Hz",
+      "159 Hz",
+      "1.6 kHz",
+      "10 kHz"
+    ],
+    "answer": 1,
+    "explain": "fc = 1 / (2π × R × C) = 1 / (2π × 1 ms) ≈ 159 Hz. Signals above this are reduced by 20 dB per decade. Sample well above 2 × fc. The 100 nF cap also gives the ADC sample capacitor a fast charge source, so 10 kΩ is fine here."
+  },
+  {
+    "id": "concept-dma-buffers",
+    "type": "concept",
+    "topic": "embedded",
+    "tags": [
+      "dma",
+      "cache-coherency",
+      "buffer-lifetime"
+    ],
+    "difficulty": 2,
+    "title": "DMA buffers: 4 rules",
+    "bullets": [
+      "The buffer must live for the whole transfer: static memory, never a local on the stack. In Rust: a 'static buffer.",
+      "D-cache (Cortex-M7): clean the cache before DMA TX, invalidate it after DMA RX. Align buffer and size to 32 bytes.",
+      "Or put DMA buffers in non-cacheable memory (MPU). Check the DMA can reach that RAM: on STM32H7, DMA1/2 cannot reach DTCM.",
+      "The CPU must not touch the buffer while DMA owns it. Use half/complete flags and work on the other half."
+    ]
+  }
+]
