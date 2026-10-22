@@ -8,6 +8,10 @@ Working directory: the `devfeed/` folder.
 
 ## Steps
 
+0. Get the latest version first:
+   ```bash
+   git pull --rebase -q
+   ```
 1. Read `app/public/cards.json`. Note existing `id`s and titles. Count cards per `topic` and per `type`.
 2. Write **10 new cards** to `inbox/<YYYY-MM-DD>.json` (a JSON array). Mix:
    - 3 × `bug` (spot the bug line)
@@ -22,7 +26,17 @@ Working directory: the `devfeed/` folder.
    ```
    If a card is rejected, fix it or drop it, then run the merge again with only the fixed cards.
 4. Run `cargo run --release --manifest-path verifier/Cargo.toml -- check app/public/cards.json`. It must end with `0 failed`.
-5. If this folder is a git repo with a remote: commit `cards: +N for <date>` and push (this deploys the app).
+5. Commit only `app/public/cards.json` and the new `inbox/<YYYY-MM-DD>.json`, then push. The push deploys the app.
+   The repo is on the personal github.com account (`kemolife`), so push with the `gh` login for github.com only.
+   Do not change any global git or `gh` config:
+   ```bash
+   git add app/public/cards.json inbox/
+   git commit -q -m "cards: +N for <YYYY-MM-DD>"
+   git -c credential.https://github.com.helper= \
+       -c 'credential.https://github.com.helper=!/opt/homebrew/bin/gh auth git-credential' \
+       push -q origin main
+   ```
+   If nothing passed the verifier, do not commit.
 6. Report in 3 lines: cards added, topics, anything rejected and why.
 
 ## Topics to draw from
