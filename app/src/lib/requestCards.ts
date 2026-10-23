@@ -1,6 +1,7 @@
 import type { FeedFilter } from '../types/card';
 
-export const REPO_URL = 'https://github.com/kemolife/devfeed';
+export const REPO = 'kemolife/devfeed';
+export const REPO_URL = `https://github.com/${REPO}`;
 export const REQUEST_LABEL = 'card-request';
 
 const FILTER_NAME: Record<FeedFilter, string> = {
@@ -28,12 +29,35 @@ export function requestBody(count: number, filters: FeedFilter[], extraTopics: s
   ].join('\n');
 }
 
-/** Opens GitHub's "new issue" form, filled in. The owner's own login adds the label. */
-export function requestIssueUrl(count: number, filters: FeedFilter[], extraTopics: string): string {
-  const params = new URLSearchParams({
+export interface RequestIssue {
+  title: string;
+  body: string;
+  labels: string[];
+}
+
+/** The issue the request task reads, for the GitHub API and the "new issue" form alike. */
+export function requestIssue(count: number, filters: FeedFilter[], extraTopics: string): RequestIssue {
+  return {
     title: `More cards: ${count}`,
     body: requestBody(count, filters, extraTopics),
-    labels: REQUEST_LABEL,
-  });
+    labels: [REQUEST_LABEL],
+  };
+}
+
+/** Fallback without a token: GitHub's "new issue" form, filled in. Needs a GitHub login. */
+export function requestIssueUrl(count: number, filters: FeedFilter[], extraTopics: string): string {
+  const issue = requestIssue(count, filters, extraTopics);
+  const params = new URLSearchParams({ title: issue.title, body: issue.body, labels: issue.labels.join(',') });
   return `${REPO_URL}/issues/new?${params.toString()}`;
 }
+
+/** GitHub page to create the token, with name and permission filled in where GitHub supports it. */
+export const NEW_TOKEN_URL =
+  'https://github.com/settings/personal-access-tokens/new?' +
+  new URLSearchParams({
+    name: 'BitFeed card requests',
+    description: 'Lets the BitFeed app on my phone open card-request issues on kemolife/devfeed.',
+    target_name: 'kemolife',
+    expires_in: '366',
+    issues: 'write',
+  }).toString();
