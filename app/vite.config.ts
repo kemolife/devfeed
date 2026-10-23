@@ -11,7 +11,9 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // The app shows "New version — Reload" (UpdateToast) instead of updating silently
+      // on the next-but-one start.
+      registerType: 'prompt',
       includeAssets: ['icon.svg'],
       manifest: {
         name: 'BitFeed — firmware in 60 seconds',
