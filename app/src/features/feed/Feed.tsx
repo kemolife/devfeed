@@ -11,8 +11,22 @@ import { FeedHeader } from './FeedHeader';
 import { PrCardView } from './PrCardView';
 import { QuizCardView } from './QuizCardView';
 
-const scrollTo = (index: number) =>
-  document.getElementById(`card-${index}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+const scrollTo = (index: number) => {
+  const main = document.querySelector('main');
+  const target = document.getElementById(`card-${index}`);
+  if (!main || !target) return;
+  const top = () =>
+    Math.min(
+      main.scrollTop + target.getBoundingClientRect().top - main.getBoundingClientRect().top,
+      main.scrollHeight - main.clientHeight,
+    );
+  main.scrollTo({ top: top(), behavior: 'smooth' });
+  // Some Android Chrome builds ignore a smooth programmatic scroll in a scroll-snap
+  // container: Next did nothing. If we did not arrive, jump.
+  window.setTimeout(() => {
+    if (Math.abs(main.scrollTop - top()) > 4) main.scrollTo({ top: top(), behavior: 'auto' });
+  }, 800);
+};
 
 export function Feed() {
   const { data: cards, isLoading, error } = useCards();
