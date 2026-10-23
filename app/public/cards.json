@@ -1037,5 +1037,104 @@
     "title": "Tick counters and timeouts: 4 rules",
     "topic": "embedded",
     "type": "concept"
+  },
+  {
+    "bugLines": [
+      6
+    ],
+    "code": "static uint16_t adc_buf[64];\n\nvoid adc_dma_start(void) {\n    DMA2_Stream0->PAR  = (uint32_t)&ADC1->DR;\n    DMA2_Stream0->M0AR = (uint32_t)adc_buf;\n    DMA2_Stream0->NDTR = sizeof(adc_buf);\n    DMA2_Stream0->CR  |= DMA_SxCR_EN;\n}",
+    "difficulty": 2,
+    "explain": "NDTR counts data items, not bytes. sizeof(adc_buf) is 128, so the DMA writes 128 half-words = 256 bytes. That is 128 bytes past the end of the buffer. Use the element count: sizeof(adc_buf) / sizeof(adc_buf[0]). HAL functions like HAL_ADC_Start_DMA also take a length in items.",
+    "fix": "DMA2_Stream0->NDTR = sizeof(adc_buf) / sizeof(adc_buf[0]);",
+    "id": "bug-dma-ndtr-bytes",
+    "lang": "c",
+    "tags": [
+      "dma",
+      "buffer-overflow"
+    ],
+    "title": "STM32F4. DMA uses 16-bit items (PSIZE = MSIZE = half-word). Variables after adc_buf get overwritten. Tap the bug.",
+    "topic": "embedded",
+    "type": "bug"
+  },
+  {
+    "diff": " void uart_rx_restart(void) {\n     DMA1_Stream5->CR &= ~DMA_SxCR_EN;\n-    while (DMA1_Stream5->CR & DMA_SxCR_EN) {}\n     DMA1->HIFCR = DMA_HIFCR_CTCIF5;\n     DMA1_Stream5->NDTR = RX_LEN;\n     DMA1_Stream5->CR |= DMA_SxCR_EN;\n }",
+    "difficulty": 3,
+    "explain": "On STM32F4, EN can stay 1 until the current data item is done. While EN is 1, writes to NDTR are ignored. Without the wait, the new length may be lost, and the stream restarts with the old count. Keep the loop: clear EN, wait until it reads 0, clear the flags, then set NDTR.",
+    "id": "pr-dma-en-wait-removed",
+    "lang": "c",
+    "pr": {
+      "author": "junior-fw",
+      "body": "EN is cleared by our write, so waiting for it is not needed. Saves a few cycles in the idle-line ISR.",
+      "title": "Remove busy loop in UART RX restart",
+      "verdict": "changes"
+    },
+    "tags": [
+      "dma",
+      "peripheral-timing"
+    ],
+    "topic": "embedded",
+    "type": "pr"
+  },
+  {
+    "diff": " fn send(buf: &'static mut [u8; 8], v: u32) {\n     buf[..4].copy_from_slice(&v.to_le_bytes());\n     DMA_CH.set_len(4);\n+    compiler_fence(Ordering::Release);\n     DMA_CH.start();\n }",
+    "difficulty": 3,
+    "explain": "Good change. Volatile writes keep their order only with other volatile accesses. The compiler may move normal writes to buf after start(), so DMA reads old data. compiler_fence(Release) stops that. When the transfer ends, use an Acquire fence before reading. On Cortex-M7 with cache, also clean the cache and use a real fence (DMB).",
+    "id": "pr-rs-dma-compiler-fence",
+    "lang": "rust",
+    "pr": {
+      "author": "senior-fw",
+      "body": "Sometimes the DMA sends old bytes. The writes to buf are normal writes, start() is a volatile write.",
+      "title": "Add fence before DMA start (Cortex-M4)",
+      "verdict": "approve"
+    },
+    "source": "https://docs.rust-embedded.org/embedonomicon/dma.html",
+    "tags": [
+      "dma",
+      "volatile"
+    ],
+    "topic": "rust",
+    "type": "pr"
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n#define LEN 64u\n\nint main(void) {\n    unsigned ndtr = 60; /* DMA counter */\n    unsigned rd = 50;   /* our read index */\n    unsigned wr = LEN - ndtr;\n    unsigned n = (wr - rd) % LEN;\n    printf(\"%u\\n\", n);\n    return 0;\n}",
+    "difficulty": 2,
+    "explain": "NDTR counts down, so the DMA write index is LEN - NDTR = 4. The data wrapped: bytes 50..63 and 0..3 are new, 18 bytes. wr - rd wraps to 2^32 - 46. Because 64 divides 2^32, % 64 gives the right 18. This trick works only when LEN is a power of two. Otherwise use (wr + LEN - rd) % LEN.",
+    "id": "c-dma-circular-avail",
+    "lang": "c",
+    "options": [
+      "18",
+      "4294967250",
+      "14",
+      "-46"
+    ],
+    "tags": [
+      "dma",
+      "signed-unsigned"
+    ],
+    "title": "Circular UART DMA, 64-byte buffer. How many new bytes? (What does this print?)",
+    "topic": "embedded",
+    "type": "quiz",
+    "verify": {
+      "expect": "18",
+      "lang": "c"
+    }
+  },
+  {
+    "bullets": [
+      "The length register counts data items, not bytes. For a uint16_t buffer, pass the element count.",
+      "To change a running stream: clear EN, wait until EN reads 0, then write the address and length.",
+      "Clear all old flags of the stream (transfer complete, half, error) before you set EN again.",
+      "Peripheral and memory data sizes must match the register and the buffer type. Check the request mapping table for the right stream and channel."
+    ],
+    "difficulty": 2,
+    "id": "concept-dma-stream-setup",
+    "tags": [
+      "dma",
+      "review-checklist"
+    ],
+    "title": "Starting a DMA stream: review checklist",
+    "topic": "embedded",
+    "type": "concept"
   }
 ]
