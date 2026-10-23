@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Code } from '../../components/Code';
 import type { PrCard } from '../../types/card';
-import { AskClaude } from './AskClaude';
+import { AskAi } from './AskAi';
 import { ResultPanel } from './CardShell';
 
 type Verdict = PrCard['pr']['verdict'];
@@ -72,7 +72,7 @@ export function PrCardView({ card, onAnswered, onNext }: Props) {
           explain={card.explain}
           onNext={onNext}
           ask={
-            <AskClaude
+            <AskAi
               card={card}
               myAnswer={picked === 'approve' ? 'approve' : 'request changes'}
             />

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { buildAskPrompt, claudeUrl } from '../../lib/askClaude';
+import { buildAskPrompt, googleAiUrl } from '../../lib/askAi';
 import type { Card } from '../../types/card';
 
 const QUICK_QUESTIONS = [
@@ -10,14 +10,14 @@ const QUICK_QUESTIONS = [
 
 interface Props {
   card: Card;
-  /** What the user picked, so Claude can explain why it was wrong. */
+  /** What the user picked, so the AI can explain why it was wrong. */
   myAnswer?: string;
 }
 
-export function AskClaude({ card, myAnswer }: Props) {
+export function AskAi({ card, myAnswer }: Props) {
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState('');
-  const href = claudeUrl(buildAskPrompt(card, question, myAnswer));
+  const href = googleAiUrl(buildAskPrompt(card, question, myAnswer));
 
   if (!open) {
     return (
@@ -26,7 +26,7 @@ export function AskClaude({ card, myAnswer }: Props) {
         onClick={() => setOpen(true)}
         className="mt-2 w-full rounded-lg border border-line py-2.5 text-sm font-medium text-muted hover:text-fg"
       >
-        ✦ Don't get it? Ask Claude
+        ✦ Don't get it? Ask AI
       </button>
     );
   }
@@ -59,10 +59,10 @@ export function AskClaude({ card, myAnswer }: Props) {
         rel="noopener noreferrer"
         className="mt-3 block w-full rounded-lg bg-accent py-2.5 text-center text-sm font-semibold text-bg"
       >
-        Open in Claude ↗
+        Ask Google AI ↗
       </a>
       <p className="mt-2 text-center text-[11px] text-muted/70">
-        Opens the Claude app or claude.ai with this card filled in.
+        Opens Google AI Mode with this card filled in.
       </p>
     </div>
   );

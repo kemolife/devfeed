@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ConceptCard } from '../../types/card';
-import { AskClaude } from './AskClaude';
+import { AskAi } from './AskAi';
 
 interface Props {
   card: ConceptCard;
@@ -35,7 +35,7 @@ export function ConceptCardView({ card, onAnswered, onNext }: Props) {
       >
         Got it ↓
       </button>
-      <AskClaude card={card} />
+      <AskAi card={card} />
     </>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Code } from '../../components/Code';
 import type { BugCard } from '../../types/card';
-import { AskClaude } from './AskClaude';
+import { AskAi } from './AskAi';
 import { ResultPanel } from './CardShell';
 
 interface Props {
@@ -40,7 +40,7 @@ export function BugCardView({ card, onAnswered, onNext }: Props) {
           explain={card.explain}
           fix={card.fix}
           onNext={onNext}
-          ask={<AskClaude card={card} myAnswer={`line ${picked}`} />}
+          ask={<AskAi card={card} myAnswer={`line ${picked}`} />}
         />
       )}
     </>

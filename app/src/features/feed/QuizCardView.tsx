@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Code } from '../../components/Code';
 import type { QuizCard } from '../../types/card';
-import { AskClaude } from './AskClaude';
+import { AskAi } from './AskAi';
 import { ResultPanel } from './CardShell';
 
 interface Props {
@@ -51,7 +51,7 @@ export function QuizCardView({ card, onAnswered, onNext }: Props) {
           correct={picked === card.answer}
           explain={card.explain}
           onNext={onNext}
-          ask={<AskClaude card={card} myAnswer={card.options[picked]} />}
+          ask={<AskAi card={card} myAnswer={card.options[picked]} />}
         />
       )}
     </>

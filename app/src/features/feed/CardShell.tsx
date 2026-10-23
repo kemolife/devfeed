@@ -64,7 +64,7 @@ interface ResultPanelProps {
   explain: string;
   fix?: string;
   onNext: () => void;
-  /** Shown under the Next button, e.g. the Ask Claude button. */
+  /** Shown under the Next button, e.g. the Ask AI button. */
   ask?: ReactNode;
   children?: ReactNode;
 }
