@@ -1,5 +1,6 @@
 import { useProgressStore } from '../../store/progressStore';
 import { weakPatterns } from './buildQueue';
+import { RequestCards } from './RequestCards';
 
 interface Props {
   index: number;
@@ -45,7 +46,7 @@ export function DoneScreen({ index, hasMore, onMore }: Props) {
         )}
 
         <p className="mt-6 text-sm text-muted">Good session. Close the app and go build something.</p>
-        {hasMore && (
+        {hasMore ? (
           <button
             type="button"
             onClick={onMore}
@@ -53,7 +54,10 @@ export function DoneScreen({ index, hasMore, onMore }: Props) {
           >
             Keep going (+10)
           </button>
+        ) : (
+          <p className="mt-4 text-sm text-muted">You have seen every card for this filter.</p>
         )}
+        <RequestCards />
       </div>
     </section>
   );
