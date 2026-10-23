@@ -1,0 +1,198 @@
+[
+ {
+  "id": "bug-c-u8-loop-256",
+  "type": "bug",
+  "topic": "c",
+  "tags": [
+   "integer-overflow",
+   "loop-counter"
+  ],
+  "difficulty": 1,
+  "title": "Boot hangs inside clear_lut(). Tap the bug.",
+  "lang": "c",
+  "code": "void clear_lut(uint16_t *lut) {\n    for (uint8_t i = 0; i < 256; i++) {\n        lut[i] = 0;\n    }\n}",
+  "bugLines": [
+   2
+  ],
+  "explain": "A uint8_t can hold at most 255, so i < 256 is always true. After 255, i wraps to 0 and the loop never ends. Use a counter type that can reach the limit, like unsigned int or size_t. -Wextra (-Wtype-limits) warns about this compare.",
+  "fix": "for (unsigned i = 0; i < 256; i++) {"
+ },
+ {
+  "id": "bug-c-u16-timer-promote",
+  "type": "bug",
+  "topic": "c",
+  "tags": [
+   "integer-promotion",
+   "tick-wrap"
+  ],
+  "difficulty": 3,
+  "title": "32-bit MCU. If the sensor never answers, wait_ack() sometimes never times out. Tap the bug.",
+  "lang": "c",
+  "code": "extern volatile bool ack_received;\n/* TIM3: 16-bit counter, 1 tick = 1 us */\nbool wait_ack(void) {\n    uint16_t start = TIM3->CNT;\n    while (!ack_received) {\n        uint16_t now = TIM3->CNT;\n        if (now - start > 5000)\n            return false;\n    }\n    return true;\n}",
+  "bugLines": [
+   7
+  ],
+  "explain": "now and start are promoted to int before the subtraction. When the 16-bit counter wraps, now - start is negative, so the check is false. If start is above 60535, the result can never pass 5000, and the loop waits forever. Cast the difference back: (uint16_t)(now - start) > 5000.",
+  "fix": "if ((uint16_t)(now - start) > 5000)"
+ },
+ {
+  "id": "bug-cpp-lambda-dangling",
+  "type": "bug",
+  "topic": "cpp",
+  "tags": [
+   "dangling-ref",
+   "isr"
+  ],
+  "difficulty": 2,
+  "title": "After start_blink() returns, the LED blinks at a random rate. Tap the bug.",
+  "lang": "cpp",
+  "code": "// on_tick() stores the callback.\n// The timer ISR calls it later.\nvoid start_blink(Timer& t) {\n    int period_ms = 500;\n    t.on_tick([&] {\n        led_toggle_every(period_ms);\n    });\n}",
+  "bugLines": [
+   5
+  ],
+  "explain": "[&] captures period_ms by reference. The callback runs later in the ISR, but period_ms lives on the stack of start_blink() and is gone after it returns. The ISR reads whatever is now in that stack slot. Capture by value: [period_ms] or [=].",
+  "fix": "t.on_tick([period_ms] {"
+ },
+ {
+  "id": "pr-c-be32-cast",
+  "type": "pr",
+  "topic": "c",
+  "tags": [
+   "integer-promotion",
+   "shift-ub"
+  ],
+  "difficulty": 2,
+  "lang": "c",
+  "pr": {
+   "title": "Cast bytes before shifting in rd_be32",
+   "author": "senior-fw",
+   "body": "UBSan reports a signed overflow when the first byte is 0x80 or more.",
+   "verdict": "approve"
+  },
+  "diff": " uint32_t rd_be32(const uint8_t *p) {\n-    return p[0] << 24 | p[1] << 16 |\n-           p[2] << 8 | p[3];\n+    return ((uint32_t)p[0] << 24) |\n+           ((uint32_t)p[1] << 16) |\n+           ((uint32_t)p[2] << 8) | p[3];\n }",
+  "explain": "Good fix. p[0] is promoted to int, not to an unsigned type. If p[0] is 0x80 or more, p[0] << 24 does not fit in a 32-bit int: undefined behavior. On 16-bit int targets like AVR, << 16 and << 8 break too. Casting each byte to uint32_t first makes every shift safe."
+ },
+ {
+  "id": "pr-cpp-remove-volatile",
+  "type": "pr",
+  "topic": "cpp",
+  "tags": [
+   "volatile"
+  ],
+  "difficulty": 2,
+  "lang": "cpp",
+  "pr": {
+   "title": "Remove deprecated volatile (C++20)",
+   "author": "junior-fw",
+   "body": "C++20 deprecated volatile, so I removed it to fix the warnings.",
+   "verdict": "changes"
+  },
+  "diff": "-static volatile uint32_t* const uart_sr =\n-    reinterpret_cast<volatile uint32_t*>(UART_SR);\n+static uint32_t* const uart_sr =\n+    reinterpret_cast<uint32_t*>(UART_SR);\n \n void wait_txe() {\n     while (!(*uart_sr & UART_SR_TXE)) {}\n }",
+  "explain": "C++20 deprecated only some uses of volatile, like ++ or += on a volatile object, and volatile parameters. Reading a volatile register is still fine. Without volatile, the compiler may read *uart_sr once and loop forever. Keep volatile on hardware registers. Fix the warning lines instead."
+ },
+ {
+  "id": "pr-rs-wrapping-sub-removed",
+  "type": "pr",
+  "topic": "rust",
+  "tags": [
+   "integer-overflow",
+   "panic-in-firmware"
+  ],
+  "difficulty": 2,
+  "lang": "rust",
+  "pr": {
+   "title": "Simplify timeout check",
+   "author": "junior-fw",
+   "body": "Plain minus is easier to read. Release builds wrap anyway.",
+   "verdict": "changes"
+  },
+  "diff": " fn expired(now: u32, start: u32, t: u32) -> bool {\n-    now.wrapping_sub(start) >= t\n+    now - start >= t\n }",
+  "explain": "Not the same. In debug builds overflow checks are on, so now - start panics when the tick counter wraps. Release wraps only because overflow-checks is off by default, and a profile can turn it on. wrapping_sub says the wrap is wanted and works in every build. Keep it."
+ },
+ {
+  "id": "c-macro-multi-stmt",
+  "type": "quiz",
+  "topic": "c",
+  "tags": [
+   "macro"
+  ],
+  "difficulty": 2,
+  "title": "Status is OK. What does this print?",
+  "lang": "c",
+  "code": "#include <stdio.h>\nint led = 1, errors = 0;\n#define LED_FAIL() led = 0; errors++\n\nint main(void) {\n    int ok = 1;\n    if (!ok)\n        LED_FAIL();\n    printf(\"%d %d\\n\", led, errors);\n    return 0;\n}",
+  "options": [
+   "1 0",
+   "1 1",
+   "0 1",
+   "0 0"
+  ],
+  "answer": 1,
+  "explain": "The macro becomes two statements. Only led = 0; is inside the if. errors++ always runs, so the output is 1 1. Wrap multi-statement macros in do { ... } while (0), or use a static inline function.",
+  "verify": {
+   "lang": "c",
+   "expect": "1 1"
+  }
+ },
+ {
+  "id": "cpp-neg-div-shift",
+  "type": "quiz",
+  "topic": "cpp",
+  "tags": [
+   "signed-division",
+   "shift-ub"
+  ],
+  "difficulty": 2,
+  "title": "C++20. Halve a signed control error two ways. What does this print?",
+  "lang": "cpp",
+  "code": "#include <cstdio>\n\nint main() {\n    int err = -7;\n    int a = err / 2;\n    int b = err >> 1;\n    std::printf(\"%d %d\\n\", a, b);\n}",
+  "options": [
+   "-3 -4",
+   "-4 -4",
+   "-3 -3",
+   "-4 -3"
+  ],
+  "answer": 0,
+  "explain": "Division rounds toward zero: -7 / 2 is -3. Right shift rounds toward minus infinity: -7 >> 1 is -4. So x >> 1 is not x / 2 for negative x. C++20 defines this shift. In C and older C++, shifting a negative value right is implementation-defined.",
+  "verify": {
+   "lang": "cpp",
+   "expect": "-3 -4"
+  }
+ },
+ {
+  "id": "el-relay-flyback",
+  "type": "quiz",
+  "topic": "electronics",
+  "tags": [
+   "inductive-load",
+   "flyback"
+  ],
+  "difficulty": 2,
+  "title": "MCU switches a 12 V relay coil with an NPN transistor. The transistor dies after some weeks. What is missing?",
+  "options": [
+   "A diode across the coil, cathode to +12 V",
+   "A bigger base resistor",
+   "A 100 nF capacitor on the base",
+   "A pull-up on the collector"
+  ],
+  "answer": 0,
+  "explain": "Current in a coil cannot stop at once. When the transistor turns off, the coil makes a high voltage spike on the collector, often above the transistor's Vce limit. A flyback diode across the coil gives the current a path and clamps the spike near 12.7 V. Every relay, motor or solenoid needs one."
+ },
+ {
+  "id": "concept-gpio-loads",
+  "type": "concept",
+  "topic": "electronics",
+  "tags": [
+   "gpio",
+   "inductive-load"
+  ],
+  "difficulty": 1,
+  "title": "Driving loads from a GPIO: 5 rules",
+  "bullets": [
+   "Each pin has a max current, and the whole chip has a total limit. Read both in the datasheet.",
+   "An LED needs a series resistor: R = (Vcc - Vf) / I.",
+   "Motors, relays and buzzers draw too much current. Drive them with a transistor or MOSFET.",
+   "Coils (relay, motor, solenoid) need a flyback diode across them.",
+   "For a MOSFET, check that RDS(on) is given at your gate voltage (like 3.3 V), not only Vgs(th)."
+  ]
+ }
+]
