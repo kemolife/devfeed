@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { buildAskPrompt, googleAiUrl } from '../../lib/askAi';
+import { buildAskPrompt, combineQuestions, googleAiUrl } from '../../lib/askAi';
 import type { Card } from '../../types/card';
 
 const QUICK_QUESTIONS = [
@@ -17,7 +17,13 @@ interface Props {
 export function AskAi({ card, myAnswer }: Props) {
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState('');
-  const href = googleAiUrl(buildAskPrompt(card, question, myAnswer));
+  const [picked, setPicked] = useState<string[]>([]);
+  // keep the order of QUICK_QUESTIONS, not the tap order
+  const pickedInOrder = QUICK_QUESTIONS.filter((q) => picked.includes(q));
+  const href = googleAiUrl(buildAskPrompt(card, combineQuestions(question, pickedInOrder), myAnswer));
+
+  const toggle = (q: string) =>
+    setPicked((p) => (p.includes(q) ? p.filter((x) => x !== q) : [...p, q]));
 
   if (!open) {
     return (
@@ -41,17 +47,24 @@ export function AskAi({ card, myAnswer }: Props) {
         placeholder="What is not clear? (optional)"
         className="w-full resize-none rounded-md border border-line bg-bg px-3 py-2 text-[15px] text-fg placeholder:text-muted/60 focus:border-accent focus:outline-none"
       />
-      <div className="no-scrollbar mt-2 flex gap-1.5 overflow-x-auto">
-        {QUICK_QUESTIONS.map((q) => (
-          <button
-            key={q}
-            type="button"
-            onClick={() => setQuestion(q)}
-            className="shrink-0 rounded-full border border-line px-2.5 py-1 text-xs text-muted hover:text-fg"
-          >
-            {q}
-          </button>
-        ))}
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {QUICK_QUESTIONS.map((q) => {
+          const on = picked.includes(q);
+          return (
+            <button
+              key={q}
+              type="button"
+              aria-pressed={on}
+              onClick={() => toggle(q)}
+              className={`rounded-full border px-2.5 py-1 text-xs transition ${
+                on ? 'border-accent bg-accent/15 text-accent' : 'border-line text-muted hover:text-fg'
+              }`}
+            >
+              {on ? '✓ ' : ''}
+              {q}
+            </button>
+          );
+        })}
       </div>
       <a
         href={href}

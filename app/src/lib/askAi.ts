@@ -39,6 +39,16 @@ export function buildAskPrompt(card: Card, question: string, myAnswer?: string):
   return parts.join('\n');
 }
 
+/** Own text plus picked quick questions, as one question: "Why? 1) Explain it. 2) Show an example." */
+export function combineQuestions(text: string, picked: string[]): string {
+  const own = text.trim();
+  if (picked.length === 0) return own;
+  const end = (q: string) => (/[.?!]$/.test(q) ? q : `${q}.`);
+  const list =
+    picked.length === 1 ? end(picked[0] ?? '') : picked.map((q, i) => `${i + 1}) ${end(q)}`).join(' ');
+  return own ? `${own} ${list}` : list;
+}
+
 /** Cuts the URL to max length, never inside a %XX escape. */
 function fitUrl(base: string, prompt: string, max: number): string {
   let url = base + encodeURIComponent(prompt);

@@ -1,5 +1,5 @@
 import type { BugCard, QuizCard } from '../types/card';
-import { buildAskPrompt, googleAiUrl } from './askAi';
+import { buildAskPrompt, combineQuestions, googleAiUrl } from './askAi';
 
 const quiz: QuizCard = {
   id: 'q',
@@ -46,6 +46,15 @@ test('google url opens AI Mode and stays short', () => {
   expect(url.startsWith('https://www.google.com/search?udm=50&q=a%20b%0A')).toBe(true);
   expect(url.length).toBeLessThanOrEqual(2000);
   expect(() => decodeURIComponent(url.split('&q=')[1] ?? '')).not.toThrow();
+});
+
+test('several quick questions are numbered after the own text', () => {
+  expect(combineQuestions('Why line 2?', ['Explain it step by step', 'Show a real-world example'])).toBe(
+    'Why line 2? 1) Explain it step by step. 2) Show a real-world example.',
+  );
+  expect(combineQuestions('  ', ['Explain it step by step'])).toBe('Explain it step by step.');
+  expect(combineQuestions(' Why? ', [])).toBe('Why?');
+  expect(combineQuestions('', ['Explain', 'Is it a bug?'])).toBe('1) Explain. 2) Is it a bug?');
 });
 
 test('bug prompt names the bug line and keeps the code', () => {
