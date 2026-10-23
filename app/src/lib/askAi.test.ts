@@ -1,5 +1,5 @@
 import type { BugCard, QuizCard } from '../types/card';
-import { buildAskPrompt, combineQuestions, googleAiUrl } from './askAi';
+import { buildAskPrompt, buildCheckPrompt, combineQuestions, googleAiUrl } from './askAi';
 
 const quiz: QuizCard = {
   id: 'q',
@@ -55,6 +55,20 @@ test('several quick questions are numbered after the own text', () => {
   expect(combineQuestions('  ', ['Explain it step by step'])).toBe('Explain it step by step.');
   expect(combineQuestions(' Why? ', [])).toBe('Why?');
   expect(combineQuestions('', ['Explain', 'Is it a bug?'])).toBe('1) Explain. 2) Is it a bug?');
+});
+
+test('check prompt puts my reasoning before the card', () => {
+  const p = buildCheckPrompt(bug, 'Stack is 1024 bytes, buffer 2048 ', 'What did I miss?', 'line 1');
+  const lines = p.split('\n');
+  expect(lines[0]).toContain('Check my reasoning');
+  expect(lines[0]).toContain('What did I miss?');
+  expect(lines[1]).toBe('My reasoning: Stack is 1024 bytes, buffer 2048');
+  expect(lines[2]).toBe('My answer was: line 1');
+  expect(p).toContain('char line[2048];');
+});
+
+test('check prompt without picked asks uses a default ask', () => {
+  expect(buildCheckPrompt(quiz, 'x', ' ')).toContain('Is my reasoning correct? What did I miss?');
 });
 
 test('bug prompt names the bug line and keeps the code', () => {

@@ -5,38 +5,50 @@ const DEFAULT_QUESTION = 'I do not fully get this. Explain it step by step, with
 // Long query strings get cut by some browsers and apps; code cards stay far below this.
 const MAX_URL_LENGTH = 2000;
 
-/**
- * Prompt for Google AI Mode: question first, so a cut URL only loses the end of the code.
- * No card explanation — Google answers on its own, and the URL limit is small.
- * Only card content and the user's own question go into it — no progress or personal data.
- */
-export function buildAskPrompt(card: Card, question: string, myAnswer?: string): string {
-  const parts: string[] = [`${question.trim() || DEFAULT_QUESTION} Answer short, in simple English.`];
+const DEFAULT_CHECK = 'Is my reasoning correct? What did I miss?';
 
+/** The card itself, after the question: a cut URL only loses the end of the code. */
+function cardContext(card: Card): string[] {
   switch (card.type) {
     case 'quiz':
-      parts.push(`Embedded ${card.topic} quiz: ${card.title}`);
-      parts.push(`Correct answer: ${card.options[card.answer] ?? '?'}`);
-      if (card.code) parts.push(card.code);
-      break;
+      return [
+        `Embedded ${card.topic} quiz: ${card.title}`,
+        `Correct answer: ${card.options[card.answer] ?? '?'}`,
+        ...(card.code ? [card.code] : []),
+      ];
     case 'bug':
-      parts.push(`Embedded ${card.topic} bug on line ${card.bugLines.join(' or ')}: ${card.title}`);
-      parts.push(card.code);
-      break;
+      return [`Embedded ${card.topic} bug on line ${card.bugLines.join(' or ')}: ${card.title}`, card.code];
     case 'pr':
-      parts.push(
+      return [
         `Firmware PR "${card.pr.title}". Correct review: ${card.pr.verdict === 'approve' ? 'approve' : 'request changes'}.`,
-      );
-      parts.push(card.diff);
-      break;
+        card.diff,
+      ];
     case 'concept':
-      parts.push(`Embedded ${card.topic} pattern: ${card.title}`);
-      parts.push(card.bullets.join(' '));
-      break;
+      return [`Embedded ${card.topic} pattern: ${card.title}`, card.bullets.join(' ')];
   }
+}
 
-  if (myAnswer) parts.splice(1, 0, `My answer was: ${myAnswer}`);
-  return parts.join('\n');
+/**
+ * "Don't get it" prompt for Google AI Mode: question first, then the card.
+ * No card explanation — Google answers on its own, and the URL limit is small.
+ * Only card content and the user's own text go into it — no progress or personal data.
+ */
+export function buildAskPrompt(card: Card, question: string, myAnswer?: string): string {
+  return [
+    `${question.trim() || DEFAULT_QUESTION} Answer short, in simple English.`,
+    ...(myAnswer ? [`My answer was: ${myAnswer}`] : []),
+    ...cardContext(card),
+  ].join('\n');
+}
+
+/** "Check my thinking" prompt: the user's own reasoning goes first, so it is never cut. */
+export function buildCheckPrompt(card: Card, reasoning: string, asks: string, myAnswer?: string): string {
+  return [
+    `Check my reasoning about this embedded card. ${asks.trim() || DEFAULT_CHECK} Say what is right, what is wrong and what is missing. Be honest and short, in simple English.`,
+    `My reasoning: ${reasoning.trim()}`,
+    ...(myAnswer ? [`My answer was: ${myAnswer}`] : []),
+    ...cardContext(card),
+  ].join('\n');
 }
 
 /** Own text plus picked quick questions, as one question: "Why? 1) Explain it. 2) Show an example." */
