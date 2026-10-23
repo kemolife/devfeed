@@ -11,8 +11,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      // The app shows "New version — Reload" (UpdateToast) instead of updating silently
-      // on the next-but-one start.
+      // 'prompt' = the client does not auto-reload mid-card; UpdateToast offers Reload.
       registerType: 'prompt',
       includeAssets: ['icon.svg'],
       manifest: {
@@ -33,6 +32,10 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // A new worker takes over at once. A waiting worker needs a "skip waiting" message
+        // from the page, which older installed versions never send, so they got stuck.
+        skipWaiting: true,
+        clientsClaim: true,
         // cards.json changes daily: always try the network first, fall back to cache offline
         runtimeCaching: [
           {
