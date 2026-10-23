@@ -1,0 +1,202 @@
+[
+  {
+    "id": "bug-tick-wrap-compare",
+    "type": "bug",
+    "topic": "c",
+    "tags": [
+      "tick-wrap",
+      "integer-overflow"
+    ],
+    "difficulty": 2,
+    "title": "Works for weeks, then after ~49 days every wait_ready() fails at once. Tap the bug.",
+    "lang": "c",
+    "code": "#define TIMEOUT_MS 100u\n\nbool wait_ready(void) {\n    uint32_t start = millis();\n    while (!ready()) {\n        if (millis() > start + TIMEOUT_MS)\n            return false;\n    }\n    return true;\n}",
+    "bugLines": [
+      6
+    ],
+    "explain": "A 1 ms uint32_t tick wraps after about 49.7 days. If start is 0xFFFFFFF0, start + 100 wraps to 84, and millis() > 84 is true at once. This is a tick wraparound bug. Compare the elapsed time instead: millis() - start > TIMEOUT_MS. Unsigned subtraction gives the right result across the wrap.",
+    "fix": "if (millis() - start > TIMEOUT_MS)"
+  },
+  {
+    "id": "bug-cpp-range-for-copy",
+    "type": "bug",
+    "topic": "cpp",
+    "tags": [
+      "copy-not-ref"
+    ],
+    "difficulty": 1,
+    "title": "enable_all() runs, but no ADC channel is ever enabled. Tap the bug.",
+    "lang": "cpp",
+    "code": "struct Channel {\n    bool enabled;\n    uint16_t threshold;\n};\nstd::array<Channel, 4> channels{};\n\nvoid enable_all(uint16_t thr) {\n    for (auto ch : channels) {\n        ch.enabled = true;\n        ch.threshold = thr;\n    }\n}",
+    "bugLines": [
+      8
+    ],
+    "explain": "auto ch makes a copy of each element. The loop changes the copies, and the array stays the same. Use a reference: for (auto& ch : channels). Watch for this in config tables and driver state arrays. The compiler gives no error.",
+    "fix": "for (auto& ch : channels) {"
+  },
+  {
+    "id": "bug-hal-i2c-addr-shift",
+    "type": "bug",
+    "topic": "embedded",
+    "tags": [
+      "i2c",
+      "hal-api"
+    ],
+    "difficulty": 2,
+    "title": "STM32 HAL. BME280 at 0x76 never ACKs. The wiring is fine. Tap the bug.",
+    "lang": "c",
+    "code": "#define BME280_ADDR 0x76\n\nuint8_t reg = 0xD0, id;\nHAL_I2C_Master_Transmit(&hi2c1, BME280_ADDR,\n                        &reg, 1, 100);\nHAL_I2C_Master_Receive(&hi2c1, BME280_ADDR,\n                       &id, 1, 100);",
+    "bugLines": [
+      1,
+      4,
+      6
+    ],
+    "explain": "STM32 HAL wants the 7-bit address shifted left by one. It puts the R/W bit in bit 0 itself. With 0x76 the bus sends address 0x3B, so nobody answers. Pass BME280_ADDR << 1. Check what each HAL expects: some take 7-bit, some take 8-bit addresses.",
+    "fix": "#define BME280_ADDR (0x76 << 1)"
+  },
+  {
+    "id": "pr-adc-sum-u32",
+    "type": "pr",
+    "topic": "c",
+    "tags": [
+      "integer-overflow",
+      "adc"
+    ],
+    "difficulty": 1,
+    "lang": "c",
+    "pr": {
+      "title": "Fix ADC average for 64 samples",
+      "author": "senior-fw",
+      "body": "64 x 4095 = 262080 does not fit in uint16_t. The average is wrong at high input.",
+      "verdict": "approve"
+    },
+    "diff": " uint16_t adc_average(const uint16_t *s) {\n-    uint16_t sum = 0;\n+    uint32_t sum = 0;\n     for (int i = 0; i < 64; i++)\n         sum += s[i];\n     return sum / 64;\n }",
+    "explain": "Good change. A 12-bit ADC gives up to 4095. 64 samples sum to 262080, which needs 18 bits. The uint16_t sum wrapped, so a high input showed a low average. uint32_t holds the full sum, and the result after / 64 fits in uint16_t again."
+  },
+  {
+    "id": "pr-rs-m0-swap-race",
+    "type": "pr",
+    "topic": "rust",
+    "tags": [
+      "atomicity",
+      "rmw-race",
+      "isr"
+    ],
+    "difficulty": 3,
+    "lang": "rust",
+    "pr": {
+      "title": "Build for Cortex-M0 (thumbv6m)",
+      "author": "junior-fw",
+      "body": "AtomicU32::swap does not exist on thumbv6m, so the build fails. Replace it with load + store. The ISR still increments COUNT.",
+      "verdict": "changes"
+    },
+    "diff": " static COUNT: AtomicU32 = AtomicU32::new(0);\n \n fn take_count() -> u32 {\n-    COUNT.swap(0, Ordering::Relaxed)\n+    let n = COUNT.load(Ordering::Relaxed);\n+    COUNT.store(0, Ordering::Relaxed);\n+    n\n }",
+    "explain": "load and store are each atomic, but the pair is not. If the ISR increments COUNT between them, store(0) wipes that event. Cortex-M0 has no atomic read-modify-write instructions. Use critical_section::with around both steps, or the portable-atomic crate with its critical-section feature."
+  },
+  {
+    "id": "pr-late-flag-clear",
+    "type": "pr",
+    "topic": "embedded",
+    "tags": [
+      "isr",
+      "peripheral-timing"
+    ],
+    "difficulty": 3,
+    "lang": "c",
+    "pr": {
+      "title": "Clear TIM2 flag after the work",
+      "author": "junior-fw",
+      "body": "Clear the update flag at the end of the ISR, so a new update during the work is not lost.",
+      "verdict": "changes"
+    },
+    "diff": " void TIM2_IRQHandler(void) {\n-    TIM2->SR = ~TIM_SR_UIF;\n     toggle_led();\n     sample_count++;\n+    TIM2->SR = ~TIM_SR_UIF;\n }",
+    "explain": "On Cortex-M with STM32, the write to TIM2->SR goes through the bus and can finish after the ISR returns. The NVIC still sees the request and runs the ISR a second time. Clear the flag at the start. If you must clear it late, read SR back or add __DSB() after the write. A new update after an early clear sets the flag again, so nothing is lost."
+  },
+  {
+    "id": "cpp-brace-narrowing",
+    "type": "quiz",
+    "topic": "cpp",
+    "tags": [
+      "truncation",
+      "narrowing"
+    ],
+    "difficulty": 2,
+    "title": "What happens?",
+    "lang": "cpp",
+    "code": "#include <cstdint>\n#include <cstdio>\n\nint main() {\n    uint8_t gain = 300;\n    uint8_t div{300};\n    std::printf(\"%u %u\\n\", gain, div);\n}",
+    "options": [
+      "Prints 44 44",
+      "Prints 44 300",
+      "Compile error on line 6",
+      "Compile error on line 5"
+    ],
+    "answer": 2,
+    "explain": "Line 5 compiles. 300 is cut to 44 with at most a warning. Brace init does not allow narrowing. 300 does not fit in uint8_t, so line 6 is a compile error. Use brace init for register values and config constants. The compiler then catches values that do not fit.",
+    "verify": {
+      "lang": "cpp",
+      "compileFail": true
+    }
+  },
+  {
+    "id": "rs-chunks-exact-rest",
+    "type": "quiz",
+    "topic": "rust",
+    "tags": [
+      "truncation",
+      "off-by-one"
+    ],
+    "difficulty": 2,
+    "title": "Sum 16-bit LE words from a packet. What does this print?",
+    "lang": "rust",
+    "code": "fn main() {\n    let data = [1u8, 2, 3, 4, 5];\n    let mut sum = 0u32;\n    for c in data.chunks_exact(2) {\n        let w = u16::from_le_bytes([c[0], c[1]]);\n        sum += w as u32;\n    }\n    println!(\"{sum}\");\n}",
+    "options": [
+      "1540",
+      "1545",
+      "It panics",
+      "Compile error"
+    ],
+    "answer": 0,
+    "explain": "chunks_exact(2) gives [1,2] and [3,4]. 0x0201 + 0x0403 = 513 + 1027 = 1540. The last byte 5 goes to remainder() and is skipped with no error. Check remainder() or the length first, or the odd byte is lost.",
+    "verify": {
+      "lang": "rust",
+      "expect": "1540"
+    }
+  },
+  {
+    "id": "el-hc-vs-hct",
+    "type": "quiz",
+    "topic": "electronics",
+    "tags": [
+      "level-shifting",
+      "logic-levels"
+    ],
+    "difficulty": 2,
+    "title": "3.3 V MCU output drives a 74HC chip powered from 5 V. Is the logic HIGH safe?",
+    "options": [
+      "Yes, 3.3 V is always HIGH",
+      "No: 74HC needs about 3.5 V for HIGH at 5 V. Use 74HCT or a level shifter",
+      "No: 3.3 V will damage the 74HC input",
+      "Yes, if you add a 10 kΩ series resistor"
+    ],
+    "answer": 1,
+    "explain": "A CMOS 74HC input at 5 V needs VIH of about 0.7 × VCC = 3.5 V. A 3.3 V output is below that, so HIGH is not guaranteed. 74HCT has TTL levels (VIH = 2.0 V), so 3.3 V works. Or use a level shifter. A series resistor does not raise the voltage."
+  },
+  {
+    "id": "concept-tick-wrap",
+    "type": "concept",
+    "topic": "embedded",
+    "tags": [
+      "tick-wrap",
+      "integer-overflow"
+    ],
+    "difficulty": 1,
+    "title": "Tick counters and timeouts: 4 rules",
+    "bullets": [
+      "Keep timestamps in a fixed unsigned type, like uint32_t. A 1 ms uint32_t tick wraps after about 49.7 days.",
+      "Compare elapsed time: now - start >= timeout. Unsigned subtraction is correct across the wrap.",
+      "Never compare a deadline: now > start + timeout breaks when start + timeout wraps.",
+      "In Rust, use now.wrapping_sub(start). Plain - panics in debug builds when it wraps.",
+      "Test it: start the tick counter near the wrap, for example at 0xFFFF0000."
+    ]
+  }
+]
