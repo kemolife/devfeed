@@ -172,12 +172,14 @@ fn compile(lang: &str, code: &str, dir: &Path, bin: &Path) -> Result<Result<(), 
     let (file, mut cmd) = match lang {
         "c" => {
             let mut c = Command::new("cc");
-            c.args(["-std=c11", "-O2", "-w", "-o"]);
+            // -pedantic-errors: every diagnostic the standard requires is an error on both
+            // clang (macOS) and GCC (CI). With -w, GCC let "compile error" cards compile.
+            c.args(["-std=c11", "-O2", "-pedantic-errors", "-o"]);
             ("main.c", c)
         }
         "cpp" => {
             let mut c = Command::new("c++");
-            c.args(["-std=c++20", "-O2", "-w", "-o"]);
+            c.args(["-std=c++20", "-O2", "-pedantic-errors", "-o"]);
             ("main.cpp", c)
         }
         "rust" => {
