@@ -1,0 +1,199 @@
+[
+  {
+    "id": "bug-c-unaligned-cast",
+    "type": "bug",
+    "topic": "c",
+    "tags": [
+      "alignment",
+      "strict-aliasing"
+    ],
+    "difficulty": 2,
+    "title": "Cortex-M0. get_value() causes a HardFault. Tap the bug.",
+    "lang": "c",
+    "code": "uint8_t rx[8];\n/* rx[0] = cmd, rx[1..4] = value (LE) */\nuint32_t get_value(void) {\n    return *(uint32_t *)&rx[1];\n}",
+    "bugLines": [
+      4
+    ],
+    "explain": "&rx[1] is not 4-byte aligned. Cortex-M0 faults on any unaligned 32-bit load. The cast also breaks strict aliasing rules. Copy the bytes with memcpy into a local uint32_t, or build the value from bytes with shifts.",
+    "fix": "uint32_t v; memcpy(&v, &rx[1], 4); return v;"
+  },
+  {
+    "id": "bug-cpp-raii-copy",
+    "type": "bug",
+    "topic": "cpp",
+    "tags": [
+      "raii",
+      "copy-not-ref"
+    ],
+    "difficulty": 2,
+    "title": "After the first log_byte() call, SPI stops working. Tap the bug.",
+    "lang": "cpp",
+    "code": "class SpiBus {\npublic:\n    SpiBus() { spi_clock_on(); }\n    ~SpiBus() { spi_clock_off(); }\n    void send(uint8_t b);\n};\n\nvoid log_byte(SpiBus bus, uint8_t b) {\n    bus.send(b);\n}",
+    "bugLines": [
+      8
+    ],
+    "explain": "bus is passed by value, so a copy is made. When log_byte returns, the copy's destructor turns the SPI clock off. Take SpiBus& instead. Also delete the copy constructor and copy assignment, so this mistake does not compile.",
+    "fix": "void log_byte(SpiBus& bus, uint8_t b)  // + SpiBus(const SpiBus&) = delete;"
+  },
+  {
+    "id": "bug-rs-heapless-push-ignored",
+    "type": "bug",
+    "topic": "rust",
+    "tags": [
+      "ignored-error",
+      "truncation"
+    ],
+    "difficulty": 2,
+    "title": "Commands longer than 32 bytes run with wrong arguments. Tap the bug.",
+    "lang": "rust",
+    "code": "use heapless::Vec;\n\nfn on_byte(line: &mut Vec<u8, 32>, b: u8) {\n    let _ = line.push(b);\n    if b == b'\\n' {\n        handle_line(line);\n        line.clear();\n    }\n}",
+    "bugLines": [
+      4
+    ],
+    "explain": "heapless::Vec has a fixed size. push returns Err(b) when it is full. let _ = throws the error away, so the line is cut with no warning, and handle_line runs a broken command. On Err, set an overflow flag and drop the whole line at the next newline.",
+    "fix": "if line.push(b).is_err() { overflow = true; }"
+  },
+  {
+    "id": "pr-cpp-ring-size-pow2",
+    "type": "pr",
+    "topic": "cpp",
+    "tags": [
+      "constexpr",
+      "buffer-overflow"
+    ],
+    "difficulty": 2,
+    "lang": "cpp",
+    "pr": {
+      "title": "Make RX size a power of 2 and check it",
+      "author": "fw-lead",
+      "body": "The index uses a mask, so the size must be a power of 2. 100 was wrong. Add a compile-time check.",
+      "verdict": "approve"
+    },
+    "diff": "-#define RX_SIZE 100\n+constexpr std::size_t RX_SIZE = 128;\n+static_assert((RX_SIZE & (RX_SIZE - 1)) == 0,\n+              \"RX_SIZE must be a power of 2\");\n uint8_t rx_buf[RX_SIZE];\n // idx = head & (RX_SIZE - 1)",
+    "explain": "Good change. With 100, head & 99 skips some slots and gives wrong indexes. 128 works with the mask. static_assert stops the build if someone changes the size to a value that is not a power of 2. constexpr also gives the size a real type, unlike #define."
+  },
+  {
+    "id": "pr-tim-uif-not-cleared",
+    "type": "pr",
+    "topic": "embedded",
+    "tags": [
+      "isr",
+      "spurious-irq"
+    ],
+    "difficulty": 3,
+    "lang": "c",
+    "pr": {
+      "title": "Remove useless SR clear in timer init",
+      "author": "junior-fw",
+      "body": "SR is 0 after reset, so this write does nothing.",
+      "verdict": "changes"
+    },
+    "diff": " void tim2_init(void) {\n     TIM2->PSC = 83;\n     TIM2->EGR = TIM_EGR_UG;\n-    TIM2->SR = 0;\n+    /* SR is 0 after reset */\n     TIM2->DIER |= TIM_DIER_UIE;\n     NVIC_EnableIRQ(TIM2_IRQn);\n }",
+    "explain": "EGR = UG loads the new prescaler, but it also sets the UIF flag (with URS = 0). Without the SR clear, the update interrupt fires at once after enable, one period too early. Keep the clear between EGR and DIER. Always clear pending flags before you enable an interrupt."
+  },
+  {
+    "id": "pr-rs-i2c-split-write-read",
+    "type": "pr",
+    "topic": "rust",
+    "tags": [
+      "i2c",
+      "hal-api"
+    ],
+    "difficulty": 2,
+    "lang": "rust",
+    "pr": {
+      "title": "Split register read into write + read",
+      "author": "junior-fw",
+      "body": "Two calls are easier to follow on the logic analyzer.",
+      "verdict": "changes"
+    },
+    "diff": " fn read_reg(&mut self, reg: u8) -> Result<u8, E> {\n     let mut b = [0u8; 1];\n-    self.i2c.write_read(ADDR, &[reg], &mut b)?;\n+    self.i2c.write(ADDR, &[reg])?;\n+    self.i2c.read(ADDR, &mut b)?;\n     Ok(b[0])\n }",
+    "explain": "write_read uses a repeated START, with no STOP between the write and the read. Two calls put a STOP in between. Some sensors reset the register pointer on STOP. On a shared bus, another task or master can also take the bus in the gap. Keep write_read."
+  },
+  {
+    "id": "cpp-accumulate-init-type",
+    "type": "quiz",
+    "topic": "cpp",
+    "tags": [
+      "integer-overflow",
+      "accumulate-init"
+    ],
+    "difficulty": 2,
+    "title": "Sum two energy counters. What does this print?",
+    "lang": "cpp",
+    "code": "#include <cstdint>\n#include <cstdio>\n#include <numeric>\n\nint main() {\n    uint32_t s[] = {3000000000u, 3000000000u};\n    auto t = std::accumulate(s, s + 2, 0ULL);\n    auto u = std::accumulate(s, s + 2, 0u);\n    std::printf(\"%llu %u\\n\", t, u);\n}",
+    "options": [
+      "6000000000 1705032704",
+      "6000000000 6000000000",
+      "1705032704 1705032704",
+      "Compile error"
+    ],
+    "answer": 0,
+    "explain": "std::accumulate sums in the type of the init value, not the element type. 0ULL gives unsigned long long, so t is correct. 0u gives unsigned int, so u wraps: 6000000000 - 2^32 = 1705032704. Pick the init type on purpose, for example uint64_t{0}.",
+    "verify": {
+      "lang": "cpp",
+      "expect": "6000000000 1705032704"
+    }
+  },
+  {
+    "id": "rs-rem-euclid-index",
+    "type": "quiz",
+    "topic": "rust",
+    "tags": [
+      "signed-division",
+      "off-by-one"
+    ],
+    "difficulty": 2,
+    "title": "Ring buffer: step one slot back from index 2. What does this print?",
+    "lang": "rust",
+    "code": "fn main() {\n    let len = 8i32;\n    let idx = 2i32 - 3;\n    let a = idx % len;\n    let b = idx.rem_euclid(len);\n    println!(\"{a} {b}\");\n}",
+    "options": [
+      "-1 7",
+      "7 7",
+      "-1 -1",
+      "It panics"
+    ],
+    "answer": 0,
+    "explain": "% is the remainder, and it keeps the sign of the left side: -1 % 8 is -1. Used as an index, that is out of range. rem_euclid always gives 0..len, so -1 becomes 7. For wrap-around indexes with negative steps, use rem_euclid.",
+    "verify": {
+      "lang": "rust",
+      "expect": "-1 7"
+    }
+  },
+  {
+    "id": "el-ldo-dissipation",
+    "type": "quiz",
+    "topic": "electronics",
+    "tags": [
+      "ldo-power"
+    ],
+    "difficulty": 2,
+    "title": "LDO makes 3.3 V from 12 V. Load is 100 mA. How much power does the LDO turn into heat?",
+    "options": [
+      "About 0.87 W",
+      "About 0.33 W",
+      "About 1.2 W",
+      "Almost 0 W"
+    ],
+    "answer": 0,
+    "explain": "A linear regulator drops the extra voltage as heat: P = (Vin - Vout) \u00d7 I = (12 - 3.3) \u00d7 0.1 = 0.87 W. A small SOT-23 package gets far too hot at this level. Use a buck converter, or a lower input voltage."
+  },
+  {
+    "id": "concept-byte-parsing",
+    "type": "concept",
+    "topic": "c",
+    "tags": [
+      "alignment",
+      "strict-aliasing"
+    ],
+    "difficulty": 2,
+    "title": "Reading values from a byte buffer: 5 rules",
+    "bullets": [
+      "Do not cast uint8_t* to uint32_t*. The address can be unaligned, and the cast breaks strict aliasing.",
+      "Cortex-M0/M0+ fault on every unaligned 32-bit access. M3/M4 allow it for LDR/STR, but LDRD and LDM still fault.",
+      "Use memcpy into a local variable. The compiler turns it into one load when that is safe.",
+      "Or build the value from bytes with shifts. This fixes alignment and byte order at the same time.",
+      "Packed structs hide the same problem: a pointer to a packed member can be unaligned."
+    ]
+  }
+]
