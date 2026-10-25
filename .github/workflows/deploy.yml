@@ -20,8 +20,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify cards (compile + run code cards)
-        run: cargo run --release --manifest-path verifier/Cargo.toml -- check app/public/cards.json
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+
+      - name: Verify cards (compile + run code cards), main deck and every other deck
+        run: |
+          cargo build --release --manifest-path verifier/Cargo.toml
+          for f in app/public/cards.json app/public/decks/*.json; do
+            echo "== $f"
+            verifier/target/release/verifier check "$f"
+          done
 
       - uses: actions/setup-node@v4
         with:

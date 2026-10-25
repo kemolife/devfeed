@@ -1,3 +1,4 @@
+import { deck } from './deck';
 import type { Card } from '../types/card';
 
 const DEFAULT_QUESTION = 'I do not fully get this. Explain it step by step, with a small example.';
@@ -12,19 +13,19 @@ function cardContext(card: Card): string[] {
   switch (card.type) {
     case 'quiz':
       return [
-        `Embedded ${card.topic} quiz: ${card.title}`,
+        `${deck.field} ${card.topic} quiz: ${card.title}`,
         `Correct answer: ${card.options[card.answer] ?? '?'}`,
         ...(card.code ? [card.code] : []),
       ];
     case 'bug':
-      return [`Embedded ${card.topic} bug on line ${card.bugLines.join(' or ')}: ${card.title}`, card.code];
+      return [`${deck.field} ${card.topic} bug on line ${card.bugLines.join(' or ')}: ${card.title}`, card.code];
     case 'pr':
       return [
-        `Firmware PR "${card.pr.title}". Correct review: ${card.pr.verdict === 'approve' ? 'approve' : 'request changes'}.`,
+        `${deck.field} code PR "${card.pr.title}". Correct review: ${card.pr.verdict === 'approve' ? 'approve' : 'request changes'}.`,
         card.diff,
       ];
     case 'concept':
-      return [`Embedded ${card.topic} pattern: ${card.title}`, card.bullets.join(' ')];
+      return [`${deck.field} ${card.topic} pattern: ${card.title}`, card.bullets.join(' ')];
   }
 }
 
@@ -44,7 +45,7 @@ export function buildAskPrompt(card: Card, question: string, myAnswer?: string):
 /** "Check my thinking" prompt: the user's own reasoning goes first, so it is never cut. */
 export function buildCheckPrompt(card: Card, reasoning: string, asks: string, myAnswer?: string): string {
   return [
-    `Check my reasoning about this embedded card. ${asks.trim() || DEFAULT_CHECK} Say what is right, what is wrong and what is missing. Be honest and short, in simple English.`,
+    `Check my reasoning about this ${deck.field.toLowerCase()} card. ${asks.trim() || DEFAULT_CHECK} Say what is right, what is wrong and what is missing. Be honest and short, in simple English.`,
     `My reasoning: ${reasoning.trim()}`,
     ...(myAnswer ? [`My answer was: ${myAnswer}`] : []),
     ...cardContext(card),

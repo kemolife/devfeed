@@ -9,13 +9,19 @@ const KEYWORDS = new Set([
   // Rust
   'fn', 'let', 'mut', 'impl', 'pub', 'use', 'mod', 'match', 'loop', 'in', 'as', 'unsafe',
   'move', 'ref', 'self', 'Self', 'trait', 'where', 'dyn', 'crate', 'super',
+  // PHP / JavaScript
+  'function', 'public', 'private', 'protected', 'new', 'echo', 'foreach', 'try', 'catch',
+  'throw', 'finally', 'null', 'var', 'this', 'readonly', 'abstract', 'interface', 'extends',
+  'implements', 'instanceof', 'typeof', 'async', 'await', 'import', 'export', 'from', 'of',
+  'fn', 'isset', 'empty', 'array', 'undefined', 'elseif', 'endif',
 ]);
 
 const TYPE_RE =
   /^(u8|u16|u32|u64|u128|usize|i8|i16|i32|i64|i128|isize|f32|f64|bool|char|str|int|long|short|float|double|size_t|u?int\d+_t|String|Vec|Option|Result|Some|None|Ok|Err)$/;
 
+// comment | "string" | 'c' or 'php/js string' | number | #preprocessor | $php_var | ident | space | other
 const TOKEN_RE =
-  /(\/\/.*$)|("(?:\\.|[^"\\])*")|('(?:\\.|[^'\\])')|(\b0x[0-9a-fA-F]+[uUlL]*\b|\b\d+(?:\.\d+)?[uUlLf]*\b)|(^\s*#\s*\w+)|([A-Za-z_]\w*!?)|(\s+)|(.)/g;
+  /(\/\/.*$|^\s*#(?![[!]|\s*(?:include|define|if|ifdef|ifndef|endif|else|pragma|undef)\b).*$|\{#.*?#\}|<!--.*?-->)|("(?:\\.|[^"\\])*")|('(?:\\.|[^'\\])*'(?!\w))|(\b0x[0-9a-fA-F]+[uUlL]*\b|\b\d+(?:\.\d+)?[uUlLf]*\b)|(^\s*#\s*\w+)|(\$[A-Za-z_]\w*)|([A-Za-z_]\w*!?)|(\s+)|(.)/g;
 
 function highlight(line: string): ReactNode[] {
   const out: ReactNode[] = [];
@@ -23,12 +29,13 @@ function highlight(line: string): ReactNode[] {
   let i = 0;
   TOKEN_RE.lastIndex = 0;
   while ((m = TOKEN_RE.exec(line)) !== null) {
-    const [tok, com, str, chr, num, pre, ident] = m;
+    const [tok, com, str, chr, num, pre, phpVar, ident] = m;
     let cls = '';
     if (com) cls = 'text-syn-com italic';
     else if (str || chr) cls = 'text-syn-str';
     else if (num) cls = 'text-syn-num';
     else if (pre) cls = 'text-syn-kw';
+    else if (phpVar) cls = 'text-syn-type';
     else if (ident) {
       const next = line.slice(m.index + tok.length).trimStart()[0];
       if (ident.endsWith('!')) cls = 'text-syn-macro';

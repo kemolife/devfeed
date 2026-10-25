@@ -1,5 +1,17 @@
-export type Topic = 'rust' | 'c' | 'cpp' | 'embedded' | 'electronics';
-export type CodeLang = 'c' | 'cpp' | 'rust';
+export type Topic =
+  // main deck
+  | 'rust'
+  | 'c'
+  | 'cpp'
+  | 'embedded'
+  | 'electronics'
+  // web decks
+  | 'php'
+  | 'symfony'
+  | 'js'
+  | 'jquery'
+  | 'git';
+export type CodeLang = 'c' | 'cpp' | 'rust' | 'php' | 'js' | 'twig' | 'sql';
 
 interface CardBase {
   id: string;

@@ -1,6 +1,7 @@
 import { useProgressStore } from '../../store/progressStore';
 import { weakPatterns } from './buildQueue';
 import { RequestCards } from './RequestCards';
+import { deck } from '../../lib/deck';
 
 interface Props {
   index: number;
@@ -57,7 +58,7 @@ export function DoneScreen({ index, hasMore, onMore }: Props) {
         ) : (
           <p className="mt-4 text-sm text-muted">You have seen every card for this filter.</p>
         )}
-        <RequestCards />
+        {deck.requests && <RequestCards />}
       </div>
     </section>
   );

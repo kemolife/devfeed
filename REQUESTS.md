@@ -39,7 +39,7 @@ Working directory: the `devfeed/` folder. All `gh` commands use `GH_HOST=github.
    Spread the cards over the requested topics. With `topics: any`, prefer topics with the fewest cards.
 4. Merge with the verifier, fix or drop rejected cards, and check the full file (GENERATE.md steps 3–4).
 5. Commit only `app/public/cards.json` and the new inbox file:
-   `cards: +N for request #<issue number>`, then push with the exact push command from GENERATE.md step 5.
+   `cards: +N for request #<issue number>`, then push with the exact push command from GENERATE.md step 6.
 6. Comment on the issue and close it:
    ```bash
    GH_HOST=github.com gh issue close <number> -R kemolife/devfeed \

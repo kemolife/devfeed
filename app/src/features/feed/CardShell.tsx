@@ -8,6 +8,11 @@ const TOPIC_LABEL: Record<Card['topic'], string> = {
   cpp: 'C++',
   embedded: 'Embedded',
   electronics: 'Electronics',
+  php: 'PHP',
+  symfony: 'Symfony',
+  js: 'JavaScript',
+  jquery: 'jQuery',
+  git: 'Git',
 };
 
 const TYPE_LABEL: Record<Card['type'], string> = {

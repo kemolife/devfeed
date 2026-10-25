@@ -31,18 +31,29 @@ Working directory: the `devfeed/` folder.
    ```
    If a card is rejected, fix it or drop it, then run the merge again with only the fixed cards.
 4. Run `cargo run --release --manifest-path verifier/Cargo.toml -- check app/public/cards.json`. It must end with `0 failed`.
-5. Commit only `app/public/cards.json` and the new `inbox/<YYYY-MM-DD>.json`, then push. The push deploys the app.
+5. **Other decks.** For each profile file in `decks/` (for example `decks/olha.md`), make the number of
+   cards it asks for (default **5**) for that person, after your own 10. Same rules and verifier, other files:
+   ```bash
+   cargo run -q --release --manifest-path verifier/Cargo.toml -- summary app/public/decks/<name>.json
+   # write the cards to inbox/<name>-<YYYY-MM-DD>.json, following decks/<name>.md
+   cargo run -q --release --manifest-path verifier/Cargo.toml -- merge app/public/decks/<name>.json inbox/<name>-<YYYY-MM-DD>.json
+   cargo run -q --release --manifest-path verifier/Cargo.toml -- check app/public/decks/<name>.json
+   ```
+   The profile says who the person is, their level, stack and topics. Their cards use their topics
+   (for example `php`, `symfony`, `js`, `jquery`, `git`), not the embedded ones. PHP and JS code cards get a
+   `verify` block too (`"lang": "php"` or `"lang": "js"`). They are committed together with yours in step 6.
+6. Commit only `app/public/cards.json`, `app/public/decks/` and the new inbox files, then push. The push deploys the app.
    The repo is on the personal github.com account (`kemolife`), so push with the `gh` login for github.com only.
    Do not change any global git or `gh` config:
    ```bash
-   git add app/public/cards.json inbox/
+   git add app/public/cards.json app/public/decks/ inbox/
    git commit -q -m "cards: +N for <YYYY-MM-DD>"
    git -c credential.https://github.com.helper= \
        -c 'credential.https://github.com.helper=!/opt/homebrew/bin/gh auth git-credential' \
        push -q origin main
    ```
    If nothing passed the verifier, do not commit.
-6. Report in 3 lines: cards added, topics, anything rejected and why.
+7. Report in 3 lines: cards added (yours and per deck), topics, anything rejected and why.
 
 ## Topics to draw from
 

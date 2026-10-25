@@ -130,7 +130,8 @@ fn verify_card(card: &Value) -> Result<&'static str, String> {
     let s = |k: &str| card[k].as_str().filter(|v| !v.trim().is_empty());
     s("id").ok_or("missing id")?;
     match s("topic") {
-        Some("rust" | "c" | "cpp" | "embedded" | "electronics") => {}
+        // main deck | web decks
+        Some("rust" | "c" | "cpp" | "embedded" | "electronics" | "php" | "symfony" | "js" | "jquery" | "git") => {}
         _ => return Err("bad topic".into()),
     }
     match card["difficulty"].as_u64() {
@@ -196,16 +197,15 @@ fn verify_card(card: &Value) -> Result<&'static str, String> {
     let compile_fail = verify["compileFail"].as_bool().unwrap_or(false);
 
     let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
-    let bin = dir.path().join("prog");
-    let compiled = compile(lang, code, dir.path(), &bin)?;
+    let compiled = compile(lang, code, dir.path())?;
 
     if compile_fail {
         return if compiled.is_err() { Ok("compile fails as expected") } else { Err("expected compile error, but it compiled".into()) };
     }
-    compiled.map_err(|e| format!("compile error:\n{e}"))?;
+    let program = compiled.map_err(|e| format!("compile error:\n{e}"))?;
 
     let expect = verify["expect"].as_str().ok_or("verify.expect missing")?;
-    let out = run(&bin)?;
+    let out = run(program)?;
     if normalize(&out) == normalize(expect) {
         Ok("compiled + output matches")
     } else {
@@ -213,36 +213,60 @@ fn verify_card(card: &Value) -> Result<&'static str, String> {
     }
 }
 
-/// Outer Err = tool problem (abort card). Inner Err = compiler rejected the code.
-fn compile(lang: &str, code: &str, dir: &Path, bin: &Path) -> Result<Result<(), String>, String> {
-    let (file, mut cmd) = match lang {
+/// Outer Err = tool problem (abort card). Inner Err = the compiler (or the PHP / Node syntax
+/// check) rejected the code. Ok(Ok(cmd)) = the command that runs the program.
+fn compile(lang: &str, code: &str, dir: &Path) -> Result<Result<Command, String>, String> {
+    let bin = dir.join("prog");
+    let (file, mut cmd, source, runner): (&str, Command, String, Command) = match lang {
         "c" => {
             let mut c = Command::new("cc");
             // -pedantic-errors: every diagnostic the standard requires is an error on both
             // clang (macOS) and GCC (CI). With -w, GCC let "compile error" cards compile.
-            c.args(["-std=c11", "-O2", "-pedantic-errors", "-o"]);
-            ("main.c", c)
+            c.args(["-std=c11", "-O2", "-pedantic-errors", "-o"]).arg(&bin);
+            ("main.c", c, code.to_string(), Command::new(&bin))
         }
         "cpp" => {
             let mut c = Command::new("c++");
-            c.args(["-std=c++20", "-O2", "-pedantic-errors", "-o"]);
-            ("main.cpp", c)
+            c.args(["-std=c++20", "-O2", "-pedantic-errors", "-o"]).arg(&bin);
+            ("main.cpp", c, code.to_string(), Command::new(&bin))
         }
         "rust" => {
             let mut c = Command::new("rustc");
-            c.args(["--edition", "2024", "-O", "-A", "warnings", "-o"]);
-            ("main.rs", c)
+            c.args(["--edition", "2024", "-O", "-A", "warnings", "-o"]).arg(&bin);
+            ("main.rs", c, code.to_string(), Command::new(&bin))
+        }
+        "php" => {
+            // cards may leave out the opening tag to stay short
+            let source = if code.trim_start().starts_with("<?php") { code.to_string() } else { format!("<?php\n{code}") };
+            let mut c = Command::new("php");
+            c.arg("-l");
+            let mut r = Command::new("php");
+            r.args(["-d", "display_errors=stderr", "-d", "error_reporting=E_ALL"]).arg(dir.join("main.php"));
+            ("main.php", c, source, r)
+        }
+        "js" => {
+            let mut c = Command::new("node");
+            c.arg("--check");
+            let mut r = Command::new("node");
+            r.arg(dir.join("main.js"));
+            ("main.js", c, code.to_string(), r)
         }
         other => return Err(format!("unsupported verify.lang {other:?}")),
     };
     let src = dir.join(file);
-    fs::write(&src, code).map_err(|e| e.to_string())?;
-    let out = cmd.arg(bin).arg(&src).output().map_err(|e| format!("cannot start compiler: {e}"))?;
-    Ok(if out.status.success() { Ok(()) } else { Err(String::from_utf8_lossy(&out.stderr).into_owned()) })
+    fs::write(&src, source).map_err(|e| e.to_string())?;
+    let out = cmd.arg(&src).output().map_err(|e| format!("cannot start compiler: {e}"))?;
+    Ok(if out.status.success() {
+        Ok(runner)
+    } else {
+        let mut msg = String::from_utf8_lossy(&out.stderr).into_owned();
+        msg.push_str(&String::from_utf8_lossy(&out.stdout));
+        Err(msg)
+    })
 }
 
-fn run(bin: &Path) -> Result<String, String> {
-    let mut child = Command::new(bin)
+fn run(mut program: Command) -> Result<String, String> {
+    let mut child = program
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()

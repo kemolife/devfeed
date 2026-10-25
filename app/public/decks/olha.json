@@ -1,0 +1,622 @@
+[
+  {
+    "answer": 0,
+    "code": "var_dump(\"abc\" == 0);\nvar_dump(\"1\" == \"01\");\nvar_dump(null == false);",
+    "difficulty": 1,
+    "explain": "== converts types before it compares. Since PHP 8, \"abc\" == 0 is false (in PHP 7 it was true). \"1\" == \"01\" is true: both strings look like numbers. null == false is true. Use === unless you really want the conversion.",
+    "id": "php-loose-compare",
+    "lang": "php",
+    "options": [
+      "false true true",
+      "true true true",
+      "false false true",
+      "true false false"
+    ],
+    "tags": [
+      "loose-compare"
+    ],
+    "title": "PHP 8. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "bool(false)\nbool(true)\nbool(true)",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "$a = [1, 2, 3];\nforeach ($a as &$v) {}\nforeach ($a as $v) {}\necho implode(',', $a);",
+    "difficulty": 2,
+    "explain": "After the first loop, $v is still a reference to the last element $a[2]. The second loop writes each value into $a[2]: 1, then 2, then 2 again. Always unset($v) after a foreach by reference.",
+    "id": "php-foreach-ref",
+    "lang": "php",
+    "options": [
+      "1,2,3",
+      "1,2,2",
+      "3,3,3",
+      "1,1,1"
+    ],
+    "tags": [
+      "references"
+    ],
+    "title": "What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "1,2,2",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "$qty = 0;\necho $qty ?: 5;\necho $qty ?? 5;",
+    "difficulty": 1,
+    "explain": "?: replaces any 'empty' value (0, '', '0', null, false, []), so 0 becomes 5. ?? replaces only null or a missing value, so 0 stays 0. For form values where 0 is valid, use ??.",
+    "id": "php-null-coalesce",
+    "lang": "php",
+    "options": [
+      "55",
+      "50",
+      "00",
+      "05"
+    ],
+    "tags": [
+      "null-coalescing"
+    ],
+    "title": "Quantity 0 is a valid value. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "50",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "$total = 0.1 + 0.2;\nvar_dump($total == 0.3);\necho round($total, 2) == 0.3 ? 'ok' : 'no';",
+    "difficulty": 2,
+    "explain": "A float cannot store 0.1 exactly, so 0.1 + 0.2 is 0.30000000000000004 and == 0.3 is false. round() hides it here, but sums of many prices still drift. Store money as integer cents, or use bcmath or a money library.",
+    "id": "php-float-money",
+    "lang": "php",
+    "options": [
+      "bool(true) ok",
+      "bool(false) ok",
+      "bool(false) no",
+      "bool(true) no"
+    ],
+    "tags": [
+      "float-money"
+    ],
+    "title": "Money with floats. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "bool(false)\nok",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 2,
+    "code": "declare(strict_types=1);\n\nfunction add(int $a, int $b): int {\n    return $a + $b;\n}\n\ntry {\n    echo add(\"2\", 3);\n} catch (TypeError $e) {\n    echo 'TypeError';\n}",
+    "difficulty": 2,
+    "explain": "With declare(strict_types=1), PHP does not convert \"2\" to int for an int parameter. It throws a TypeError. Without strict_types it would silently convert and print 5. Symfony code usually uses strict_types: it finds wrong types early.",
+    "id": "php-strict-types",
+    "lang": "php",
+    "options": [
+      "5",
+      "23",
+      "TypeError",
+      "Warning, then 5"
+    ],
+    "tags": [
+      "strict-types"
+    ],
+    "title": "With strict_types. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "TypeError",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "console.log(['1', '2', '3'].map(parseInt));",
+    "difficulty": 2,
+    "explain": "map() calls the function with (value, index). So it runs parseInt('1', 0), parseInt('2', 1), parseInt('3', 2). The second argument is the number base: base 1 is invalid, and '3' is not a binary digit. Write .map(Number) or .map(s => parseInt(s, 10)).",
+    "id": "js-map-parseint",
+    "lang": "js",
+    "options": [
+      "[ 1, 2, 3 ]",
+      "[ 1, NaN, NaN ]",
+      "[ NaN, NaN, NaN ]",
+      "TypeError"
+    ],
+    "tags": [
+      "callback-args"
+    ],
+    "title": "What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "[ 1, NaN, NaN ]",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "for (var i = 0; i < 3; i++) {\n  setTimeout(() => console.log(i), 0);\n}",
+    "difficulty": 2,
+    "explain": "var has one i for the whole function. The callbacks run after the loop has finished, when i is already 3. With let, every loop step gets its own i, and it prints 0 1 2.",
+    "id": "js-var-timeout",
+    "lang": "js",
+    "options": [
+      "0 1 2",
+      "3 3 3",
+      "0 0 0",
+      "2 2 2"
+    ],
+    "tags": [
+      "var-scope",
+      "async"
+    ],
+    "title": "What does this print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "3\n3\n3",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "console.log(\"5\" + 3, \"5\" - 3);",
+    "difficulty": 1,
+    "explain": "+ with a string joins strings: \"5\" + 3 is \"53\". - works only on numbers, so \"5\" - 3 is 2. Values from inputs, like $('#qty').val(), are always strings. Convert first: Number(x).",
+    "id": "js-plus-minus",
+    "lang": "js",
+    "options": [
+      "8 2",
+      "53 2",
+      "53 NaN",
+      "8 8"
+    ],
+    "tags": [
+      "type-coercion"
+    ],
+    "title": "What does this print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "53 2",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "console.log(0 == '', null == undefined, null === undefined);",
+    "difficulty": 2,
+    "explain": "== converts types: '' becomes 0, so 0 == '' is true. null == undefined is a special rule: true. === never converts, so null === undefined is false. Use === by default.",
+    "id": "js-loose-equal",
+    "lang": "js",
+    "options": [
+      "true true false",
+      "false true false",
+      "false false false",
+      "true true true"
+    ],
+    "tags": [
+      "loose-compare"
+    ],
+    "title": "What does this print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "true true false",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 1,
+    "explain": "Symfony gives services by autowiring: you ask for the interface in the constructor or the action, and Symfony passes the right object. $this->get() does not work for normal services anymore, and new Mailer() skips all configuration.",
+    "id": "sf-get-service",
+    "options": [
+      "$this->get('mailer')",
+      "Type-hint MailerInterface $mailer (method or constructor)",
+      "new Mailer()",
+      "global $mailer"
+    ],
+    "tags": [
+      "dependency-injection"
+    ],
+    "title": "Symfony 7: how should a controller get the mailer?",
+    "topic": "symfony",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "--amend makes a new commit that replaces the old one. The server still has the old one, so the histories differ and the push is rejected. On your own branch: git push --force-with-lease. On a shared branch: make a new commit instead.",
+    "id": "git-amend-pushed",
+    "options": [
+      "Push works, history updated",
+      "Rejected: non-fast-forward",
+      "Git deletes the old commit on the server",
+      "A merge commit is created"
+    ],
+    "tags": [
+      "git-history"
+    ],
+    "title": "You pushed a commit. Then you ran git commit --amend. What happens on git push?",
+    "topic": "git",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 1,
+    "explain": "git pull = git fetch (download) + merge into your current branch. If you want to look first, run git fetch and then git log HEAD..origin/main.",
+    "id": "git-pull",
+    "options": [
+      "Only downloads new commits",
+      "git fetch + merge (or rebase) into your branch",
+      "Uploads your commits",
+      "Resets your branch to the server"
+    ],
+    "tags": [
+      "git-basics"
+    ],
+    "title": "What does git pull do?",
+    "topic": "git",
+    "type": "quiz"
+  },
+  {
+    "bugLines": [
+      3
+    ],
+    "code": "function isSecureUrl(string $url): bool\n{\n    if (strpos($url, 'https://')) {\n        return true;\n    }\n    return false;\n}",
+    "difficulty": 1,
+    "explain": "strpos() returns the position. 'https://' is at the start, so it returns 0, and if (0) is false. It returns false only when the text is missing. Use str_starts_with() (PHP 8), or compare with !== false.",
+    "fix": "function isSecureUrl(string $url): bool\n{\n    return str_starts_with($url, 'https://');\n}",
+    "id": "bug-php-strpos-zero",
+    "lang": "php",
+    "tags": [
+      "falsy-zero"
+    ],
+    "title": "https URLs are not detected. Tap the bug.",
+    "topic": "php",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      3,
+      4
+    ],
+    "code": "public function show(Request $request): Response\n{\n    $id = $request->query->get('id');\n    if ($id === 5) {\n        return $this->render('special.html.twig');\n    }\n    return $this->render('normal.html.twig');\n}",
+    "difficulty": 1,
+    "explain": "Everything in the query string is a string: '5', not 5. '5' === 5 is false. Use $request->query->getInt('id'), which returns an int.",
+    "fix": "$id = $request->query->getInt('id');\nif ($id === 5) {",
+    "id": "bug-sf-query-string",
+    "lang": "php",
+    "tags": [
+      "request-input",
+      "loose-compare"
+    ],
+    "title": "/page?id=5 never shows the special page. Tap the bug.",
+    "topic": "symfony",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      1,
+      3
+    ],
+    "code": "$('.tab').on('click', () => {\n  $('.tab').removeClass('active');\n  $(this).addClass('active');\n});",
+    "difficulty": 2,
+    "explain": "An arrow function has no own this. this is the outer this (often window), not the clicked tab. Use a normal function, or use the event: $(e.currentTarget).",
+    "fix": "$('.tab').on('click', function () {\n  $('.tab').removeClass('active');\n  $(this).addClass('active');\n});",
+    "id": "bug-jq-arrow-this",
+    "lang": "js",
+    "tags": [
+      "this-binding"
+    ],
+    "title": "The clicked tab does not become active. Tap the bug.",
+    "topic": "jquery",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      2
+    ],
+    "code": "$(function () {\n  $('.delete-btn').on('click', function () {\n    $(this).closest('tr').remove();\n  });\n\n  $.get('/api/rows', function (html) {\n    $('#table tbody').html(html);\n  });\n});",
+    "difficulty": 2,
+    "explain": "The click handler is attached when the page loads. The rows come later by AJAX, so their buttons never get a handler. Attach it to a parent that already exists and give a selector: event delegation.",
+    "fix": "$('#table').on('click', '.delete-btn', function () {\n  $(this).closest('tr').remove();\n});",
+    "id": "bug-jq-dynamic-bind",
+    "lang": "js",
+    "tags": [
+      "event-delegation"
+    ],
+    "title": "Delete buttons in loaded rows do nothing. Tap the bug.",
+    "topic": "jquery",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      5
+    ],
+    "code": "let user;\n$.getJSON('/api/me', function (data) {\n  user = data;\n});\n$('#name').text(user.name);",
+    "difficulty": 1,
+    "explain": "$.getJSON only starts the request. Line 5 runs at once, before the answer comes, so user is still undefined. Use the data inside the callback, or await the request.",
+    "fix": "const user = await $.getJSON('/api/me');\n$('#name').text(user.name);",
+    "id": "bug-jq-ajax-async",
+    "lang": "js",
+    "tags": [
+      "async"
+    ],
+    "title": "TypeError: cannot read 'name' of undefined. Tap the bug.",
+    "topic": "jquery",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      1
+    ],
+    "code": "$('#contact-form').on('submit', function () {\n  $.post('/contact', $(this).serialize())\n    .done(() => $('#msg').text('Sent!'));\n});",
+    "difficulty": 1,
+    "explain": "The handler does not stop the normal form submit. The browser sends the form and reloads the page, and the AJAX request can be cancelled. Call e.preventDefault() first.",
+    "fix": "$('#contact-form').on('submit', function (e) {\n  e.preventDefault();\n  $.post('/contact', $(this).serialize())\n    .done(() => $('#msg').text('Sent!'));\n});",
+    "id": "bug-jq-submit-reload",
+    "lang": "js",
+    "tags": [
+      "form-submit"
+    ],
+    "title": "The page reloads and 'Sent!' never shows. Tap the bug.",
+    "topic": "jquery",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      2,
+      3
+    ],
+    "code": "$email = $_POST['email'];\n$sql = \"SELECT * FROM users WHERE email = '$email'\";\n$user = $pdo->query($sql)->fetch();",
+    "difficulty": 1,
+    "explain": "The email goes straight into the SQL text. An input like ' OR '1'='1 changes the query: SQL injection. Send values as parameters, never inside the SQL string.",
+    "fix": "$stmt = $pdo->prepare('SELECT * FROM users WHERE email = :email');\n$stmt->execute(['email' => $_POST['email']]);\n$user = $stmt->fetch();",
+    "id": "bug-php-sql-injection",
+    "lang": "php",
+    "tags": [
+      "sql-injection"
+    ],
+    "title": "Copilot wrote this login lookup. Tap the bug.",
+    "topic": "php",
+    "type": "bug"
+  },
+  {
+    "diff": " public function findByEmail(string $email): ?User\n {\n-    return $this->findOneBy(['email' => $email]);\n+    return $this->getEntityManager()\n+        ->createQuery(\"SELECT u FROM App\\Entity\\User u WHERE u.email = '$email'\")\n+        ->getOneOrNullResult();\n }",
+    "difficulty": 2,
+    "explain": "The email is put inside the DQL text, so DQL injection is possible. findOneBy() was safe: it sends the value as a parameter. If you need a custom query, use the query builder with setParameter().",
+    "fix": "public function findByEmail(string $email): ?User\n{\n    return $this->createQueryBuilder('u')\n        ->where('u.email = :email')\n        ->setParameter('email', $email)\n        ->getQuery()\n        ->getOneOrNullResult();\n}",
+    "id": "pr-sf-dql-injection",
+    "lang": "php",
+    "pr": {
+      "author": "copilot-fan",
+      "body": "Copilot suggested a custom query, it looks more flexible.",
+      "title": "Use DQL for user lookup",
+      "verdict": "changes"
+    },
+    "tags": [
+      "sql-injection",
+      "doctrine"
+    ],
+    "topic": "symfony",
+    "type": "pr"
+  },
+  {
+    "diff": " <div class=\"comment\">\n-    {{ comment.text }}\n+    {{ comment.text|raw }}\n </div>",
+    "difficulty": 1,
+    "explain": "|raw turns off Twig's escaping. A user can now post <script> and it runs for every visitor: XSS. The nl2br filter escapes the text first and then adds <br>, so it is safe.",
+    "fix": "<div class=\"comment\">\n    {{ comment.text|nl2br }}\n</div>\n{# nl2br escapes the text first, then adds <br> #}",
+    "id": "pr-twig-raw",
+    "lang": "twig",
+    "pr": {
+      "author": "olha-team",
+      "body": "Users said that new lines in comments are lost.",
+      "title": "Show line breaks in comments",
+      "verdict": "changes"
+    },
+    "tags": [
+      "xss",
+      "twig"
+    ],
+    "topic": "symfony",
+    "type": "pr"
+  },
+  {
+    "diff": " // OrderController::list()\n-$orders = $repo->findAllWithCustomer();\n+$orders = $repo->findAll();\n \n {# orders/list.html.twig #}\n {% for order in orders %}\n     {{ order.customer.name }}\n {% endfor %}",
+    "difficulty": 2,
+    "explain": "findAll() loads only orders. The template reads order.customer for every order, and Doctrine runs one extra query each time: 200 orders = 201 queries (N+1). The old method loaded customers with a JOIN.",
+    "fix": "// OrderRepository\npublic function findAllWithCustomer(): array\n{\n    return $this->createQueryBuilder('o')\n        ->addSelect('c')\n        ->join('o.customer', 'c')\n        ->orderBy('o.createdAt', 'DESC')\n        ->getQuery()\n        ->getResult();\n}",
+    "id": "pr-doctrine-n-plus-1",
+    "lang": "php",
+    "pr": {
+      "author": "cleanup-bot",
+      "body": "findAll() does the same and is simpler.",
+      "title": "Remove custom repository method",
+      "verdict": "changes"
+    },
+    "tags": [
+      "n-plus-1",
+      "doctrine"
+    ],
+    "topic": "symfony",
+    "type": "pr"
+  },
+  {
+    "diff": " foreach ($rows as $row) {\n     $product = new Product($row['sku'], $row['price']);\n     $em->persist($product);\n+    $em->flush();\n }\n-$em->flush();",
+    "difficulty": 2,
+    "explain": "flush() inside the loop sends one transaction per row: 10,000 rows become 10,000 round trips. Memory also grows, because Doctrine keeps every object. Validate rows before persist, and flush in batches.",
+    "fix": "$i = 0;\nforeach ($rows as $row) {\n    $em->persist(new Product($row['sku'], $row['price']));\n    if (++$i % 100 === 0) {\n        $em->flush();\n        $em->clear();   // free memory\n    }\n}\n$em->flush();",
+    "id": "pr-doctrine-flush-loop",
+    "lang": "php",
+    "pr": {
+      "author": "junior-dev",
+      "body": "So one bad row does not lose all the others.",
+      "title": "Save each product right away",
+      "verdict": "changes"
+    },
+    "tags": [
+      "doctrine-batch",
+      "performance"
+    ],
+    "topic": "symfony",
+    "type": "pr"
+  },
+  {
+    "diff": " $user->setEmail($data['email']);\n-$user->setPassword($hasher->hashPassword($user, $data['password']));\n+$user->setPassword(md5($data['password']));",
+    "difficulty": 1,
+    "explain": "md5 is fast and has no salt: a leaked database is cracked in minutes. Symfony's password hasher uses bcrypt or argon2 with a salt and is made to be slow. Keep the hasher.",
+    "fix": "// UserPasswordHasherInterface $hasher is autowired\n$user->setEmail($data['email']);\n$user->setPassword(\n    $hasher->hashPassword($user, $data['password'])\n);",
+    "id": "pr-md5-password",
+    "lang": "php",
+    "pr": {
+      "author": "quick-fix",
+      "body": "Removed the hasher service, md5() is built in.",
+      "title": "Simplify password hashing",
+      "verdict": "changes"
+    },
+    "tags": [
+      "password-hashing",
+      "security"
+    ],
+    "topic": "symfony",
+    "type": "pr"
+  },
+  {
+    "diff": " public function import(Request $request): Response\n {\n-    $this->importer->run($request->files->get('file'));\n-    return $this->json(['status' => 'ok']);\n+    try {\n+        $this->importer->run($request->files->get('file'));\n+    } catch (\\Exception $e) {\n+    }\n+    return $this->json(['status' => 'ok']);\n }",
+    "difficulty": 1,
+    "explain": "The empty catch hides every error. The user sees 'ok' even when nothing was imported, and nothing is logged. Catch only the error you expect, log it, and tell the user.",
+    "fix": "public function import(Request $request, LoggerInterface $logger): Response\n{\n    try {\n        $this->importer->run($request->files->get('file'));\n    } catch (ImportException $e) {   // your own exception class\n        $logger->warning('Import failed', ['error' => $e->getMessage()]);\n        return $this->json(['status' => 'error', 'message' => $e->getMessage()], 422);\n    }\n    return $this->json(['status' => 'ok']);\n}",
+    "id": "pr-swallow-exception",
+    "lang": "php",
+    "pr": {
+      "author": "ai-generated",
+      "body": "No more crashes on import.",
+      "title": "Fix 500 error on import",
+      "verdict": "changes"
+    },
+    "tags": [
+      "error-handling"
+    ],
+    "topic": "symfony",
+    "type": "pr"
+  },
+  {
+    "diff": " public function list(Request $request): Response\n {\n-    $page = $_GET['page'];\n+    $page = $request->query->getInt('page', 1);\n     $products = $this->repo->findPage(max(1, $page));",
+    "difficulty": 1,
+    "explain": "Good change. The Request object works in tests and sub-requests, getInt() returns a real int, and 1 is the default when page is missing. Not every PR has a bug: approving good code fast is also a skill.",
+    "id": "pr-sf-getint-good",
+    "lang": "php",
+    "pr": {
+      "author": "senior-dev",
+      "body": "Replaces $_GET in the product list.",
+      "title": "Read page number from Request",
+      "verdict": "approve"
+    },
+    "tags": [
+      "request-input"
+    ],
+    "topic": "symfony",
+    "type": "pr"
+  },
+  {
+    "diff": " function addComment(c) {\n-  $('#list').append('<li>' + c.text + '</li>');\n+  $('<li>').text(c.text).appendTo('#list');\n }",
+    "difficulty": 1,
+    "explain": "Good change. Building HTML from strings puts user text in as HTML: XSS. .text() inserts it as plain text, so < and > are shown, not run.",
+    "id": "pr-jq-text-good",
+    "lang": "js",
+    "pr": {
+      "author": "senior-dev",
+      "body": "Comments with < > broke the list.",
+      "title": "Escape comment text",
+      "verdict": "approve"
+    },
+    "tags": [
+      "xss"
+    ],
+    "topic": "jquery",
+    "type": "pr"
+  },
+  {
+    "diff": " # .gitignore\n-.env.local\n+# .env.local",
+    "difficulty": 1,
+    "explain": ".env.local holds passwords and keys. Once committed, everyone with repo access sees them, and they stay in the git history even after you delete the file. Share safe defaults in .env, keep secrets out of git.",
+    "fix": "# .gitignore\n.env.local\n.env.*.local\n\n# safe defaults (no secrets) go in .env\n# real secrets: php bin/console secrets:set DATABASE_PASSWORD",
+    "id": "pr-git-env-local",
+    "lang": "php",
+    "pr": {
+      "author": "team-player",
+      "body": "So everyone has the same database password.",
+      "title": "Share local config with the team",
+      "verdict": "changes"
+    },
+    "tags": [
+      "secrets"
+    ],
+    "topic": "git",
+    "type": "pr"
+  },
+  {
+    "bullets": [
+      "Can you explain every line? If not, ask the AI: 'explain this line by line', before you commit.",
+      "Inputs: where does each value come from (Request, database, user)? Is it validated?",
+      "SQL and HTML: parameters in queries, no |raw in Twig, .text() not .html() for user data.",
+      "Errors: what happens when it fails? No empty catch blocks, no 'ok' when it failed.",
+      "Run it: try the normal case AND one bad input (empty, too long, wrong type)."
+    ],
+    "difficulty": 1,
+    "id": "concept-ai-code-checks",
+    "tags": [
+      "ai-code-review"
+    ],
+    "title": "AI wrote the code: 5 checks before you commit",
+    "topic": "php",
+    "type": "concept"
+  },
+  {
+    "bullets": [
+      "The Router matches the URL to a controller action (#[Route]).",
+      "The controller reads input from Request, calls services, and returns a Response.",
+      "Services get what they need by autowiring (constructor arguments). Never new for a service.",
+      "Doctrine: an entity is a row, a repository runs queries, flush() saves.",
+      "Twig renders HTML and escapes {{ }} output by default."
+    ],
+    "difficulty": 1,
+    "id": "concept-sf-request-flow",
+    "tags": [
+      "request-flow",
+      "dependency-injection"
+    ],
+    "title": "A Symfony request: who does what",
+    "topic": "symfony",
+    "type": "concept"
+  },
+  {
+    "bullets": [
+      "Update first: git pull (or rebase on main), fix conflicts on your machine.",
+      "Read your own diff line by line. Remove dump(), dd() and console.log.",
+      "One topic per PR, small. Title + what and why in the description.",
+      "Run the tests and php bin/console lint:twig templates/.",
+      "Never commit .env.local, keys or passwords."
+    ],
+    "difficulty": 1,
+    "id": "concept-git-pr-ready",
+    "tags": [
+      "pull-request"
+    ],
+    "title": "Before you open a PR on Bitbucket",
+    "topic": "git",
+    "type": "concept"
+  }
+]

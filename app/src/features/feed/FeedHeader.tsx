@@ -1,14 +1,5 @@
+import { deck } from '../../lib/deck';
 import { useProgressStore } from '../../store/progressStore';
-import type { FeedFilter } from '../../types/card';
-
-const FILTERS: { key: FeedFilter; label: string }[] = [
-  { key: 'embedded', label: 'Embedded' },
-  { key: 'c', label: 'C' },
-  { key: 'cpp', label: 'C++' },
-  { key: 'rust', label: 'Rust' },
-  { key: 'electronics', label: 'Electronics' },
-  { key: 'pr', label: 'PR review' },
-];
 
 interface Props {
   answered: number;
@@ -39,7 +30,7 @@ export function FeedHeader({ answered, goal }: Props) {
         </div>
         <div className="no-scrollbar -mx-4 mt-2.5 flex gap-1.5 overflow-x-auto px-4">
           <Chip active={filters.length === 0} onClick={clearFilters} label="All" />
-          {FILTERS.map((f) => (
+          {deck.filters.map((f) => (
             <Chip
               key={f.key}
               active={filters.includes(f.key)}

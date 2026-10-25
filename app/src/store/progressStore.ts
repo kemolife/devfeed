@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { deck } from '../lib/deck';
 import type { FeedFilter } from '../types/card';
 
 export interface CardProgress {
@@ -77,6 +78,7 @@ export const useProgressStore = create<ProgressState>()(
         })),
       clearFilters: () => set({ filters: [] }),
     }),
-    { name: 'bitfeed-progress', version: 1 },
+    // own progress per deck; the main deck keeps its old key
+    { name: deck.id === 'main' ? 'bitfeed-progress' : `bitfeed-progress-${deck.id}`, version: 1 },
   ),
 );
