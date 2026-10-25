@@ -42,6 +42,8 @@ export interface PrCard extends CardBase {
   /** Unified diff body: each line starts with '+', '-' or ' '. */
   diff: string;
   explain: string;
+  /** Full corrected code. Required when verdict is "changes". */
+  fix?: string;
 }
 
 export interface ConceptCard extends CardBase {

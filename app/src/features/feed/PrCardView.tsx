@@ -70,6 +70,8 @@ export function PrCardView({ card, onAnswered, onNext }: Props) {
                 : '✗ This PR is fine'
           }
           explain={card.explain}
+          fix={card.fix}
+          fixLabel="How it should be"
           onNext={onNext}
           ask={
             <AskAi

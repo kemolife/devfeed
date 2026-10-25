@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Code } from '../../components/Code';
 import type { Card } from '../../types/card';
 
 const TOPIC_LABEL: Record<Card['topic'], string> = {
@@ -63,13 +64,24 @@ interface ResultPanelProps {
   heading?: string;
   explain: string;
   fix?: string;
+  /** Heading above the fix code. */
+  fixLabel?: string;
   onNext: () => void;
   /** Shown under the Next button, e.g. the Ask AI button. */
   ask?: ReactNode;
   children?: ReactNode;
 }
 
-export function ResultPanel({ correct, heading, explain, fix, onNext, ask, children }: ResultPanelProps) {
+export function ResultPanel({
+  correct,
+  heading,
+  explain,
+  fix,
+  fixLabel = 'Fix',
+  onNext,
+  ask,
+  children,
+}: ResultPanelProps) {
   const tone =
     correct === null ? 'border-line' : correct ? 'border-ok/50 bg-ok/5' : 'border-bad/50 bg-bad/5';
   return (
@@ -83,10 +95,8 @@ export function ResultPanel({ correct, heading, explain, fix, onNext, ask, child
       {children}
       {fix && (
         <div className="mt-3">
-          <p className="mb-1.5 text-xs font-semibold tracking-wide text-ok uppercase">Fix</p>
-          <pre className="no-scrollbar overflow-x-auto rounded-lg bg-surface p-3 font-mono text-[12.5px] text-fg/90">
-            {fix}
-          </pre>
+          <p className="mb-1.5 text-xs font-semibold tracking-wide text-ok uppercase">{fixLabel}</p>
+          <Code code={fix} />
         </div>
       )}
       <button

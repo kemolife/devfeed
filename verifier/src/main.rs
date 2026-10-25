@@ -128,8 +128,14 @@ fn verify_card(card: &Value) -> Result<&'static str, String> {
             if diff.lines().any(|l| !matches!(l.chars().next(), Some('+' | '-' | ' '))) {
                 return Err("every diff line must start with '+', '-' or ' '".into());
             }
-            if !matches!(card["pr"]["verdict"].as_str(), Some("approve" | "changes")) {
-                return Err("pr.verdict must be approve|changes".into());
+            match card["pr"]["verdict"].as_str() {
+                Some("approve") => {}
+                // the reader must see the corrected code, not only a hint
+                Some("changes") if s("fix").is_none() => {
+                    return Err("pr with verdict \"changes\" needs \"fix\": the full corrected code".into());
+                }
+                Some("changes") => {}
+                _ => return Err("pr.verdict must be approve|changes".into()),
             }
         }
         Some("concept") => {

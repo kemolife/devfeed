@@ -58,5 +58,8 @@ Working directory: the `devfeed/` folder.
 - Quiz with `verify`: `code` must be a full program that runs on the host (no MCU headers). `expect` is the exact stdout.
   Use `{"lang": "rust", "compileFail": true}` for "does not compile" answers.
 - Bug cards: `bugLines` are 1-based. List every line that is a fair answer.
+- PR cards with `"verdict": "changes"` need a `fix` field: the **full corrected code** of the changed
+  part, as it should be merged. Real working code, not a hint like "use try_from" and not an empty
+  function. Short comments may explain the key line. The verifier rejects a "changes" PR without `fix`.
 - Text: simple B1 English. Short sentences. `explain` ≤ 70 words. It names the pattern and the fix.
 - No trick questions that depend on one compiler's quirks, unless the title says which target.
