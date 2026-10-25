@@ -1529,5 +1529,206 @@
     "title": "Reading values from a byte buffer: 5 rules",
     "topic": "c",
     "type": "concept"
+  },
+  {
+    "bugLines": [
+      3
+    ],
+    "code": "void set_name(const char *src) {\n    char name[8];\n    strncpy(name, src, sizeof(name));\n    ble_set_adv_name(name);\n}",
+    "difficulty": 1,
+    "explain": "strncpy does not add '\\0' when src has 8 or more chars. \"Sensor-01\" has 9, so name is not terminated. ble_set_adv_name reads past the array and sends stack garbage. Use snprintf, or copy sizeof-1 bytes and set the last byte to '\\0'.",
+    "fix": "snprintf(name, sizeof(name), \"%s\", src);",
+    "id": "bug-c-strncpy-no-nul",
+    "lang": "c",
+    "tags": [
+      "string-termination",
+      "buffer-overflow"
+    ],
+    "title": "BLE name \"Sensor-01\" shows garbage at the end. Tap the bug.",
+    "topic": "c",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      9,
+      14
+    ],
+    "code": "// uart.cpp\nUart uart1(USART1, 115200);\n\n// logger.cpp\nextern Uart uart1;\nclass Logger {\npublic:\n    explicit Logger(Uart& u) : u_(u) {\n        u_.write(\"boot\\n\");\n    }\nprivate:\n    Uart& u_;\n};\nLogger logger(uart1);",
+    "difficulty": 3,
+    "explain": "Global constructors in different .cpp files run in an unspecified order. This is the static initialization order fiasco. logger can be built before uart1, so write() runs on an object that is not set up yet. Use a function with a local static (construct on first use), or init both in main().",
+    "fix": "Uart& uart1() { static Uart u(USART1, 115200); return u; }",
+    "id": "bug-cpp-static-init-order",
+    "lang": "cpp",
+    "tags": [
+      "static-init-order"
+    ],
+    "title": "After a change in link order, the board HardFaults before main(). Tap the bug.",
+    "topic": "cpp",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      4
+    ],
+    "code": "void USART2_IRQHandler(void) {\n    uint32_t isr = USART2->ISR;\n    if (isr & USART_ISR_ORE) {\n        USART2->ISR &= ~USART_ISR_ORE;\n        rx_errors++;\n    }\n    if (isr & USART_ISR_RXNE) {\n        rx_push(USART2->RDR);\n    }\n}",
+    "difficulty": 3,
+    "explain": "On STM32L4 the ISR register is read-only. Writing it does nothing, so ORE stays set. Reading RDR does not clear ORE on this USART. With RXNEIE on, ORE keeps the interrupt pending, and the ISR runs again and again. Clear the flag with a write of USART_ICR_ORECF to the ICR register.",
+    "fix": "USART2->ICR = USART_ICR_ORECF;",
+    "id": "bug-uart-ore-isr-readonly",
+    "lang": "c",
+    "tags": [
+      "isr",
+      "spurious-irq",
+      "w1c-flag"
+    ],
+    "title": "STM32L4. After one RX overrun, main() never runs again. Tap the bug.",
+    "topic": "embedded",
+    "type": "bug"
+  },
+  {
+    "diff": " void EXTI0_IRQHandler(void) {\n-    EXTI->PR = EXTI_PR_PR0;\n+    EXTI->PR |= EXTI_PR_PR0;\n     button_event();\n }",
+    "difficulty": 2,
+    "explain": "EXTI->PR is write-1-to-clear. Writing 0 does nothing, so the old code was right. |= reads all pending bits and writes those 1s back. That clears every pending line, so an EXTI1 event that came at the same time is lost. For W1C registers, write only your own bit with =.",
+    "id": "pr-exti-pr-or-equal",
+    "lang": "c",
+    "pr": {
+      "author": "new-dev",
+      "body": "With = we write zeros to all other bits. Use |= so we do not touch the pending bits of other EXTI lines.",
+      "title": "Use |= to clear EXTI0 pending bit",
+      "verdict": "changes"
+    },
+    "tags": [
+      "w1c-flag",
+      "rmw-race",
+      "isr"
+    ],
+    "topic": "c",
+    "type": "pr"
+  },
+  {
+    "diff": "-void wait_us(uint32_t us) {\n-    delay_ms((us + 999) / 1000);\n-}\n+using namespace std::chrono;\n+void wait(microseconds t) {\n+    auto ms = duration_cast<milliseconds>(t);\n+    delay_ms(ms.count());\n+}\n // sensor needs 500 us after reset\n-wait_us(500);\n+wait(500us);",
+    "difficulty": 2,
+    "explain": "duration_cast rounds toward zero. 500 us becomes 0 ms, so there is no wait at all and the sensor is read too early. The old code rounded up to 1 ms. Typed durations are a good idea, but use std::chrono::ceil<milliseconds>(t) to keep the round-up.",
+    "id": "pr-cpp-chrono-duration-cast",
+    "lang": "cpp",
+    "pr": {
+      "author": "cpp-fan",
+      "body": "Typed durations instead of raw uint32_t. No more unit mix-ups.",
+      "title": "Use std::chrono for delays",
+      "verdict": "changes"
+    },
+    "tags": [
+      "truncation",
+      "peripheral-timing"
+    ],
+    "topic": "cpp",
+    "type": "pr"
+  },
+  {
+    "diff": "+static void i2c_bus_clear(void) {\n+    pin_od_output(SCL);\n+    pin_input(SDA);\n+    for (int i = 0; i < 9; i++) {\n+        if (pin_read(SDA)) break;\n+        pin_write(SCL, 0); delay_us(5);\n+        pin_write(SCL, 1); delay_us(5);\n+    }\n+    i2c_gpio_stop();\n+}\n void i2c_init(void) {\n+    i2c_bus_clear();\n     i2c_periph_init();\n }",
+    "difficulty": 2,
+    "explain": "Good change. If the MCU resets during a read, the slave still waits to send its bits and holds SDA low. Up to 9 SCL pulses let it finish the byte. A STOP then frees the bus. This is the bus clear from the I2C spec. It runs on GPIOs before the I2C peripheral takes the pins, which is correct.",
+    "id": "pr-i2c-bus-clear",
+    "lang": "c",
+    "pr": {
+      "author": "fw-lead",
+      "body": "After a reset in the middle of a read, the sensor holds SDA low and init fails. Clock it free first.",
+      "title": "Recover I2C bus when SDA is stuck low",
+      "verdict": "approve"
+    },
+    "source": "https://www.nxp.com/docs/en/user-guide/UM10204.pdf",
+    "tags": [
+      "i2c",
+      "bus-recovery"
+    ],
+    "topic": "embedded",
+    "type": "pr"
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n\nint main(void) {\n    float ms = 16777216.0f; /* 2^24 */\n    float next = ms + 1.0f;\n    printf(\"%.0f\\n\", next - ms);\n    return 0;\n}",
+    "difficulty": 2,
+    "explain": "float has a 24-bit mantissa. Above 2^24, the gap between two floats is 2, so 2^24 + 1 rounds back to 2^24. The time stops moving after 2^24 ms, about 4.66 hours. Keep time in uint32_t or uint64_t ticks. Use float only for the final result.",
+    "id": "c-float-ms-stuck",
+    "lang": "c",
+    "options": [
+      "0",
+      "1",
+      "2",
+      "Undefined behavior"
+    ],
+    "tags": [
+      "float-precision",
+      "tick-wrap"
+    ],
+    "title": "Uptime in ms stored as float. After ~4.7 hours, what does this print?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "0",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "fn main() {\n    let outs = [-5.0f32, 300.0, f32::NAN];\n    let duty: Vec<u8> =\n        outs.iter().map(|&o| o as u8).collect();\n    println!(\"{duty:?}\");\n}",
+    "difficulty": 2,
+    "explain": "Float-to-int as casts saturate in Rust. Values below 0 become 0, values above 255 become 255, and NaN becomes 0. This is different from int-to-int as, which cuts bits (300i32 as u8 is 44). Still clamp on purpose, so the limits are clear in the code.",
+    "id": "rs-float-as-saturate",
+    "lang": "rust",
+    "options": [
+      "[0, 255, 0]",
+      "[251, 44, 0]",
+      "It panics",
+      "[0, 44, 0]"
+    ],
+    "tags": [
+      "truncation",
+      "float-cast"
+    ],
+    "title": "PID output to an 8-bit PWM duty. What does this print?",
+    "topic": "rust",
+    "type": "quiz",
+    "verify": {
+      "expect": "[0, 255, 0]",
+      "lang": "rust"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "Vgs(th) (2-4 V) is only where the MOSFET starts to conduct. At 3.3 V it is half on, Rds(on) is high, and P = I² × R makes heat. Pick a logic-level MOSFET with Rds(on) given at Vgs = 2.5 V, or add a gate driver.",
+    "id": "el-mosfet-logic-level",
+    "options": [
+      "3.3 V is too low to turn it fully on; Rds(on) is rated at Vgs = 10 V",
+      "The GPIO cannot give enough DC current to the gate",
+      "The load current is above the MOSFET's rating",
+      "The gate needs a pull-up to 3.3 V"
+    ],
+    "tags": [
+      "mosfet",
+      "gate-drive"
+    ],
+    "title": "3.3 V GPIO drives the gate of an IRF540N. Load is 2 A. The MOSFET gets very hot. Why?",
+    "topic": "electronics",
+    "type": "quiz"
+  },
+  {
+    "bullets": [
+      "Read Rds(on) at the Vgs you really have (2.5 V or 4.5 V), not at 10 V.",
+      "Vgs(th) is where the MOSFET just starts to conduct. It is not where it is fully on.",
+      "Check the heat: P = I² × Rds(on). 2 A × 2 A × 0.05 Ω = 0.2 W.",
+      "Add a gate pull-down (about 100 kΩ). The pin floats during reset, and the load must stay off.",
+      "A small gate resistor (22-100 Ω) limits ringing and the peak GPIO current."
+    ],
+    "difficulty": 2,
+    "id": "concept-mosfet-gpio",
+    "tags": [
+      "mosfet",
+      "gate-drive"
+    ],
+    "title": "Switching a load with a MOSFET from a GPIO: 5 rules",
+    "topic": "electronics",
+    "type": "concept"
   }
 ]
