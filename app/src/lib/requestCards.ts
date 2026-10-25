@@ -20,6 +20,8 @@ const FILTER_NAME: Record<FeedFilter, string> = {
   js: 'JavaScript',
   jquery: 'jQuery',
   git: 'Git',
+  oop: 'OOP',
+  composer: 'Composer',
 };
 
 /**

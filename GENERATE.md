@@ -40,7 +40,7 @@ Working directory: the `devfeed/` folder.
    cargo run -q --release --manifest-path verifier/Cargo.toml -- check app/public/decks/<name>.json
    ```
    The profile says who the person is, their level, stack and topics. Their cards use their topics
-   (for example `php`, `symfony`, `js`, `jquery`, `git`), not the embedded ones. PHP and JS code cards get a
+   (for example `php`, `oop`, `composer`, `symfony`, `js`, `jquery`, `git`), not the embedded ones. PHP and JS code cards get a
    `verify` block too (`"lang": "php"` or `"lang": "js"`). They are committed together with yours in step 6.
 6. Commit only `app/public/cards.json`, `app/public/decks/` and the new inbox files, then push. The push deploys the app.
    The repo is on the personal github.com account (`kemolife`), so push with the `gh` login for github.com only.

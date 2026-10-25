@@ -1,0 +1,204 @@
+[
+  {
+    "id": "oop-readonly-promotion",
+    "type": "quiz",
+    "topic": "oop",
+    "tags": [
+      "readonly",
+      "value-object"
+    ],
+    "difficulty": 2,
+    "title": "What does this print?",
+    "lang": "php",
+    "code": "final class Money\n{\n    public function __construct(\n        public readonly int $cents,\n    ) {}\n}\n\n$m = new Money(500);\ntry {\n    $m->cents = 100;\n} catch (Error $e) {\n    echo get_class($e);\n}",
+    "options": [
+      "Error",
+      "Nothing: cents is now 100",
+      "A warning, then 100",
+      "TypeError"
+    ],
+    "answer": 0,
+    "explain": "public readonly int $cents in the constructor is 'constructor promotion': it declares the property and sets it. readonly means it can be set once, inside the class. Changing it later throws an Error. Good for value objects like Money: nobody can change the amount by mistake.",
+    "verify": {
+      "lang": "php",
+      "expect": "Error"
+    }
+  },
+  {
+    "id": "oop-static-vs-self",
+    "type": "quiz",
+    "topic": "oop",
+    "tags": [
+      "late-static-binding"
+    ],
+    "difficulty": 3,
+    "title": "What does this print?",
+    "lang": "php",
+    "code": "class Model\n{\n    public static function create(): static\n    {\n        return new static();\n    }\n}\n\nclass User extends Model {}\n\necho get_class(User::create());",
+    "options": [
+      "Model",
+      "User",
+      "static",
+      "Error"
+    ],
+    "answer": 1,
+    "explain": "new static() creates the class that was called: User::create() makes a User. new self() always makes the class where the code is written: Model. Factories in base classes use static for this reason.",
+    "verify": {
+      "lang": "php",
+      "expect": "User"
+    }
+  },
+  {
+    "id": "oop-object-handle-vs-array",
+    "type": "quiz",
+    "topic": "oop",
+    "tags": [
+      "objects-vs-arrays"
+    ],
+    "difficulty": 2,
+    "title": "Object vs array in a function. What does this print?",
+    "lang": "php",
+    "code": "class Cart\n{\n    public array $items = [];\n}\n\nfunction addItem(Cart $c): void { $c->items[] = 'book'; }\nfunction addTag(array $t): void { $t[] = 'new'; }\n\n$cart = new Cart();\n$tags = [];\naddItem($cart);\naddTag($tags);\n\necho count($cart->items), count($tags);",
+    "options": [
+      "11",
+      "10",
+      "01",
+      "00"
+    ],
+    "answer": 1,
+    "explain": "An object is passed as a handle: the function changes the same Cart, so it has 1 item. An array is copied: the function changes its own copy, and $tags stays empty. To change an array in a function, return the new array (or use &$t).",
+    "verify": {
+      "lang": "php",
+      "expect": "10"
+    }
+  },
+  {
+    "id": "bug-oop-parent-construct",
+    "type": "bug",
+    "topic": "oop",
+    "tags": [
+      "constructors",
+      "inheritance"
+    ],
+    "difficulty": 2,
+    "title": "Error: $logger must not be accessed before initialization. Tap the bug.",
+    "lang": "php",
+    "code": "class BaseController\n{\n    protected LoggerInterface $logger;\n\n    public function __construct(LoggerInterface $logger)\n    {\n        $this->logger = $logger;\n    }\n}\n\nclass OrderController extends BaseController\n{\n    public function __construct(private OrderRepository $orders) {}\n\n    public function list(): void\n    {\n        $this->logger->info('list');\n    }\n}",
+    "bugLines": [
+      13
+    ],
+    "explain": "A child constructor replaces the parent constructor. PHP does not call the parent one by itself, so $logger is never set. Pass the logger in and call parent::__construct(). In Symfony, injecting LoggerInterface straight into the class you need is often simpler than a base class.",
+    "fix": "public function __construct(\n    LoggerInterface $logger,\n    private OrderRepository $orders,\n) {\n    parent::__construct($logger);\n}"
+  },
+  {
+    "id": "concept-oop-everyday",
+    "type": "concept",
+    "topic": "oop",
+    "tags": [
+      "oop-basics"
+    ],
+    "difficulty": 1,
+    "title": "OOP you use every day in Symfony",
+    "bullets": [
+      "A class is the plan, an object is one thing made from it (new User()).",
+      "An interface is a contract: MailerInterface says what a mailer can do. Depend on interfaces, not classes.",
+      "Get dependencies in the constructor (autowiring), not with new inside methods.",
+      "Use final and readonly for small value objects (Money, Email): fewer surprises.",
+      "Prefer composition (a class uses a service) over long inheritance chains."
+    ]
+  },
+  {
+    "id": "composer-lock-commit",
+    "type": "quiz",
+    "topic": "composer",
+    "tags": [
+      "composer-lock"
+    ],
+    "difficulty": 1,
+    "title": "In a Symfony application, should composer.lock be committed?",
+    "options": [
+      "No, Composer creates it",
+      "Yes: everyone and the server install the same versions",
+      "Only the vendor/ folder",
+      "Only for libraries"
+    ],
+    "answer": 1,
+    "explain": "composer.lock stores the exact version of every package. With it, your laptop, your team and the server run the same code. Commit composer.lock for applications. Never commit vendor/."
+  },
+  {
+    "id": "composer-install-vs-update",
+    "type": "quiz",
+    "topic": "composer",
+    "tags": [
+      "composer-commands"
+    ],
+    "difficulty": 1,
+    "title": "You pulled a colleague's branch. Which command do you run?",
+    "options": [
+      "composer update",
+      "composer install",
+      "composer dump-autoload --force",
+      "rm -rf vendor && composer update"
+    ],
+    "answer": 1,
+    "explain": "composer install reads composer.lock and installs exactly those versions. composer update looks for newer versions and rewrites composer.lock: do that only when you want to upgrade, in its own PR."
+  },
+  {
+    "id": "composer-caret",
+    "type": "quiz",
+    "topic": "composer",
+    "tags": [
+      "version-constraints"
+    ],
+    "difficulty": 2,
+    "title": "\"symfony/mailer\": \"^6.4\" allows which versions?",
+    "options": [
+      ">=6.4.0 and <7.0.0",
+      "only 6.4.x",
+      "any version >=6.4",
+      ">=6.4.0 and <6.5.0"
+    ],
+    "answer": 0,
+    "explain": "^ allows updates that should not break your code: same major version. ^6.4 means 6.4 up to, but not including, 7.0. ~6.4.0 would mean 6.4.x only."
+  },
+  {
+    "id": "pr-composer-require-dev",
+    "type": "pr",
+    "topic": "composer",
+    "tags": [
+      "require-dev"
+    ],
+    "difficulty": 1,
+    "lang": "php",
+    "pr": {
+      "title": "Add PHPUnit",
+      "author": "junior-dev",
+      "body": "Ran composer require phpunit/phpunit.",
+      "verdict": "changes"
+    },
+    "diff": " \"require\": {\n     \"php\": \">=8.2\",\n     \"symfony/framework-bundle\": \"7.1.*\",\n+    \"phpunit/phpunit\": \"^11.0\",\n     \"doctrine/orm\": \"^3.2\"\n },",
+    "explain": "PHPUnit is a tool for development. In require it is installed on the production server too: more code, more possible security problems, slower deploys. Tools for tests and debugging belong in require-dev.",
+    "fix": "# undo, then add it as a dev package\ncomposer remove phpunit/phpunit\ncomposer require --dev phpunit/phpunit\n\n# composer.json\n\"require-dev\": {\n    \"phpunit/phpunit\": \"^11.0\"\n}"
+  },
+  {
+    "id": "composer-psr4-case",
+    "type": "quiz",
+    "topic": "composer",
+    "tags": [
+      "autoload",
+      "psr-4"
+    ],
+    "difficulty": 2,
+    "title": "Works on your Mac. On the Linux server: Class \"App\\Service\\Mailer\" not found. Why?",
+    "lang": "php",
+    "code": "// composer.json\n\"autoload\": { \"psr-4\": { \"App\\\\\": \"src/\" } }\n\n// file: src/service/Mailer.php\nnamespace App\\Service;\n\nclass Mailer {}",
+    "options": [
+      "Composer is broken on Linux",
+      "Folder is service/, namespace says Service: Linux paths are case-sensitive",
+      "Linux needs composer update",
+      "The class must be final"
+    ],
+    "answer": 1,
+    "explain": "PSR-4 turns App\\Service\\Mailer into src/Service/Mailer.php. macOS finds src/service/ anyway, because its disk ignores case. Linux does not. Rename the folder (git mv src/service src/Service) so the path matches the namespace exactly."
+  }
+]

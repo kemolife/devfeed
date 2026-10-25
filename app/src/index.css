@@ -24,27 +24,27 @@
   --color-syn-macro: #ffa657;
 }
 
-/* "bloom": light and soft, rose and lavender (Olha's deck). Same token names, so every
-   component follows without changes. */
-[data-theme='bloom'] {
+/* "sky": light and calm blue (Olha's deck). Same token names, so every component
+   follows without changes. */
+[data-theme='sky'] {
   color-scheme: light;
-  --color-bg: #fdf7fb;
+  --color-bg: #f4f8fe;
   --color-surface: #ffffff;
-  --color-surface-2: #f5ebf4;
-  --color-line: #ead9e8;
-  --color-fg: #2d2433;
-  --color-muted: #84738b;
-  --color-accent: #c54b86;
-  --color-ok: #23875c;
-  --color-bad: #cf3d5c;
+  --color-surface-2: #e8f0fb;
+  --color-line: #d5e2f3;
+  --color-fg: #1e2a3b;
+  --color-muted: #69788e;
+  --color-accent: #2c6bd1;
+  --color-ok: #1f8657;
+  --color-bad: #cc3f57;
 
-  --color-syn-kw: #b0306f;
-  --color-syn-type: #2f69ad;
-  --color-syn-num: #9a6300;
-  --color-syn-str: #2b7d50;
-  --color-syn-com: #9e8ea7;
-  --color-syn-fn: #7346bd;
-  --color-syn-macro: #b5601a;
+  --color-syn-kw: #8a3db5;
+  --color-syn-type: #1d6aa8;
+  --color-syn-num: #a05c00;
+  --color-syn-str: #23804f;
+  --color-syn-com: #8b98ab;
+  --color-syn-fn: #5a45c7;
+  --color-syn-macro: #b35d18;
 }
 
 html,

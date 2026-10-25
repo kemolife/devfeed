@@ -618,5 +618,207 @@
     "title": "Before you open a PR on Bitbucket",
     "topic": "git",
     "type": "concept"
+  },
+  {
+    "answer": 0,
+    "code": "final class Money\n{\n    public function __construct(\n        public readonly int $cents,\n    ) {}\n}\n\n$m = new Money(500);\ntry {\n    $m->cents = 100;\n} catch (Error $e) {\n    echo get_class($e);\n}",
+    "difficulty": 2,
+    "explain": "public readonly int $cents in the constructor is 'constructor promotion': it declares the property and sets it. readonly means it can be set once, inside the class. Changing it later throws an Error. Good for value objects like Money: nobody can change the amount by mistake.",
+    "id": "oop-readonly-promotion",
+    "lang": "php",
+    "options": [
+      "Error",
+      "Nothing: cents is now 100",
+      "A warning, then 100",
+      "TypeError"
+    ],
+    "tags": [
+      "readonly",
+      "value-object"
+    ],
+    "title": "What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "Error",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "class Model\n{\n    public static function create(): static\n    {\n        return new static();\n    }\n}\n\nclass User extends Model {}\n\necho get_class(User::create());",
+    "difficulty": 3,
+    "explain": "new static() creates the class that was called: User::create() makes a User. new self() always makes the class where the code is written: Model. Factories in base classes use static for this reason.",
+    "id": "oop-static-vs-self",
+    "lang": "php",
+    "options": [
+      "Model",
+      "User",
+      "static",
+      "Error"
+    ],
+    "tags": [
+      "late-static-binding"
+    ],
+    "title": "What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "User",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "class Cart\n{\n    public array $items = [];\n}\n\nfunction addItem(Cart $c): void { $c->items[] = 'book'; }\nfunction addTag(array $t): void { $t[] = 'new'; }\n\n$cart = new Cart();\n$tags = [];\naddItem($cart);\naddTag($tags);\n\necho count($cart->items), count($tags);",
+    "difficulty": 2,
+    "explain": "An object is passed as a handle: the function changes the same Cart, so it has 1 item. An array is copied: the function changes its own copy, and $tags stays empty. To change an array in a function, return the new array (or use &$t).",
+    "id": "oop-object-handle-vs-array",
+    "lang": "php",
+    "options": [
+      "11",
+      "10",
+      "01",
+      "00"
+    ],
+    "tags": [
+      "objects-vs-arrays"
+    ],
+    "title": "Object vs array in a function. What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "10",
+      "lang": "php"
+    }
+  },
+  {
+    "bugLines": [
+      13
+    ],
+    "code": "class BaseController\n{\n    protected LoggerInterface $logger;\n\n    public function __construct(LoggerInterface $logger)\n    {\n        $this->logger = $logger;\n    }\n}\n\nclass OrderController extends BaseController\n{\n    public function __construct(private OrderRepository $orders) {}\n\n    public function list(): void\n    {\n        $this->logger->info('list');\n    }\n}",
+    "difficulty": 2,
+    "explain": "A child constructor replaces the parent constructor. PHP does not call the parent one by itself, so $logger is never set. Pass the logger in and call parent::__construct(). In Symfony, injecting LoggerInterface straight into the class you need is often simpler than a base class.",
+    "fix": "public function __construct(\n    LoggerInterface $logger,\n    private OrderRepository $orders,\n) {\n    parent::__construct($logger);\n}",
+    "id": "bug-oop-parent-construct",
+    "lang": "php",
+    "tags": [
+      "constructors",
+      "inheritance"
+    ],
+    "title": "Error: $logger must not be accessed before initialization. Tap the bug.",
+    "topic": "oop",
+    "type": "bug"
+  },
+  {
+    "bullets": [
+      "A class is the plan, an object is one thing made from it (new User()).",
+      "An interface is a contract: MailerInterface says what a mailer can do. Depend on interfaces, not classes.",
+      "Get dependencies in the constructor (autowiring), not with new inside methods.",
+      "Use final and readonly for small value objects (Money, Email): fewer surprises.",
+      "Prefer composition (a class uses a service) over long inheritance chains."
+    ],
+    "difficulty": 1,
+    "id": "concept-oop-everyday",
+    "tags": [
+      "oop-basics"
+    ],
+    "title": "OOP you use every day in Symfony",
+    "topic": "oop",
+    "type": "concept"
+  },
+  {
+    "answer": 1,
+    "difficulty": 1,
+    "explain": "composer.lock stores the exact version of every package. With it, your laptop, your team and the server run the same code. Commit composer.lock for applications. Never commit vendor/.",
+    "id": "composer-lock-commit",
+    "options": [
+      "No, Composer creates it",
+      "Yes: everyone and the server install the same versions",
+      "Only the vendor/ folder",
+      "Only for libraries"
+    ],
+    "tags": [
+      "composer-lock"
+    ],
+    "title": "In a Symfony application, should composer.lock be committed?",
+    "topic": "composer",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 1,
+    "explain": "composer install reads composer.lock and installs exactly those versions. composer update looks for newer versions and rewrites composer.lock: do that only when you want to upgrade, in its own PR.",
+    "id": "composer-install-vs-update",
+    "options": [
+      "composer update",
+      "composer install",
+      "composer dump-autoload --force",
+      "rm -rf vendor && composer update"
+    ],
+    "tags": [
+      "composer-commands"
+    ],
+    "title": "You pulled a colleague's branch. Which command do you run?",
+    "topic": "composer",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "^ allows updates that should not break your code: same major version. ^6.4 means 6.4 up to, but not including, 7.0. ~6.4.0 would mean 6.4.x only.",
+    "id": "composer-caret",
+    "options": [
+      ">=6.4.0 and <7.0.0",
+      "only 6.4.x",
+      "any version >=6.4",
+      ">=6.4.0 and <6.5.0"
+    ],
+    "tags": [
+      "version-constraints"
+    ],
+    "title": "\"symfony/mailer\": \"^6.4\" allows which versions?",
+    "topic": "composer",
+    "type": "quiz"
+  },
+  {
+    "diff": " \"require\": {\n     \"php\": \">=8.2\",\n     \"symfony/framework-bundle\": \"7.1.*\",\n+    \"phpunit/phpunit\": \"^11.0\",\n     \"doctrine/orm\": \"^3.2\"\n },",
+    "difficulty": 1,
+    "explain": "PHPUnit is a tool for development. In require it is installed on the production server too: more code, more possible security problems, slower deploys. Tools for tests and debugging belong in require-dev.",
+    "fix": "# undo, then add it as a dev package\ncomposer remove phpunit/phpunit\ncomposer require --dev phpunit/phpunit\n\n# composer.json\n\"require-dev\": {\n    \"phpunit/phpunit\": \"^11.0\"\n}",
+    "id": "pr-composer-require-dev",
+    "lang": "php",
+    "pr": {
+      "author": "junior-dev",
+      "body": "Ran composer require phpunit/phpunit.",
+      "title": "Add PHPUnit",
+      "verdict": "changes"
+    },
+    "tags": [
+      "require-dev"
+    ],
+    "topic": "composer",
+    "type": "pr"
+  },
+  {
+    "answer": 1,
+    "code": "// composer.json\n\"autoload\": { \"psr-4\": { \"App\\\\\": \"src/\" } }\n\n// file: src/service/Mailer.php\nnamespace App\\Service;\n\nclass Mailer {}",
+    "difficulty": 2,
+    "explain": "PSR-4 turns App\\Service\\Mailer into src/Service/Mailer.php. macOS finds src/service/ anyway, because its disk ignores case. Linux does not. Rename the folder (git mv src/service src/Service) so the path matches the namespace exactly.",
+    "id": "composer-psr4-case",
+    "lang": "php",
+    "options": [
+      "Composer is broken on Linux",
+      "Folder is service/, namespace says Service: Linux paths are case-sensitive",
+      "Linux needs composer update",
+      "The class must be final"
+    ],
+    "tags": [
+      "autoload",
+      "psr-4"
+    ],
+    "title": "Works on your Mac. On the Linux server: Class \"App\\Service\\Mailer\" not found. Why?",
+    "topic": "composer",
+    "type": "quiz"
   }
 ]

@@ -131,7 +131,7 @@ fn verify_card(card: &Value) -> Result<&'static str, String> {
     s("id").ok_or("missing id")?;
     match s("topic") {
         // main deck | web decks
-        Some("rust" | "c" | "cpp" | "embedded" | "electronics" | "php" | "symfony" | "js" | "jquery" | "git") => {}
+        Some("rust" | "c" | "cpp" | "embedded" | "electronics" | "php" | "symfony" | "js" | "jquery" | "git" | "oop" | "composer") => {}
         _ => return Err("bad topic".into()),
     }
     match card["difficulty"].as_u64() {

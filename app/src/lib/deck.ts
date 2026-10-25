@@ -13,6 +13,11 @@ export interface Deck {
   requests: boolean;
   /** Color theme from index.css ([data-theme=…]); none = the dark default. */
   theme?: { name: string; browserColor: string };
+  /** Own install manifest (public/), so the installed app starts on this deck. iPhone home-screen
+   *  apps have their own storage, separate from Safari, so the remembered deck is not enough there. */
+  manifest?: string;
+  /** Name under the home-screen icon on iPhone. */
+  appTitle?: string;
 }
 
 const DECKS: Record<string, Deck> = {
@@ -41,11 +46,15 @@ const DECKS: Record<string, Deck> = {
       { key: 'symfony', label: 'Symfony' },
       { key: 'js', label: 'JavaScript' },
       { key: 'jquery', label: 'jQuery' },
+      { key: 'oop', label: 'OOP' },
+      { key: 'composer', label: 'Composer' },
       { key: 'git', label: 'Git' },
       { key: 'pr', label: 'PR review' },
     ],
     requests: false,
-    theme: { name: 'bloom', browserColor: '#fdf7fb' },
+    theme: { name: 'sky', browserColor: '#f4f8fe' },
+    manifest: 'manifest-olha.webmanifest',
+    appTitle: 'BitFeed',
   },
 };
 
@@ -69,9 +78,29 @@ function resolveDeck(): Deck {
 
 export const deck: Deck = typeof window === 'undefined' ? (DECKS.main as Deck) : resolveDeck();
 
-/** Sets the deck's color theme on <html> and the browser bar color. Call before the first render. */
-export function applyDeckTheme(): void {
-  if (!deck.theme) return;
-  document.documentElement.dataset.theme = deck.theme.name;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', deck.theme.browserColor);
+function setHeadTag(selector: string, tag: 'link' | 'meta', attrs: Record<string, string>): void {
+  let el = document.head.querySelector(selector);
+  if (!el) {
+    el = document.createElement(tag);
+    document.head.appendChild(el);
+  }
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+}
+
+/** Theme, browser bar color and install manifest of the deck. Call before the first render. */
+export function applyDeck(): void {
+  if (deck.theme) {
+    document.documentElement.dataset.theme = deck.theme.name;
+    setHeadTag('meta[name="theme-color"]', 'meta', { name: 'theme-color', content: deck.theme.browserColor });
+  }
+  if (deck.manifest) {
+    const href = `${import.meta.env.BASE_URL}${deck.manifest}`;
+    setHeadTag('link[rel="manifest"]', 'link', { rel: 'manifest', href });
+  }
+  if (deck.appTitle) {
+    setHeadTag('meta[name="apple-mobile-web-app-title"]', 'meta', {
+      name: 'apple-mobile-web-app-title',
+      content: deck.appTitle,
+    });
+  }
 }

@@ -10,7 +10,9 @@ export type Topic =
   | 'symfony'
   | 'js'
   | 'jquery'
-  | 'git';
+  | 'git'
+  | 'oop'
+  | 'composer';
 export type CodeLang = 'c' | 'cpp' | 'rust' | 'php' | 'js' | 'twig' | 'sql';
 
 interface CardBase {

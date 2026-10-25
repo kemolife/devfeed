@@ -13,6 +13,8 @@ const TOPIC_LABEL: Record<Card['topic'], string> = {
   js: 'JavaScript',
   jquery: 'jQuery',
   git: 'Git',
+  oop: 'OOP',
+  composer: 'Composer',
 };
 
 const TYPE_LABEL: Record<Card['type'], string> = {
