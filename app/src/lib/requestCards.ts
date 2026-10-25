@@ -4,6 +4,10 @@ export const REPO = 'kemolife/devfeed';
 export const REPO_URL = `https://github.com/${REPO}`;
 export const REQUEST_LABEL = 'card-request';
 
+/** Keep in sync with the "bitfeed-card-requests" scheduled task (cron 5 8,13,19 * * *). */
+export const ARRIVAL_TEXT =
+  'New cards arrive after the next check at 08:00, 13:00 or 19:00, while the Mac is on.';
+
 const FILTER_NAME: Record<FeedFilter, string> = {
   embedded: 'embedded',
   c: 'C',
@@ -25,7 +29,7 @@ export function requestBody(count: number, filters: FeedFilter[], extraTopics: s
     `count: ${count}`,
     `topics: ${topics.length ? topics.join(', ') : 'any'}`,
     '',
-    '_Sent from the BitFeed app. New cards arrive within about 2 hours while the Mac is on._',
+    `_Sent from the BitFeed app. ${ARRIVAL_TEXT}_`,
   ].join('\n');
 }
 

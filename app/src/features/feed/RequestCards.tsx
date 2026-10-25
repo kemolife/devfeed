@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useRequestCards } from '../../api/useRequestCards';
 import { loadToken, looksLikeToken, saveToken } from '../../lib/githubToken';
-import { NEW_TOKEN_URL, requestIssue, requestIssueUrl } from '../../lib/requestCards';
+import { ARRIVAL_TEXT, NEW_TOKEN_URL, requestIssue, requestIssueUrl } from '../../lib/requestCards';
 import { useProgressStore } from '../../store/progressStore';
 
 const COUNTS = [10, 20];
@@ -45,9 +45,7 @@ export function RequestCards() {
         />
       ) : (
         <>
-          <p className="mt-1 text-xs text-muted">
-            New cards arrive within about 2 hours while your Mac is on.
-          </p>
+          <p className="mt-1 text-xs text-muted">{ARRIVAL_TEXT}</p>
           <div className="mt-3 flex items-center gap-2">
             <span className="text-xs text-muted">How many</span>
             {COUNTS.map((c) => (
@@ -91,7 +89,7 @@ export function RequestCards() {
               <a href={request.data.html_url} target="_blank" rel="noopener noreferrer" className="underline">
                 #{request.data.number}
               </a>
-              . New cards in about 2 hours.
+              . New cards after the next check (08:00, 13:00 or 19:00).
             </p>
           )}
           {request.isError && <p className="animate-pop mt-2 text-sm text-bad">{request.error.message}</p>}

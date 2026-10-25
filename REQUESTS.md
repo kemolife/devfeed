@@ -8,7 +8,7 @@ count: 10
 topics: embedded, Rust, DMA, CAN bus
 ```
 
-This task turns those issues into new cards.
+This task turns those issues into new cards. It runs 3 times a day: 08:05, 13:05 and 19:05.
 
 Working directory: the `devfeed/` folder. All `gh` commands use `GH_HOST=github.com`.
 
@@ -31,7 +31,8 @@ Working directory: the `devfeed/` folder. All `gh` commands use `GH_HOST=github.
      --author kemolife --json number,body --limit 5
    ```
    If the list is empty: **stop here and say "No open card requests."** Do nothing else.
-2. `git pull --rebase -q`.
+2. `git pull --rebase -q`. Then run the card summary from GENERATE.md step 1.
+   **Never read `app/public/cards.json` itself**: the summary has the ids, titles and examples you need.
 3. For each request (oldest first), write `count` new cards to `inbox/request-<issue number>.json`,
    following the card rules, schema and topic list in `GENERATE.md`. Mix types like GENERATE.md does
    (bug, pr, quiz with `verify`, electronics quiz, concept), scaled to `count`.

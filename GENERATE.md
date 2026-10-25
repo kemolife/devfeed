@@ -12,7 +12,12 @@ Working directory: the `devfeed/` folder.
    ```bash
    git pull --rebase -q
    ```
-1. Read `app/public/cards.json`. Note existing `id`s and titles. Count cards per `topic` and per `type`.
+1. **Do not read `app/public/cards.json`** (it is large and grows every day). Run the short summary instead:
+   ```bash
+   cargo run -q --release --manifest-path verifier/Cargo.toml -- summary app/public/cards.json
+   ```
+   It prints counts per topic, type and tag, one line per card (`id | type | topic | tags | title`)
+   and one full example card per type. Use it to avoid duplicate ids and ideas and to copy the style.
 2. Write **10 new cards** to `inbox/<YYYY-MM-DD>.json` (a JSON array). Mix:
    - 3 × `bug` (spot the bug line)
    - 3 × `pr` (approve / request changes). About 1 in 3 PRs must be correct (`"verdict": "approve"`).

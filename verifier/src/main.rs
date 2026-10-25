@@ -21,7 +21,8 @@ fn main() -> ExitCode {
     let result = match args.get(1).map(String::as_str) {
         Some("check") if args.len() == 3 => check(&args[2]),
         Some("merge") if args.len() == 4 => merge(&args[2], &args[3]),
-        _ => Err("usage: verifier check <cards.json> | merge <cards.json> <new.json>".into()),
+        Some("summary") if args.len() == 3 => summary(&args[2]),
+        _ => Err("usage: verifier check <cards.json> | merge <cards.json> <new.json> | summary <cards.json>".into()),
     };
     match result {
         Ok(true) => ExitCode::SUCCESS,
@@ -75,6 +76,45 @@ fn merge(cards_path: &str, new_path: &str) -> Result<bool, String> {
     let json = serde_json::to_string_pretty(&cards).map_err(|e| e.to_string())?;
     fs::write(cards_path, json + "\n").map_err(|e| format!("{cards_path}: {e}"))?;
     println!("\nadded {added}, rejected {rejected}, total {}", cards.len());
+    Ok(true)
+}
+
+/// Short view for the card generator: counts, one line per card, and one full example per
+/// type. About 10x smaller than reading cards.json, and it stays small as the file grows.
+fn summary(path: &str) -> Result<bool, String> {
+    use std::collections::BTreeMap;
+    let cards = load(path)?;
+    let mut by_topic: BTreeMap<String, usize> = BTreeMap::new();
+    let mut by_type: BTreeMap<String, usize> = BTreeMap::new();
+    let mut tags: BTreeMap<String, usize> = BTreeMap::new();
+    let mut examples: BTreeMap<String, &Value> = BTreeMap::new();
+    let str_of = |v: &Value| v.as_str().unwrap_or("?").to_string();
+
+    for c in &cards {
+        *by_topic.entry(str_of(&c["topic"])).or_default() += 1;
+        *by_type.entry(str_of(&c["type"])).or_default() += 1;
+        for t in c["tags"].as_array().into_iter().flatten() {
+            *tags.entry(str_of(t)).or_default() += 1;
+        }
+        examples.entry(str_of(&c["type"])).or_insert(c);
+    }
+    let fmt = |m: &BTreeMap<String, usize>| {
+        m.iter().map(|(k, v)| format!("{k}={v}")).collect::<Vec<_>>().join(" ")
+    };
+    println!("{} cards", cards.len());
+    println!("topics: {}", fmt(&by_topic));
+    println!("types:  {}", fmt(&by_type));
+    println!("tags:   {}", fmt(&tags));
+    println!("\nid | type | topic | tags | title");
+    for c in &cards {
+        let title = c["title"].as_str().or(c["pr"]["title"].as_str()).unwrap_or("");
+        let tags: Vec<String> = c["tags"].as_array().into_iter().flatten().map(str_of).collect();
+        println!("{} | {} | {} | {} | {}", str_of(&c["id"]), str_of(&c["type"]), str_of(&c["topic"]), tags.join(","), title);
+    }
+    println!("\nOne full example per type:");
+    for (t, c) in examples {
+        println!("--- {t}\n{}", serde_json::to_string_pretty(c).map_err(|e| e.to_string())?);
+    }
     Ok(true)
 }
 
