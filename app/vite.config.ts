@@ -14,23 +14,9 @@ export default defineConfig({
       // 'prompt' = the client does not auto-reload mid-card; UpdateToast offers Reload.
       registerType: 'prompt',
       includeAssets: ['icon.svg'],
-      manifest: {
-        name: 'BitFeed — firmware in 60 seconds',
-        short_name: 'BitFeed',
-        description: 'Swipe feed of embedded C, C++, Rust and electronics puzzles and PR reviews.',
-        theme_color: '#0b0f14',
-        background_color: '#0b0f14',
-        display: 'standalone',
-        orientation: 'portrait',
-        // relative to the manifest, so it works under any base path
-        start_url: '.',
-        scope: '.',
-        icons: [
-          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-        ],
-      },
+      // Each deck page links its own static manifest (public/manifest*.webmanifest).
+      // iPhone reads the manifest when the page loads, so it must be in the HTML, not swapped by JS.
+      manifest: false,
       workbox: {
         // A new worker takes over at once. A waiting worker needs a "skip waiting" message
         // from the page, which older installed versions never send, so they got stuck.
@@ -39,7 +25,7 @@ export default defineConfig({
         // cards.json changes daily: always try the network first, fall back to cache offline
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.pathname.endsWith('/cards.json'),
+            urlPattern: ({ url }) => /\/(cards|decks\/[\w-]+)\.json$/.test(url.pathname),
             handler: 'NetworkFirst',
             options: { cacheName: 'cards' },
           },
@@ -47,6 +33,12 @@ export default defineConfig({
       },
     }),
   ],
+  // one page per deck: / (main) and /olha/
+  build: {
+    rollupOptions: {
+      input: { main: 'index.html', olha: 'olha/index.html' },
+    },
+  },
   server: { host: true, port: 5180 },
   test: {
     environment: 'jsdom',

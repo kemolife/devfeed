@@ -1,6 +1,6 @@
 # Deck: olha
 
-Link: https://kemolife.github.io/devfeed/?deck=olha
+Link: https://kemolife.github.io/devfeed/olha/
 Cards file: `app/public/decks/olha.json`
 
 ## Who

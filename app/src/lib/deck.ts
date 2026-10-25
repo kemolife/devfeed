@@ -13,11 +13,6 @@ export interface Deck {
   requests: boolean;
   /** Color theme from index.css ([data-theme=…]); none = the dark default. */
   theme?: { name: string; browserColor: string };
-  /** Own install manifest (public/), so the installed app starts on this deck. iPhone home-screen
-   *  apps have their own storage, separate from Safari, so the remembered deck is not enough there. */
-  manifest?: string;
-  /** Name under the home-screen icon on iPhone. */
-  appTitle?: string;
 }
 
 const DECKS: Record<string, Deck> = {
@@ -53,18 +48,26 @@ const DECKS: Record<string, Deck> = {
     ],
     requests: false,
     theme: { name: 'sky', browserColor: '#f4f8fe' },
-    manifest: 'manifest-olha.webmanifest',
-    appTitle: 'BitFeed',
   },
 };
 
 const STORAGE_KEY = 'bitfeed-deck';
 
 /**
- * Deck from ?deck=<id>, remembered on this device: the installed app starts at "."
- * without the query, so it must still open the same deck. ?deck=main switches back.
+ * Every deck except main has its own page: <base>/<id>/ (for example /devfeed/olha/), with its
+ * own manifest in the HTML. That page is what gets installed: an iPhone home-screen app has its
+ * own storage, separate from Safari, so only the address can say which deck it is.
+ *
+ * On the main page: ?deck=<id> and a deck remembered on this device (old installs and old
+ * ?deck=olha links) redirect to that deck's page. ?deck=main switches back for good.
  */
 function resolveDeck(): Deck {
+  const base = import.meta.env.BASE_URL;
+  const fromPath = window.location.pathname.startsWith(base)
+    ? window.location.pathname.slice(base.length).split('/')[0]
+    : '';
+  if (fromPath && DECKS[fromPath]) return DECKS[fromPath] as Deck;
+
   let id: string | null = null;
   try {
     id = new URLSearchParams(window.location.search).get('deck');
@@ -73,34 +76,17 @@ function resolveDeck(): Deck {
   } catch {
     // storage blocked: use the URL only
   }
-  return (id && DECKS[id]) || (DECKS.main as Deck);
+  if (id && id !== 'main' && DECKS[id]) {
+    window.location.replace(`${base}${id}/`);
+  }
+  return DECKS.main as Deck;
 }
 
 export const deck: Deck = typeof window === 'undefined' ? (DECKS.main as Deck) : resolveDeck();
 
-function setHeadTag(selector: string, tag: 'link' | 'meta', attrs: Record<string, string>): void {
-  let el = document.head.querySelector(selector);
-  if (!el) {
-    el = document.createElement(tag);
-    document.head.appendChild(el);
-  }
-  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
-}
-
-/** Theme, browser bar color and install manifest of the deck. Call before the first render. */
+/** Theme and browser bar color of the deck. Call before the first render. */
 export function applyDeck(): void {
-  if (deck.theme) {
-    document.documentElement.dataset.theme = deck.theme.name;
-    setHeadTag('meta[name="theme-color"]', 'meta', { name: 'theme-color', content: deck.theme.browserColor });
-  }
-  if (deck.manifest) {
-    const href = `${import.meta.env.BASE_URL}${deck.manifest}`;
-    setHeadTag('link[rel="manifest"]', 'link', { rel: 'manifest', href });
-  }
-  if (deck.appTitle) {
-    setHeadTag('meta[name="apple-mobile-web-app-title"]', 'meta', {
-      name: 'apple-mobile-web-app-title',
-      content: deck.appTitle,
-    });
-  }
+  if (!deck.theme) return;
+  document.documentElement.dataset.theme = deck.theme.name;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', deck.theme.browserColor);
 }
