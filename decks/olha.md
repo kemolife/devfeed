@@ -34,8 +34,9 @@ Git with Bitbucket pull requests.
   API for CSV/JSON files (front controller public/index.php, FileController, FileService, CsvFileActions /
   JsonFileActions strategy, exception hierarchy → HTTP codes, jQuery front, PHPUnit). Cards are "a senior
   asks you about your project": why it is built this way, what could break, what you would improve.
-  Read the repo again before writing (git clone --depth 1 into a temp folder): it changes, and new
-  commits are the best source for new questions. Never repeat an fp-* card idea (see the summary).
+  **Use the map `decks/olha-project.md`, do not clone or read the whole repo** (it does not change).
+  A local copy is at /Users/vitaliiantoniuk/Documents/projects/file_processing: open one file there only
+  when a card quotes exact lines. Never repeat an fp-* card idea (see the summary).
 
 ## Daily cards
 
