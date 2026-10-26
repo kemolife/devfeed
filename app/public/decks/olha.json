@@ -1419,5 +1419,455 @@
     ],
     "topic": "project",
     "type": "pr"
+  },
+  {
+    "answer": 1,
+    "code": "$action = \"rename\";\ntry {\n    echo match ($action) { \"list\" => \"L\", \"read\" => \"R\" };\n} catch (\\Throwable $e) {\n    echo get_class($e);\n}",
+    "difficulty": 3,
+    "explain": "match without a matching arm throws UnhandledMatchError. It is an Error, not a FileServiceException, so the user gets 500. Today it cannot happen, because ACTION_METHODS and the match have the same actions. But these are two lists: add 'rename' to one and forget the other, and you get a 500.",
+    "id": "fp-match-no-default",
+    "lang": "php",
+    "options": [
+      "Nothing, it returns null",
+      "UnhandledMatchError (an Error)",
+      "InvalidRequestException",
+      "A warning"
+    ],
+    "tags": [
+      "match",
+      "exceptions"
+    ],
+    "title": "handle() has match ($action) with no default. If an action passes checkAction() but has no arm, what is thrown?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "UnhandledMatchError",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "class A extends RuntimeException {}\nclass B extends A {}\n\n$e = new B();\necho match (true) {\n    $e instanceof A => 400,\n    $e instanceof B => 404,\n    default => 500,\n};",
+    "difficulty": 3,
+    "explain": "match (true) takes the FIRST arm that is true. B is also an A, so the A arm wins. In her code each exception extends FileServiceException directly, so the order does not matter yet. If one day FileNotFoundException extends StorageException, put the more specific class first.",
+    "id": "fp-match-true-order",
+    "lang": "php",
+    "options": [
+      "404",
+      "400",
+      "500",
+      "Error"
+    ],
+    "tags": [
+      "match",
+      "exceptions"
+    ],
+    "title": "getStatusCode() uses match (true) with instanceof. B extends A. What does this print?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "400",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "You can still catch FileServiceException (the controller does), but you cannot throw it directly. That forces a specific class, and each class has its own HTTP code in getStatusCode().",
+    "id": "fp-abstract-base-exception",
+    "options": [
+      "Abstract classes are faster",
+      "Nobody can throw the general one: every error must say what it is (not found, storage, invalid…)",
+      "PHP requires it for exceptions",
+      "So it cannot be caught"
+    ],
+    "tags": [
+      "exceptions",
+      "oop"
+    ],
+    "title": "Senior asks: why is FileServiceException abstract?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "LogicException means 'the code is wrong, fix the code' (for example a wrong argument from another class). RuntimeException means 'something outside went wrong at run time': a missing file, a full disk, bad user data. File processing errors are the second kind.",
+    "id": "fp-runtime-exception",
+    "options": [
+      "No difference",
+      "These errors come from the outside world (files, user input), not from a bug in the code",
+      "LogicException is deprecated",
+      "RuntimeException is faster"
+    ],
+    "tags": [
+      "exceptions"
+    ],
+    "title": "Senior asks: why does FileServiceException extend RuntimeException and not LogicException?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "code": "echo count([\"id\", \"fruit\", \"id\"]), \" \", count(array_unique([\"id\", \"fruit\", \"id\"]));",
+    "difficulty": 1,
+    "explain": "array_unique removes the second 'id', so the counts differ and read() throws 'Column names must be unique.'. Why it matters: array_combine() would silently keep only the last 'id' column, and data would be lost.",
+    "id": "fp-csv-unique-headers",
+    "lang": "php",
+    "options": [
+      "3 3",
+      "3 2",
+      "2 2",
+      "2 3"
+    ],
+    "tags": [
+      "validation",
+      "csv"
+    ],
+    "title": "CsvFileActions::read() checks headers with array_unique. Header is id,fruit,id. What does this print?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "3 2",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "write() accepts an empty list: no headers, no rows, so saveContent() writes an empty file. The old data is lost, with a '200 saved' answer. A senior may ask for a guard: refuse an empty list, or keep a backup before overwrite.",
+    "id": "fp-csv-empty-write",
+    "options": [
+      "Error: no data",
+      "The file is saved empty: all fruits are gone",
+      "Nothing changes",
+      "Row 1 error"
+    ],
+    "tags": [
+      "validation",
+      "data-loss"
+    ],
+    "title": "The page sends [] for write to fruits.csv by mistake. What happens?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 3,
+    "explain": "fopen('x') returns false in two cases: the name was taken a moment ago, or the folder is not writable. If the file now exists, try name_1, name_2…. If not, writing is impossible, so throw StorageException. Without that check, a read-only folder would make the while loop endless.",
+    "id": "fp-resolver-second-check",
+    "options": [
+      "A mistake, it can be removed",
+      "To tell 'someone took this name' (try the next) from 'cannot write at all' (throw), so the loop never runs forever",
+      "fopen needs it",
+      "For Windows only"
+    ],
+    "tags": [
+      "filesystem",
+      "error-handling"
+    ],
+    "title": "In FileNameResolver::createEmptyFile(), why is file_exists() checked again after fopen() fails?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 3,
+    "explain": "PHP checks post_max_size (often 8 MB, 2 MB in some setups) before your code runs. If the request is bigger, PHP drops the body, $request->files is empty, and the controller says 'No file uploaded.'. The 1 MB check only works for files below the PHP limit. Fix the limits in php.ini too, and check UploadedFile::getError() for a clear message.",
+    "id": "fp-upload-size-limit",
+    "options": [
+      "File is too big. Maximum size is 1 MB.",
+      "No file uploaded.",
+      "Uploaded.",
+      "Timeout"
+    ],
+    "tags": [
+      "upload",
+      "php-ini"
+    ],
+    "title": "MAX_UPLOAD_SIZE is 1 MB. Someone uploads a 50 MB file. What does the user most likely see?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 1,
+    "explain": "strict_types is per file, for the calls written in that file. One file without it would silently turn '5' into 5 again. Having it everywhere means wrong types fail early with a TypeError.",
+    "id": "fp-strict-types-every-file",
+    "options": [
+      "It is set once for the project",
+      "It works per file: each file decides how its own calls convert types",
+      "Composer adds it",
+      "Only index.php needs it"
+    ],
+    "tags": [
+      "strict-types"
+    ],
+    "title": "Senior asks: why is declare(strict_types=1) in every file?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "For one tiny helper a trait is OK and short. But a trait adds hidden methods to a class and cannot be replaced in a test. If the JSON rules grow (error messages, depth, big numbers), a JsonDecoder service is easier to test and change in one place.",
+    "id": "fp-trait-vs-class",
+    "options": [
+      "A trait is always best",
+      "A trait copies code into both classes; a small JsonDecoder class could be injected, mocked and tested alone",
+      "Traits are deprecated",
+      "Classes cannot hold one method"
+    ],
+    "tags": [
+      "traits",
+      "design"
+    ],
+    "title": "Senior asks: JsonDecodeTrait is used in FileController and JsonFileActions. Trait or small class?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "A 405 response should say what is allowed: Allow: DELETE. Tools and browsers can read it. Her MethodNotAllowedException already knows the expected method, so adding the header is small.",
+    "id": "fp-405-allow",
+    "options": [
+      "A Location header",
+      "An Allow header with the allowed method",
+      "Status 404 instead",
+      "An empty body"
+    ],
+    "tags": [
+      "http"
+    ],
+    "title": "DELETE action called with GET returns 405. What does the HTTP standard also expect in that answer?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "400 means 'your request is wrong' in general. 415 says exactly: this format is not supported. Small detail, but a senior notices when the codes tell the client what to fix.",
+    "id": "fp-415-status",
+    "options": [
+      "404 Not Found",
+      "415 Unsupported Media Type",
+      "500",
+      "409 Conflict"
+    ],
+    "tags": [
+      "http"
+    ],
+    "title": "Uploading notes.txt returns 400 today. Which code describes it more exactly?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": ".htaccess works only on Apache with mod_rewrite. The built-in PHP server ignores it, so locally you always call index.php?action=… directly. On nginx you would need a try_files rule instead.",
+    "id": "fp-htaccess",
+    "options": [
+      "Yes, always",
+      "No: .htaccess is for Apache only; php -S ignores it",
+      "Only on Linux",
+      "Composer reads it"
+    ],
+    "tags": [
+      "server",
+      "tooling"
+    ],
+    "title": "public/.htaccess sends unknown paths to index.php. Does composer serve (php -S) use it?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "Composer kills any script that runs longer than process-timeout (300 s). php -S runs until you stop it, so without this line the server would die after 5 minutes.",
+    "id": "fp-composer-timeout",
+    "options": [
+      "To make PHP faster",
+      "Composer stops scripts after 300 seconds; a dev server must run longer",
+      "To allow port 8000",
+      "To install packages"
+    ],
+    "tags": [
+      "composer",
+      "tooling"
+    ],
+    "title": "Senior asks: why is Composer\\Config::disableProcessTimeout in the serve script?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 1,
+    "explain": "Symfony is made of separate components. For a tiny API, one component gives the HTTP objects without routing, DI container and config. If the project grows (routes, services, forms), moving to the full framework is the next step.",
+    "id": "fp-one-symfony-component",
+    "options": [
+      "A mistake",
+      "The app needs only Request/Response: one small package, no framework rules or config",
+      "The framework does not support PHP 8.4",
+      "http-foundation is free, the framework is paid"
+    ],
+    "tags": [
+      "composer",
+      "architecture"
+    ],
+    "title": "Senior asks: why only symfony/http-foundation and not the full Symfony framework?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "storage/ is tracked because it has the sample files. Every test upload appears as a new file, easy to commit by mistake. Option: ignore storage/* but keep the samples with !storage/fruits.csv, or move samples to a fixtures folder.",
+    "id": "fp-gitignore-storage",
+    "options": [
+      "Nothing",
+      "Your uploaded test files in storage/: .gitignore ignores only vendor/ and caches",
+      "Only vendor/",
+      "An error"
+    ],
+    "tags": [
+      "git"
+    ],
+    "title": "You test uploads locally and run git status. What do you see, and why?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 3,
+    "explain": "PHPUnit makes mocks by extending the class, so final classes cannot be mocked. That is a hint: the controller should depend on an interface (FileServiceInterface), then FileService can be final and the test mocks the interface.",
+    "id": "fp-final-and-mocks",
+    "options": [
+      "Nothing",
+      "FileControllerTest: createMock(FileService::class) cannot mock a final class",
+      "Composer autoload",
+      "The match()"
+    ],
+    "tags": [
+      "testing",
+      "oop"
+    ],
+    "title": "Senior asks: make FileService final. What breaks?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "A file input fires change only when the value changes. If the user uploads fruits.csv, fixes it and picks fruits.csv again, nothing would happen. Clearing the value makes every pick a change.",
+    "id": "fp-js-reset-input",
+    "options": [
+      "To delete the file on the server",
+      "So choosing the same file again fires 'change' again",
+      "jQuery needs it",
+      "To free memory"
+    ],
+    "tags": [
+      "jquery",
+      "ux"
+    ],
+    "title": "uploadFile() calls $(this).val('') right after reading the file. Why?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 1,
+    "explain": "File names come from users (upload). String HTML would run any HTML inside the name: XSS. .text() and .attr() escape it. She did it right everywhere: messages also use .text().",
+    "id": "fp-js-text-safe",
+    "options": [
+      "text() is faster",
+      "text() inserts plain text: a file named <img onerror=…>.csv cannot run code",
+      "append does not work with select",
+      "No reason"
+    ],
+    "tags": [
+      "xss",
+      "jquery"
+    ],
+    "title": "app.js shows file names with $('<option>').text(fileName). Why not .append('<option>' + fileName + '</option>')?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "Her API always answers JSON, even on 500. But a PHP fatal error before the try, a 502 from a proxy, or a lost connection give HTML or nothing. The fallback keeps the page working in those cases.",
+    "id": "fp-js-responsejson",
+    "options": [
+      "Never",
+      "When the answer is not JSON: a PHP fatal error page, a proxy error, no connection",
+      "On every 404",
+      "Only on success"
+    ],
+    "tags": [
+      "jquery",
+      "error-handling"
+    ],
+    "title": "getErrorMessage(xhr) falls back to 'Something went wrong.'. When is xhr.responseJSON missing?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "diff": "         } catch (FileServiceException $e) {\n-            return $this->error($e->getMessage(), $this->getStatusCode($e));\n+            $response = $this->error($e->getMessage(), $this->getStatusCode($e));\n+            if ($e instanceof MethodNotAllowedException) {\n+                $response->headers->set('Allow', $e->getAllowedMethod());\n+            }\n+            return $response;\n         }",
+    "difficulty": 2,
+    "explain": "Good change: clients and tools see which method to use. It needs a small getter in MethodNotAllowedException that returns the expected method from its constructor.",
+    "id": "fp-pr-allow-header",
+    "lang": "php",
+    "pr": {
+      "author": "senior-reviewer",
+      "body": "HTTP says a 405 must list the allowed methods.",
+      "title": "Add Allow header to 405 answers",
+      "verdict": "approve"
+    },
+    "tags": [
+      "http"
+    ],
+    "topic": "project",
+    "type": "pr"
+  },
+  {
+    "diff": " public function write(string $path, array $data): void\n {\n+    if ($data === []) {\n+        throw new InvalidFileContentException('Nothing to save: the list of rows is empty.');\n+    }\n+\n     $headers = [];",
+    "difficulty": 2,
+    "explain": "Good change. Overwriting a file with nothing is almost always a mistake, and the old data cannot be recovered. A clear 422 is better than a silent '200 saved'. (If deleting all rows is a real use case, add an explicit action for it.)",
+    "id": "fp-pr-empty-csv-guard",
+    "lang": "php",
+    "pr": {
+      "author": "senior-reviewer",
+      "body": "A wrong click sent [] and wiped fruits.csv.",
+      "title": "Do not save an empty CSV",
+      "verdict": "approve"
+    },
+    "tags": [
+      "validation",
+      "data-loss"
+    ],
+    "topic": "project",
+    "type": "pr"
+  },
+  {
+    "diff": "-    private const ACTION_METHODS = [\n-        'list' => 'GET',\n-        'read' => 'GET',\n-        'write' => 'POST',\n-        'delete' => 'DELETE',\n-        'upload' => 'POST',\n-    ];\n             return match ($action) {\n                 'list' => $this->success(...),\n                 // ...\n+                default => throw new UnsupportedActionException($action, []),\n             };",
+    "difficulty": 2,
+    "explain": "The goal is right, but the PR drops the method check: DELETE via GET would work again, and a link or a crawler could delete files. Keep one list that holds both the method and the handler.",
+    "fix": "/** One list: action => [HTTP method, handler]. */\nprivate function routes(): array\n{\n    return [\n        'list'   => ['GET',    fn (Request $r) => $this->success('Files loaded.', $this->fileService->listFiles())],\n        'read'   => ['GET',    $this->read(...)],\n        'write'  => ['POST',   $this->write(...)],\n        'delete' => ['DELETE', $this->delete(...)],\n        'upload' => ['POST',   $this->upload(...)],\n    ];\n}\n\n// in handle():\n$routes = $this->routes();\n[$method, $handler] = $routes[$action]\n    ?? throw new UnsupportedActionException($action, array_keys($routes));\n\nif ($request->getMethod() !== $method) {\n    throw new MethodNotAllowedException($action, $method, $request->getMethod());\n}\n\nreturn $handler($request);",
+    "id": "fp-pr-match-default",
+    "lang": "php",
+    "pr": {
+      "author": "senior-reviewer",
+      "body": "Two lists of actions are hard to keep in sync.",
+      "title": "Remove ACTION_METHODS, use match only",
+      "verdict": "changes"
+    },
+    "tags": [
+      "match",
+      "exceptions"
+    ],
+    "topic": "project",
+    "type": "pr"
   }
 ]

@@ -34,7 +34,12 @@ Git with Bitbucket pull requests.
   API for CSV/JSON files (front controller public/index.php, FileController, FileService, CsvFileActions /
   JsonFileActions strategy, exception hierarchy → HTTP codes, jQuery front, PHPUnit). Cards are "a senior
   asks you about your project": why it is built this way, what could break, what you would improve.
-  About 1 of her 5 daily cards may be about it; read the repo again first, it changes.
+  Read the repo again before writing (git clone --depth 1 into a temp folder): it changes, and new
+  commits are the best source for new questions. Never repeat an fp-* card idea (see the summary).
+
+## Daily cards
+
+**8 cards a day**: **4 about her project** (topic `project`, ids `fp-…`) and 4 from the other topics.
 
 ## Style
 
