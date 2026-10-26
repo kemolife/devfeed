@@ -37,6 +37,7 @@ const DECKS: Record<string, Deck> = {
     learner: 'a junior PHP/Symfony web developer',
     field: 'Web',
     filters: [
+      { key: 'project', label: 'My project' },
       { key: 'php', label: 'PHP' },
       { key: 'symfony', label: 'Symfony' },
       { key: 'js', label: 'JavaScript' },

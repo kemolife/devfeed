@@ -30,10 +30,15 @@ Git with Bitbucket pull requests.
 - Composer: `require` vs `require-dev`, `install` vs `update`, `composer.lock`, version constraints (`^`, `~`),
   PSR-4 autoload and case-sensitive paths.
 - Git habits: small PRs, no secrets in commits, amend/force-push dangers.
+- **Her own project** (topic `project`): https://github.com/data4data/file_processing, a small PHP 8.4 JSON
+  API for CSV/JSON files (front controller public/index.php, FileController, FileService, CsvFileActions /
+  JsonFileActions strategy, exception hierarchy → HTTP codes, jQuery front, PHPUnit). Cards are "a senior
+  asks you about your project": why it is built this way, what could break, what you would improve.
+  About 1 of her 5 daily cards may be about it; read the repo again first, it changes.
 
 ## Style
 
 - Difficulty 1–2 mostly, sometimes 3. Simple B1 English.
-- Topics: `php`, `oop`, `composer`, `symfony`, `js`, `jquery`, `git`.
+- Topics: `project`, `php`, `oop`, `composer`, `symfony`, `js`, `jquery`, `git`.
 - Runnable `verify` for PHP (`"lang": "php"`, the `<?php` tag may be left out) and JS (`"lang": "js"`, Node).
 - Twig snippets use `"lang": "twig"` (display only, no verify).

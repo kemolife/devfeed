@@ -925,5 +925,499 @@
     "title": "Your last commit is not pushed yet, but the message is wrong and you forgot a file. You want to undo the commit and keep all changes in your files. Which command?",
     "topic": "git",
     "type": "quiz"
+  },
+  {
+    "bullets": [
+      "public/index.php is the only entry point (front controller). It builds the objects and calls the controller.",
+      "FileController reads the Request (action, file, body), checks the HTTP method and returns a JsonResponse.",
+      "FileService knows the storage folder and picks the right FileActions by file extension.",
+      "CsvFileActions and JsonFileActions read and write one format each (strategy pattern).",
+      "Errors are exceptions from one base class; the controller turns them into HTTP status codes."
+    ],
+    "difficulty": 1,
+    "id": "fp-explain-60s",
+    "tags": [
+      "architecture"
+    ],
+    "title": "file_processing: explain your project in 60 seconds",
+    "topic": "project",
+    "type": "concept"
+  },
+  {
+    "bullets": [
+      "Request::createFromGlobals() wraps $_GET, $_POST, $_FILES and the body in one object.",
+      "No ?action= → index.php sends home.html. With ?action= → it builds FileService and FileController.",
+      "handle() → checkAction() compares the action with ACTION_METHODS, then match() calls read/write/…",
+      "FileService → findFileActions() by extension → CsvFileActions or JsonFileActions → array of rows.",
+      "Success or FileServiceException → JsonResponse. Any other Throwable → index.php logs it and answers 500."
+    ],
+    "difficulty": 1,
+    "id": "fp-request-flow",
+    "tags": [
+      "architecture",
+      "request-flow"
+    ],
+    "title": "One request through file_processing",
+    "topic": "project",
+    "type": "concept"
+  },
+  {
+    "answer": 1,
+    "difficulty": 1,
+    "explain": "The server only shows files inside public/. Your code, the uploaded files in storage/ and the vendor/ folder are outside, so nobody can download them with a URL. index.php is the one door into the app.",
+    "id": "fp-public-root",
+    "options": [
+      "Composer needs it",
+      "So src/, storage/, vendor/ and composer.json cannot be opened by URL",
+      "PHP is faster from public/",
+      "Only for Apache"
+    ],
+    "tags": [
+      "architecture",
+      "security"
+    ],
+    "title": "Senior asks: why is the web root public/ and not the project folder?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "With $_GET and echo, a test would need a real web request. Now FileControllerTest builds Request::create('/index.php?action=delete…', 'GET') and checks the JsonResponse. You also get getString(), uploaded-file objects and correct Content-Type headers for free.",
+    "id": "fp-httpfoundation",
+    "options": [
+      "It is required by PHP 8.4",
+      "Request/Response are objects: easy to build in tests, safe getters, correct JSON and headers",
+      "It makes the app faster",
+      "To use Doctrine"
+    ],
+    "tags": [
+      "http",
+      "testing"
+    ],
+    "title": "Senior asks: in one commit you replaced $_GET/echo with Symfony HttpFoundation. Why?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "index.php is the 'composition root': it creates CsvFileActions, JsonFileActions, FileNameResolver and FileService. Classes receive what they need (constructor injection). That is why FileServiceTest can give FileService a mock FileActionsInterface instead of a real CSV class.",
+    "id": "fp-composition-root",
+    "options": [
+      "In every class that needs them",
+      "Only in public/index.php; classes get them in the constructor",
+      "In composer.json",
+      "In the tests only"
+    ],
+    "tags": [
+      "dependency-injection",
+      "testing"
+    ],
+    "title": "Senior asks: where are your objects created, and why not with new inside FileService?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "FileService keeps a map format → FileActions, built from getFormat(). A new format is one new class and one line in index.php. FileService and FileController do not change: open for extension, closed for modification. That is the strategy pattern.",
+    "id": "fp-strategy-xml",
+    "options": [
+      "Add if ($ext === 'xml') in FileService and FileController",
+      "New XmlFileActions (getFormat() returns 'xml') + add it to the list in index.php",
+      "Copy JsonFileActions and rename the file",
+      "Change FileActionsInterface"
+    ],
+    "tags": [
+      "strategy-pattern",
+      "open-closed"
+    ],
+    "title": "Senior asks: we need XML files too. What do you change?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "FileService and the tests only know the interface, so any class with getFormat/read/write works, even a mock. The abstract class is just code reuse for the real file classes. Depend on the interface, extend the abstract class only if it helps.",
+    "id": "fp-interface-and-abstract",
+    "options": [
+      "One of them is not needed",
+      "Interface = the contract FileService depends on; abstract class = shared helpers (readContent, saveContent)",
+      "Abstract classes are faster",
+      "PHP needs both for traits"
+    ],
+    "tags": [
+      "oop",
+      "interfaces"
+    ],
+    "title": "Senior asks: you have FileActionsInterface AND AbstractFileActions. Why both?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "FileNotFoundException says what went wrong, not how the web answers. getStatusCode() in the controller turns it into 404, 405, 422, 500 or 400. A console command could use the same FileService and print the message instead. One small smell: InvalidRequestException is about HTTP but lives in the same family.",
+    "id": "fp-exception-status",
+    "options": [
+      "No reason",
+      "FileService knows files, not HTTP: it could be used from a CLI command too",
+      "Exceptions cannot hold numbers",
+      "PHPUnit needs it"
+    ],
+    "tags": [
+      "exceptions",
+      "http"
+    ],
+    "title": "Senior asks: why does the controller map exceptions to HTTP codes, not FileService?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "The controller catches only FileServiceException: messages you wrote for users. Everything else (a bug, a JsonException, a TypeError) reaches the catch (Throwable) in index.php: it logs the full error and answers 'Internal server error.' without details.",
+    "id": "fp-two-catch-levels",
+    "options": [
+      "It would be slower",
+      "Unknown errors can show paths, SQL or secrets: users get a general 500, the details go to error_log",
+      "PHP does not allow it",
+      "JSON cannot hold messages"
+    ],
+    "tags": [
+      "exceptions",
+      "security"
+    ],
+    "title": "Senior asks: why not show $e->getMessage() for every error?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "echo basename(\"../../storage/../.env\"), \"|\", pathinfo(\".env\", PATHINFO_EXTENSION);",
+    "difficulty": 2,
+    "explain": "basename() keeps only the last part, so ../ cannot leave storage/: path traversal is blocked. The name .env has the extension 'env', so findFileActions() rejects it: only csv and json are allowed. Two small checks, together they protect the server files.",
+    "id": "fp-basename-traversal",
+    "lang": "php",
+    "options": [
+      ".env|env",
+      "../../storage/../.env|env",
+      "storage|",
+      "Error"
+    ],
+    "tags": [
+      "path-traversal",
+      "security"
+    ],
+    "title": "?file=../../storage/../.env — what does your code get?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": ".env|env",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 3,
+    "explain": "With file_exists and then save, two uploads of fruits.csv at the same moment can both see 'free' and overwrite each other (a race condition, check-then-act). fopen with 'x' checks and creates at once, so one wins and the other tries fruits_1.csv.",
+    "id": "fp-fopen-x-race",
+    "options": [
+      "fopen is faster",
+      "'x' creates the file only if it does not exist, in one step: two uploads cannot take the same name",
+      "file_exists does not work on Linux",
+      "To lock the folder"
+    ],
+    "tags": [
+      "race-condition",
+      "filesystem"
+    ],
+    "title": "Senior asks: FileNameResolver uses fopen($path, 'x'). Why not if (!file_exists($path)) and then save?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "getRowValues() throws on a bad row before anything touches the real file. Only a complete, valid CSV is saved. Writing row by row to the file would leave rows 1–2 and lose the old content.",
+    "id": "fp-csv-temp-stream",
+    "options": [
+      "php://temp is required by fputcsv",
+      "All rows are checked first: a bad row 3 cannot leave a half-written file",
+      "It is faster on disk",
+      "To support Windows"
+    ],
+    "tags": [
+      "validation",
+      "filesystem"
+    ],
+    "title": "Senior asks: CsvFileActions::write() builds the CSV in php://temp first. Why not write rows straight to the file?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "code": "$row = str_getcsv(\"1,apple\", \",\", \"\\\"\", \"\\\\\");\nvar_dump($row[0]);",
+    "difficulty": 2,
+    "explain": "CSV has no types: everything is text. So read() returns strings, while JSON keeps numbers. That is why CsvFileActionsTest uses '1' and JsonFileActionsTest uses 1. A senior may ask: how would you get numbers back? (a schema per file, or cast known columns).",
+    "id": "fp-csv-strings",
+    "lang": "php",
+    "options": [
+      "int(1)",
+      "string(1) \"1\"",
+      "float(1)",
+      "null"
+    ],
+    "tags": [
+      "data-types",
+      "csv"
+    ],
+    "title": "You write [{\"id\": 1}] to a CSV file and read it back. What type is id now?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "string(1) \"1\"",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 2,
+    "code": "try {\n    json_encode([\"name\" => \"\\xB1\"], JSON_THROW_ON_ERROR);\n} catch (RuntimeException $e) {\n    echo \"runtime\";\n} catch (Exception $e) {\n    echo get_class($e);\n}",
+    "difficulty": 3,
+    "explain": "JsonException extends Exception, not RuntimeException, so it is not a FileServiceException. The controller does not catch it, index.php does, and the user gets 500 'Internal server error' for bad input. Better: catch JsonException in JsonFileActions and throw InvalidFileContentException (422).",
+    "id": "fp-json-exception-500",
+    "lang": "php",
+    "options": [
+      "InvalidFileContentException",
+      "RuntimeException",
+      "JsonException",
+      "No error"
+    ],
+    "tags": [
+      "exceptions",
+      "json"
+    ],
+    "title": "write() uses JSON_THROW_ON_ERROR. A text has broken UTF-8. Which class is thrown?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "JsonException",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "$data = json_decode(\"5\", true);\necho is_array($data) ? \"array\" : \"Request body is not valid JSON.\";",
+    "difficulty": 2,
+    "explain": "5 is valid JSON, but not an array, and decodeJson() returns null for both cases. So the message is wrong. Better: json_decode with JSON_THROW_ON_ERROR for 'not JSON', and a second check with its own message: 'JSON must be a list or an object'.",
+    "id": "fp-json-scalar",
+    "lang": "php",
+    "options": [
+      "Saved.",
+      "Request body is not valid JSON.",
+      "500 error",
+      "Row 1 has different keys"
+    ],
+    "tags": [
+      "json",
+      "error-messages"
+    ],
+    "title": "POST write with body 5. decodeJson() returns null. What does the user see?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "Request body is not valid JSON.",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 3,
+    "explain": "LOCK_EX only stops other writers that also lock. read() uses file_get_contents without a lock, so it can read an empty or half file while a big write runs. Safer: write to a temp file in the same folder and rename() it: rename is atomic, readers see the old or the new file, never half.",
+    "id": "fp-lock-ex-readers",
+    "options": [
+      "No, LOCK_EX blocks everyone",
+      "Yes: file_get_contents does not wait for the lock",
+      "Only on Windows",
+      "No, PHP has one thread"
+    ],
+    "tags": [
+      "concurrency",
+      "filesystem"
+    ],
+    "title": "Senior asks: saveContent() uses LOCK_EX. Can read() still see a half-written file?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "In REST the URL names the resource (/files/fruits.csv) and the HTTP method is the action. Your ACTION_METHODS map already pairs actions with methods, so you were close. A router (symfony/routing) would remove the ?action= parameter and the match().",
+    "id": "fp-rest-routes",
+    "options": [
+      "Keep action, it is REST",
+      "DELETE /files/x, GET /files/x, PUT /files/x, POST /files, GET /files",
+      "POST everything to /api",
+      "One GET with all data"
+    ],
+    "tags": [
+      "api-design",
+      "http"
+    ],
+    "title": "Senior asks: your API is index.php?action=delete&file=x. What is the usual REST style?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "jQuery's default is form-urlencoded. Your PHP reads the raw body with getContent(), so it still works, but the header lies. Add contentType: 'application/json' so other clients, proxies and tools treat it as JSON.",
+    "id": "fp-jquery-content-type",
+    "options": [
+      "application/json",
+      "application/x-www-form-urlencoded",
+      "text/plain",
+      "multipart/form-data"
+    ],
+    "tags": [
+      "jquery",
+      "http"
+    ],
+    "title": "app.js sends write data with $.ajax({ data: $('#data').val() }). Which Content-Type does the request have?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "The same knowledge (which action uses which method) lives in two places. With REST routes the method is part of the API design, or the server could return the allowed methods (Allow header on 405).",
+    "id": "fp-two-method-maps",
+    "options": [
+      "None",
+      "Two copies of the same rule: change one, forget the other, and the button gets 405",
+      "jQuery cannot read PHP",
+      "It is slower"
+    ],
+    "tags": [
+      "single-source-of-truth"
+    ],
+    "title": "Senior asks: ACTION_METHODS in PHP and methods in app.js. What is the risk?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "Use tempnam() for a unique file, and remove it in tearDown(), which runs even when a test fails. Also missing: tests for upload() and FileNameResolver, the trickiest code.",
+    "id": "fp-tests-temp-files",
+    "options": [
+      "No problem",
+      "Fixed names clash when tests run in parallel, and a failed assert skips unlink()",
+      "sys_get_temp_dir is slow",
+      "PHPUnit forbids files"
+    ],
+    "tags": [
+      "testing"
+    ],
+    "title": "Senior asks: tests write to sys_get_temp_dir().'/fruits_test.csv' and unlink() at the end. Problem?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 1,
+    "explain": "There is no authentication. Anyone who finds the URL can call action=delete. Before going public: a login or API key, and maybe rate limits. For a learning project that is fine, but say you know it.",
+    "id": "fp-no-auth",
+    "options": [
+      "CSS is not minified",
+      "No login: anyone can list, overwrite and delete every file",
+      "PHP 8.4 is too new",
+      "jQuery is old"
+    ],
+    "tags": [
+      "security"
+    ],
+    "title": "Senior asks: you put this on a public server tomorrow. What is the biggest risk?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "diff": " protected function saveContent(string $path, string $content): void\n {\n-    if (file_put_contents($path, $content, LOCK_EX) === false) {\n+    $tmp = $path . '.' . bin2hex(random_bytes(4)) . '.tmp';\n+    if (file_put_contents($tmp, $content) === false || !rename($tmp, $path)) {\n+        @unlink($tmp);\n         throw new StorageException('Could not save file \"' . basename($path) . '\".');\n     }\n }",
+    "difficulty": 2,
+    "explain": "Good change. The new content goes to a temp file in the same folder, then rename() swaps it in. rename() in one folder is atomic: a reader sees the old file or the new file, never half of it.",
+    "id": "fp-pr-atomic-write",
+    "lang": "php",
+    "pr": {
+      "author": "senior-reviewer",
+      "body": "Readers could see half-written files while saving.",
+      "title": "Write files atomically",
+      "verdict": "approve"
+    },
+    "tags": [
+      "concurrency",
+      "filesystem"
+    ],
+    "topic": "project",
+    "type": "pr"
+  },
+  {
+    "diff": " public function upload(string $fileName, string $tmpPath): string\n {\n     $fileName = basename($fileName);\n     $fileActions = $this->findFileActions($fileName);\n \n-    $this->readFile($fileActions, $tmpPath, $fileName);\n-\n     $savedName = $this->fileNameResolver->reserveFreeName($this->storagePath, $fileName);",
+    "difficulty": 2,
+    "explain": "readFile() on the temp file is the validation: a broken CSV (wrong column count, duplicate headers) is rejected before it lands in storage. Without it, a bad file is saved and only fails later on read. Files are max 1 MB, so the check is cheap.",
+    "fix": "public function upload(string $fileName, string $tmpPath): string\n{\n    $fileName = basename($fileName);\n    $fileActions = $this->findFileActions($fileName);\n\n    // validate before saving: bad files never reach storage\n    $this->readFile($fileActions, $tmpPath, $fileName);\n\n    $savedName = $this->fileNameResolver->reserveFreeName($this->storagePath, $fileName);\n    // …",
+    "id": "fp-pr-remove-upload-check",
+    "lang": "php",
+    "pr": {
+      "author": "senior-reviewer",
+      "body": "Parsing the file on upload is slow, we can skip it.",
+      "title": "Make upload faster",
+      "verdict": "changes"
+    },
+    "tags": [
+      "validation"
+    ],
+    "topic": "project",
+    "type": "pr"
+  },
+  {
+    "diff": "-        } catch (FileServiceException $e) {\n+        } catch (\\Throwable $e) {\n             return $this->error($e->getMessage(), $this->getStatusCode($e));\n         }",
+    "difficulty": 2,
+    "explain": "Now every error message goes to the browser: file paths, PHP internals, maybe secrets. Unknown errors are not for users. Keep FileServiceException here, and map the known extra cases (like JsonException) to your own exceptions.",
+    "fix": "} catch (FileServiceException $e) {\n    return $this->error($e->getMessage(), $this->getStatusCode($e));\n}\n// unknown errors stay in index.php: logged, user gets a general 500\n\n// JsonFileActions::write()\ntry {\n    $json = json_encode($data, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);\n} catch (\\JsonException $e) {\n    throw new InvalidFileContentException('Data cannot be saved as JSON.', 0, $e);\n}",
+    "id": "fp-pr-catch-all-in-controller",
+    "lang": "php",
+    "pr": {
+      "author": "senior-reviewer",
+      "body": "Users only see 'Internal server error', hard to debug.",
+      "title": "Show real error messages",
+      "verdict": "changes"
+    },
+    "tags": [
+      "exceptions",
+      "security"
+    ],
+    "topic": "project",
+    "type": "pr"
+  },
+  {
+    "diff": "-    private FileService $fileService;\n-\n-    public function __construct(FileService $fileService)\n-    {\n-        $this->fileService = $fileService;\n-    }\n+    public function __construct(\n+        private readonly FileService $fileService,\n+    ) {}",
+    "difficulty": 1,
+    "explain": "Good change. Same behavior, less code, and readonly says the service is never replaced. FileService could get the same treatment for $storagePath and $fileNameResolver.",
+    "id": "fp-pr-promoted-readonly",
+    "lang": "php",
+    "pr": {
+      "author": "senior-reviewer",
+      "body": "PHP 8.4 style, less code.",
+      "title": "Use constructor promotion in FileController",
+      "verdict": "approve"
+    },
+    "tags": [
+      "oop",
+      "readonly"
+    ],
+    "topic": "project",
+    "type": "pr"
   }
 ]

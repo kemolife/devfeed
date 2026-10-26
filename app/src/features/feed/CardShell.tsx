@@ -15,6 +15,7 @@ const TOPIC_LABEL: Record<Card['topic'], string> = {
   git: 'Git',
   oop: 'OOP',
   composer: 'Composer',
+  project: 'My project',
 };
 
 const TYPE_LABEL: Record<Card['type'], string> = {

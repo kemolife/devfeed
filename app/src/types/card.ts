@@ -12,7 +12,8 @@ export type Topic =
   | 'jquery'
   | 'git'
   | 'oop'
-  | 'composer';
+  | 'composer'
+  | 'project';
 export type CodeLang = 'c' | 'cpp' | 'rust' | 'php' | 'js' | 'twig' | 'sql';
 
 interface CardBase {

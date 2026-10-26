@@ -22,6 +22,7 @@ const FILTER_NAME: Record<FeedFilter, string> = {
   git: 'Git',
   oop: 'OOP',
   composer: 'Composer',
+  project: 'project',
 };
 
 /**
