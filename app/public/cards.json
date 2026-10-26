@@ -393,6 +393,7 @@
     "diff": "-#define RX_BUF_LEN 200\n+#define RX_BUF_LEN 300\n static uint8_t rx_buf[RX_BUF_LEN];\n static uint8_t rx_idx;\n \n void uart_rx_isr(uint8_t b) {\n     if (rx_idx < RX_BUF_LEN) {\n         rx_buf[rx_idx++] = b;\n     }\n }",
     "difficulty": 1,
     "explain": "rx_idx is uint8_t, so it can only count to 255. After 255 it wraps to 0 and overwrites the start of the frame. The check rx_idx < 300 is always true. Pattern: when a size constant changes, check every index and counter type that uses it. Fix: uint16_t rx_idx.",
+    "fix": "#define RX_BUF_LEN 300\n_Static_assert(RX_BUF_LEN <= UINT16_MAX, \"rx_idx too small\");\n\nstatic uint8_t  rx_buf[RX_BUF_LEN];\nstatic uint16_t rx_idx;   // was uint8_t: max 255\n\nvoid uart_rx_isr(uint8_t b) {\n    if (rx_idx < RX_BUF_LEN) {\n        rx_buf[rx_idx++] = b;\n    }\n}",
     "id": "pr-idx-too-small",
     "lang": "c",
     "pr": {
@@ -406,13 +407,13 @@
       "buffer-overflow"
     ],
     "topic": "embedded",
-    "type": "pr",
-    "fix": "#define RX_BUF_LEN 300\n_Static_assert(RX_BUF_LEN <= UINT16_MAX, \"rx_idx too small\");\n\nstatic uint8_t  rx_buf[RX_BUF_LEN];\nstatic uint16_t rx_idx;   // was uint8_t: max 255\n\nvoid uart_rx_isr(uint8_t b) {\n    if (rx_idx < RX_BUF_LEN) {\n        rx_buf[rx_idx++] = b;\n    }\n}"
+    "type": "pr"
   },
   {
     "diff": " void EXTI0_IRQHandler(void) {\n+    HAL_Delay(20);   // debounce\n     if (HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_Pin)) {\n         button_pressed = true;\n     }\n     __HAL_GPIO_EXTI_CLEAR_IT(BTN_Pin);\n }",
     "difficulty": 1,
     "explain": "HAL_Delay counts SysTick interrupts. If EXTI has the same or higher priority than SysTick, the tick never increases and the MCU hangs forever. Even if it works, it blocks all lower interrupts for 20 ms. Pattern: no delays in an ISR. Debounce with a timestamp (ignore edges for 20 ms) or a timer.",
+    "fix": "#define DEBOUNCE_MS 20u\nstatic uint32_t last_edge_ms;\n\nvoid EXTI0_IRQHandler(void) {\n    __HAL_GPIO_EXTI_CLEAR_IT(BTN_Pin);\n    uint32_t now = HAL_GetTick();   // read only, never wait\n    // unsigned subtraction is safe when the tick wraps\n    if (now - last_edge_ms >= DEBOUNCE_MS) {\n        last_edge_ms = now;\n        if (HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_Pin)) {\n            button_pressed = true;\n        }\n    }\n}",
     "id": "pr-delay-in-isr",
     "lang": "c",
     "pr": {
@@ -426,8 +427,7 @@
       "isr"
     ],
     "topic": "embedded",
-    "type": "pr",
-    "fix": "#define DEBOUNCE_MS 20u\nstatic uint32_t last_edge_ms;\n\nvoid EXTI0_IRQHandler(void) {\n    __HAL_GPIO_EXTI_CLEAR_IT(BTN_Pin);\n    uint32_t now = HAL_GetTick();   // read only, never wait\n    // unsigned subtraction is safe when the tick wraps\n    if (now - last_edge_ms >= DEBOUNCE_MS) {\n        last_edge_ms = now;\n        if (HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_Pin)) {\n            button_pressed = true;\n        }\n    }\n}"
+    "type": "pr"
   },
   {
     "diff": " void status_led(bool on) {\n-    if (on) GPIOA->ODR |=  (1u << 5);\n-    else    GPIOA->ODR &= ~(1u << 5);\n+    if (on) GPIOA->BSRR = (1u << 5);\n+    else    GPIOA->BSRR = (1u << (5 + 16));\n }",
@@ -452,6 +452,7 @@
     "diff": " fn read_temp(i2c: &mut I2c) -> f32 {\n     let mut buf = [0u8; 2];\n-    match i2c.write_read(TMP_ADDR, &[REG_TEMP], &mut buf) {\n-        Ok(()) => raw_to_c(buf),\n-        Err(_) => f32::NAN,\n-    }\n+    i2c.write_read(TMP_ADDR, &[REG_TEMP], &mut buf).unwrap();\n+    raw_to_c(buf)\n }",
     "difficulty": 1,
     "explain": "One I2C NAK (EMI, loose cable, sensor brown-out) now panics. In no_std the panic handler usually halts or resets the whole device. The old code degraded nicely. Pattern: 'X is always there' is not true in the field. Return Result and let the caller decide.",
+    "fix": "fn read_temp(i2c: &mut I2c) -> Result<f32, I2cError> {\n    let mut buf = [0u8; 2];\n    i2c.write_read(TMP_ADDR, &[REG_TEMP], &mut buf)?;\n    Ok(raw_to_c(buf))\n}\n\n// the caller decides what a failed read means\nmatch read_temp(&mut i2c) {\n    Ok(t) => display.show(t),\n    Err(_) => display.show_sensor_error(),\n}",
     "id": "pr-rust-unwrap",
     "lang": "rust",
     "pr": {
@@ -466,8 +467,7 @@
       "i2c"
     ],
     "topic": "rust",
-    "type": "pr",
-    "fix": "fn read_temp(i2c: &mut I2c) -> Result<f32, I2cError> {\n    let mut buf = [0u8; 2];\n    i2c.write_read(TMP_ADDR, &[REG_TEMP], &mut buf)?;\n    Ok(raw_to_c(buf))\n}\n\n// the caller decides what a failed read means\nmatch read_temp(&mut i2c) {\n    Ok(t) => display.show(t),\n    Err(_) => display.show_sensor_error(),\n}"
+    "type": "pr"
   },
   {
     "diff": "-static mut TICKS: u32 = 0;\n+static TICKS: Mutex<Cell<u32>> = Mutex::new(Cell::new(0));\n \n #[interrupt]\n fn TIM2() {\n-    unsafe { TICKS += 1; }\n+    critical_section::with(|cs| {\n+        let t = TICKS.borrow(cs);\n+        t.set(t.get() + 1);\n+    });\n }",
@@ -493,6 +493,7 @@
     "diff": "-static std::array<int16_t, 256> samples;\n-static uint8_t idx;\n+static std::vector<int16_t> samples;\n \n void ADC_IRQHandler() {\n-    samples[idx++] = ADC1->DR;\n+    samples.push_back(ADC1->DR);\n }",
     "difficulty": 1,
     "explain": "push_back can call malloc inside an ISR: not reentrant, slow, can fail. The vector also grows without limit until the heap is gone. Fixed-size std::array (or a ring buffer) is the right tool here. Pattern: no heap allocation in ISRs, and in hard real-time code no heap after init.",
+    "fix": "// fixed size, no heap: a ring of 256 samples\nstatic std::array<int16_t, 256> samples;\nstatic volatile uint8_t head;   // wraps 255 -> 0 = array size\n\nvoid ADC_IRQHandler() {\n    samples[head] = static_cast<int16_t>(ADC1->DR);\n    head = static_cast<uint8_t>(head + 1);\n}",
     "id": "pr-cpp-vector-isr",
     "lang": "cpp",
     "pr": {
@@ -506,8 +507,7 @@
       "memory"
     ],
     "topic": "cpp",
-    "type": "pr",
-    "fix": "// fixed size, no heap: a ring of 256 samples\nstatic std::array<int16_t, 256> samples;\nstatic volatile uint8_t head;   // wraps 255 -> 0 = array size\n\nvoid ADC_IRQHandler() {\n    samples[head] = static_cast<int16_t>(ADC1->DR);\n    head = static_cast<uint8_t>(head + 1);\n}"
+    "type": "pr"
   },
   {
     "answer": 1,
@@ -701,6 +701,7 @@
     "diff": " void SysTick_Handler(void) {\n     ticks++;\n+    IWDG->KR = 0xAAAA;\n }\n \n int main(void) {\n     init();\n     while (1) {\n-        IWDG->KR = 0xAAAA;\n         poll_sensors();\n         run_control();\n     }\n }",
     "difficulty": 2,
     "explain": "SysTick keeps running when the main loop hangs. Now the watchdog is always fed and never catches a stuck loop. The watchdog becomes useless. Kick it only from the code path that proves the system works. For long flash writes, kick between pages or use a longer timeout.",
+    "fix": "void SysTick_Handler(void) {\n    ticks++;               // no watchdog kick here\n}\n\nint main(void) {\n    init();\n    while (1) {\n        poll_sensors();\n        run_control();\n        IWDG->KR = 0xAAAA; // kick only after a full, healthy loop\n    }\n}",
     "id": "pr-wdg-kick-systick",
     "lang": "c",
     "pr": {
@@ -714,8 +715,7 @@
       "isr"
     ],
     "topic": "embedded",
-    "type": "pr",
-    "fix": "void SysTick_Handler(void) {\n    ticks++;               // no watchdog kick here\n}\n\nint main(void) {\n    init();\n    while (1) {\n        poll_sensors();\n        run_control();\n        IWDG->KR = 0xAAAA; // kick only after a full, healthy loop\n    }\n}"
+    "type": "pr"
   },
   {
     "diff": "-#define UART_BRR (SYSCLK_HZ / BAUD)\n+constexpr uint32_t uart_brr(uint32_t clk,\n+                            uint32_t baud) {\n+    return (clk + baud / 2) / baud;\n+}\n+static_assert(uart_brr(16'000'000, 115'200)\n+              == 139);\n \n void uart_init() {\n-    USART2->BRR = UART_BRR;\n+    USART2->BRR = uart_brr(SYSCLK_HZ, BAUD);\n }",
@@ -740,6 +740,7 @@
     "diff": " fn read_temp(i2c: &mut I2c) -> Result<i16, E> {\n     let mut buf = [0u8; 2];\n-    i2c.write_read(ADDR, &[TEMP], &mut buf)?;\n+    critical_section::with(|_| {\n+        i2c.write_read(ADDR, &[TEMP], &mut buf)\n+    })?;\n     Ok(i16::from_be_bytes(buf))\n }",
     "difficulty": 3,
     "explain": "A blocking I2C transfer takes about 0.5 ms at 100 kHz, longer with clock stretching. All interrupts are off for that time: UART bytes overrun, timers jitter. If the driver uses interrupts, it can hang. The I2C peripheral does the bit timing itself, so an ISR only delays it. Keep critical sections a few instructions long.",
+    "fix": "fn read_temp(i2c: &mut I2c) -> Result<i16, E> {\n    let mut buf = [0u8; 2];\n    // no critical section: the I2C peripheral does the timing,\n    // and interrupts must keep running during the transfer\n    i2c.write_read(ADDR, &[TEMP], &mut buf)?;\n    Ok(i16::from_be_bytes(buf))\n}\n// bus shared by several drivers? share it with a bus mutex\n// (embedded-hal-bus), not by turning interrupts off",
     "id": "pr-rs-cs-long-i2c",
     "lang": "rust",
     "pr": {
@@ -754,8 +755,7 @@
       "i2c"
     ],
     "topic": "rust",
-    "type": "pr",
-    "fix": "fn read_temp(i2c: &mut I2c) -> Result<i16, E> {\n    let mut buf = [0u8; 2];\n    // no critical section: the I2C peripheral does the timing,\n    // and interrupts must keep running during the transfer\n    i2c.write_read(ADDR, &[TEMP], &mut buf)?;\n    Ok(i16::from_be_bytes(buf))\n}\n// bus shared by several drivers? share it with a bus mutex\n// (embedded-hal-bus), not by turning interrupts off"
+    "type": "pr"
   },
   {
     "answer": 1,
@@ -922,6 +922,7 @@
     "diff": " static COUNT: AtomicU32 = AtomicU32::new(0);\n \n fn take_count() -> u32 {\n-    COUNT.swap(0, Ordering::Relaxed)\n+    let n = COUNT.load(Ordering::Relaxed);\n+    COUNT.store(0, Ordering::Relaxed);\n+    n\n }",
     "difficulty": 3,
     "explain": "load and store are each atomic, but the pair is not. If the ISR increments COUNT between them, store(0) wipes that event. Cortex-M0 has no atomic read-modify-write instructions. Use critical_section::with around both steps, or the portable-atomic crate with its critical-section feature.",
+    "fix": "use core::cell::Cell;\nuse critical_section::Mutex;\n\nstatic COUNT: Mutex<Cell<u32>> = Mutex::new(Cell::new(0));\n\nfn take_count() -> u32 {\n    // read and reset in one critical section\n    critical_section::with(|cs| COUNT.borrow(cs).replace(0))\n}\n\n// in the ISR\ncritical_section::with(|cs| {\n    let c = COUNT.borrow(cs);\n    c.set(c.get() + 1);\n});\n\n// or: portable_atomic::AtomicU32 with the\n// \"critical-section\" feature, then COUNT.swap(0, Relaxed)",
     "id": "pr-rs-m0-swap-race",
     "lang": "rust",
     "pr": {
@@ -936,13 +937,13 @@
       "isr"
     ],
     "topic": "rust",
-    "type": "pr",
-    "fix": "use core::cell::Cell;\nuse critical_section::Mutex;\n\nstatic COUNT: Mutex<Cell<u32>> = Mutex::new(Cell::new(0));\n\nfn take_count() -> u32 {\n    // read and reset in one critical section\n    critical_section::with(|cs| COUNT.borrow(cs).replace(0))\n}\n\n// in the ISR\ncritical_section::with(|cs| {\n    let c = COUNT.borrow(cs);\n    c.set(c.get() + 1);\n});\n\n// or: portable_atomic::AtomicU32 with the\n// \"critical-section\" feature, then COUNT.swap(0, Relaxed)"
+    "type": "pr"
   },
   {
     "diff": " void TIM2_IRQHandler(void) {\n-    TIM2->SR = ~TIM_SR_UIF;\n     toggle_led();\n     sample_count++;\n+    TIM2->SR = ~TIM_SR_UIF;\n }",
     "difficulty": 3,
     "explain": "On Cortex-M with STM32, the write to TIM2->SR goes through the bus and can finish after the ISR returns. The NVIC still sees the request and runs the ISR a second time. Clear the flag at the start. If you must clear it late, read SR back or add __DSB() after the write. A new update after an early clear sets the flag again, so nothing is lost.",
+    "fix": "void TIM2_IRQHandler(void) {\n    TIM2->SR = ~TIM_SR_UIF;   // clear first\n    toggle_led();\n    sample_count++;\n}\n\n// if the clear must stay at the end:\n//     TIM2->SR = ~TIM_SR_UIF;\n//     __DSB();   // wait until the write is done",
     "id": "pr-late-flag-clear",
     "lang": "c",
     "pr": {
@@ -956,8 +957,7 @@
       "peripheral-timing"
     ],
     "topic": "embedded",
-    "type": "pr",
-    "fix": "void TIM2_IRQHandler(void) {\n    TIM2->SR = ~TIM_SR_UIF;   // clear first\n    toggle_led();\n    sample_count++;\n}\n\n// if the clear must stay at the end:\n//     TIM2->SR = ~TIM_SR_UIF;\n//     __DSB();   // wait until the write is done"
+    "type": "pr"
   },
   {
     "answer": 2,
@@ -1068,6 +1068,7 @@
     "diff": " void uart_rx_restart(void) {\n     DMA1_Stream5->CR &= ~DMA_SxCR_EN;\n-    while (DMA1_Stream5->CR & DMA_SxCR_EN) {}\n     DMA1->HIFCR = DMA_HIFCR_CTCIF5;\n     DMA1_Stream5->NDTR = RX_LEN;\n     DMA1_Stream5->CR |= DMA_SxCR_EN;\n }",
     "difficulty": 3,
     "explain": "On STM32F4, EN can stay 1 until the current data item is done. While EN is 1, writes to NDTR are ignored. Without the wait, the new length may be lost, and the stream restarts with the old count. Keep the loop: clear EN, wait until it reads 0, clear the flags, then set NDTR.",
+    "fix": "void uart_rx_restart(void) {\n    DMA1_Stream5->CR &= ~DMA_SxCR_EN;\n    // NDTR is locked while EN = 1: wait for the stream to stop\n    while (DMA1_Stream5->CR & DMA_SxCR_EN) {}\n    DMA1->HIFCR = DMA_HIFCR_CTCIF5 | DMA_HIFCR_CHTIF5 |\n                  DMA_HIFCR_CTEIF5 | DMA_HIFCR_CDMEIF5 |\n                  DMA_HIFCR_CFEIF5;   // all stream 5 flags\n    DMA1_Stream5->NDTR = RX_LEN;\n    DMA1_Stream5->CR |= DMA_SxCR_EN;\n}",
     "id": "pr-dma-en-wait-removed",
     "lang": "c",
     "pr": {
@@ -1081,8 +1082,7 @@
       "peripheral-timing"
     ],
     "topic": "embedded",
-    "type": "pr",
-    "fix": "void uart_rx_restart(void) {\n    DMA1_Stream5->CR &= ~DMA_SxCR_EN;\n    // NDTR is locked while EN = 1: wait for the stream to stop\n    while (DMA1_Stream5->CR & DMA_SxCR_EN) {}\n    DMA1->HIFCR = DMA_HIFCR_CTCIF5 | DMA_HIFCR_CHTIF5 |\n                  DMA_HIFCR_CTEIF5 | DMA_HIFCR_CDMEIF5 |\n                  DMA_HIFCR_CFEIF5;   // all stream 5 flags\n    DMA1_Stream5->NDTR = RX_LEN;\n    DMA1_Stream5->CR |= DMA_SxCR_EN;\n}"
+    "type": "pr"
   },
   {
     "diff": " fn send(buf: &'static mut [u8; 8], v: u32) {\n     buf[..4].copy_from_slice(&v.to_le_bytes());\n     DMA_CH.set_len(4);\n+    compiler_fence(Ordering::Release);\n     DMA_CH.start();\n }",
@@ -1223,6 +1223,7 @@
     "diff": "-static volatile uint32_t* const uart_sr =\n-    reinterpret_cast<volatile uint32_t*>(UART_SR);\n+static uint32_t* const uart_sr =\n+    reinterpret_cast<uint32_t*>(UART_SR);\n \n void wait_txe() {\n     while (!(*uart_sr & UART_SR_TXE)) {}\n }",
     "difficulty": 2,
     "explain": "C++20 deprecated only some uses of volatile, like ++ or += on a volatile object, and volatile parameters. Reading a volatile register is still fine. Without volatile, the compiler may read *uart_sr once and loop forever. Keep volatile on hardware registers. Fix the warning lines instead.",
+    "fix": "// keep volatile on hardware registers\nstatic volatile uint32_t* const uart_sr =\n    reinterpret_cast<volatile uint32_t*>(UART_SR);\n\nvoid wait_txe() {\n    while (!(*uart_sr & UART_SR_TXE)) {}  // fine in C++20\n}\n\n// what C++20 deprecates: e.g. ++ on a volatile object\nstatic volatile uint32_t tick_count;\n// tick_count++;                  // warning\ntick_count = tick_count + 1;      // explicit read + write: OK",
     "id": "pr-cpp-remove-volatile",
     "lang": "cpp",
     "pr": {
@@ -1235,13 +1236,13 @@
       "volatile"
     ],
     "topic": "cpp",
-    "type": "pr",
-    "fix": "// keep volatile on hardware registers\nstatic volatile uint32_t* const uart_sr =\n    reinterpret_cast<volatile uint32_t*>(UART_SR);\n\nvoid wait_txe() {\n    while (!(*uart_sr & UART_SR_TXE)) {}  // fine in C++20\n}\n\n// what C++20 deprecates: e.g. ++ on a volatile object\nstatic volatile uint32_t tick_count;\n// tick_count++;                  // warning\ntick_count = tick_count + 1;      // explicit read + write: OK"
+    "type": "pr"
   },
   {
     "diff": " fn expired(now: u32, start: u32, t: u32) -> bool {\n-    now.wrapping_sub(start) >= t\n+    now - start >= t\n }",
     "difficulty": 2,
     "explain": "Not the same. In debug builds overflow checks are on, so now - start panics when the tick counter wraps. Release wraps only because overflow-checks is off by default, and a profile can turn it on. wrapping_sub says the wrap is wanted and works in every build. Keep it.",
+    "fix": "fn expired(now: u32, start: u32, t: u32) -> bool {\n    // the tick counter wraps on purpose:\n    // wrapping_sub says so and works in every build profile\n    now.wrapping_sub(start) >= t\n}",
     "id": "pr-rs-wrapping-sub-removed",
     "lang": "rust",
     "pr": {
@@ -1255,8 +1256,7 @@
       "panic-in-firmware"
     ],
     "topic": "rust",
-    "type": "pr",
-    "fix": "fn expired(now: u32, start: u32, t: u32) -> bool {\n    // the tick counter wraps on purpose:\n    // wrapping_sub says so and works in every build profile\n    now.wrapping_sub(start) >= t\n}"
+    "type": "pr"
   },
   {
     "answer": 1,
@@ -1421,6 +1421,7 @@
     "diff": " void tim2_init(void) {\n     TIM2->PSC = 83;\n     TIM2->EGR = TIM_EGR_UG;\n-    TIM2->SR = 0;\n+    /* SR is 0 after reset */\n     TIM2->DIER |= TIM_DIER_UIE;\n     NVIC_EnableIRQ(TIM2_IRQn);\n }",
     "difficulty": 3,
     "explain": "EGR = UG loads the new prescaler, but it also sets the UIF flag (with URS = 0). Without the SR clear, the update interrupt fires at once after enable, one period too early. Keep the clear between EGR and DIER. Always clear pending flags before you enable an interrupt.",
+    "fix": "void tim2_init(void) {\n    TIM2->PSC = 83;\n    TIM2->EGR = TIM_EGR_UG;      // loads PSC, but also sets UIF\n    TIM2->SR = ~TIM_SR_UIF;      // clear it before enabling the IRQ\n    TIM2->DIER |= TIM_DIER_UIE;\n    NVIC_ClearPendingIRQ(TIM2_IRQn);\n    NVIC_EnableIRQ(TIM2_IRQn);\n}\n// other way: TIM2->CR1 |= TIM_CR1_URS; before UG,\n// then UG does not set UIF at all",
     "id": "pr-tim-uif-not-cleared",
     "lang": "c",
     "pr": {
@@ -1434,13 +1435,13 @@
       "spurious-irq"
     ],
     "topic": "embedded",
-    "type": "pr",
-    "fix": "void tim2_init(void) {\n    TIM2->PSC = 83;\n    TIM2->EGR = TIM_EGR_UG;      // loads PSC, but also sets UIF\n    TIM2->SR = ~TIM_SR_UIF;      // clear it before enabling the IRQ\n    TIM2->DIER |= TIM_DIER_UIE;\n    NVIC_ClearPendingIRQ(TIM2_IRQn);\n    NVIC_EnableIRQ(TIM2_IRQn);\n}\n// other way: TIM2->CR1 |= TIM_CR1_URS; before UG,\n// then UG does not set UIF at all"
+    "type": "pr"
   },
   {
     "diff": " fn read_reg(&mut self, reg: u8) -> Result<u8, E> {\n     let mut b = [0u8; 1];\n-    self.i2c.write_read(ADDR, &[reg], &mut b)?;\n+    self.i2c.write(ADDR, &[reg])?;\n+    self.i2c.read(ADDR, &mut b)?;\n     Ok(b[0])\n }",
     "difficulty": 2,
     "explain": "write_read uses a repeated START, with no STOP between the write and the read. Two calls put a STOP in between. Some sensors reset the register pointer on STOP. On a shared bus, another task or master can also take the bus in the gap. Keep write_read.",
+    "fix": "fn read_reg(&mut self, reg: u8) -> Result<u8, E> {\n    let mut b = [0u8; 1];\n    // one transaction: START, write reg,\n    // repeated START, read, STOP\n    self.i2c.write_read(ADDR, &[reg], &mut b)?;\n    Ok(b[0])\n}",
     "id": "pr-rs-i2c-split-write-read",
     "lang": "rust",
     "pr": {
@@ -1454,8 +1455,7 @@
       "hal-api"
     ],
     "topic": "rust",
-    "type": "pr",
-    "fix": "fn read_reg(&mut self, reg: u8) -> Result<u8, E> {\n    let mut b = [0u8; 1];\n    // one transaction: START, write reg,\n    // repeated START, read, STOP\n    self.i2c.write_read(ADDR, &[reg], &mut b)?;\n    Ok(b[0])\n}"
+    "type": "pr"
   },
   {
     "answer": 0,
@@ -1602,6 +1602,7 @@
     "diff": " void EXTI0_IRQHandler(void) {\n-    EXTI->PR = EXTI_PR_PR0;\n+    EXTI->PR |= EXTI_PR_PR0;\n     button_event();\n }",
     "difficulty": 2,
     "explain": "EXTI->PR is write-1-to-clear. Writing 0 does nothing, so the old code was right. |= reads all pending bits and writes those 1s back. That clears every pending line, so an EXTI1 event that came at the same time is lost. For W1C registers, write only your own bit with =.",
+    "fix": "void EXTI0_IRQHandler(void) {\n    EXTI->PR = EXTI_PR_PR0;   // W1C: write only our bit, with =\n    button_event();\n}",
     "id": "pr-exti-pr-or-equal",
     "lang": "c",
     "pr": {
@@ -1616,13 +1617,13 @@
       "isr"
     ],
     "topic": "c",
-    "type": "pr",
-    "fix": "void EXTI0_IRQHandler(void) {\n    EXTI->PR = EXTI_PR_PR0;   // W1C: write only our bit, with =\n    button_event();\n}"
+    "type": "pr"
   },
   {
     "diff": "-void wait_us(uint32_t us) {\n-    delay_ms((us + 999) / 1000);\n-}\n+using namespace std::chrono;\n+void wait(microseconds t) {\n+    auto ms = duration_cast<milliseconds>(t);\n+    delay_ms(ms.count());\n+}\n // sensor needs 500 us after reset\n-wait_us(500);\n+wait(500us);",
     "difficulty": 2,
     "explain": "duration_cast rounds toward zero. 500 us becomes 0 ms, so there is no wait at all and the sensor is read too early. The old code rounded up to 1 ms. Typed durations are a good idea, but use std::chrono::ceil<milliseconds>(t) to keep the round-up.",
+    "fix": "using namespace std::chrono;\n\nvoid wait(microseconds t) {\n    auto ms = ceil<milliseconds>(t);   // 500us -> 1ms, never 0\n    delay_ms(static_cast<uint32_t>(ms.count()));\n}\n\n// sensor needs 500 us after reset\nwait(500us);",
     "id": "pr-cpp-chrono-duration-cast",
     "lang": "cpp",
     "pr": {
@@ -1636,8 +1637,7 @@
       "peripheral-timing"
     ],
     "topic": "cpp",
-    "type": "pr",
-    "fix": "using namespace std::chrono;\n\nvoid wait(microseconds t) {\n    auto ms = ceil<milliseconds>(t);   // 500us -> 1ms, never 0\n    delay_ms(static_cast<uint32_t>(ms.count()));\n}\n\n// sensor needs 500 us after reset\nwait(500us);"
+    "type": "pr"
   },
   {
     "diff": "+static void i2c_bus_clear(void) {\n+    pin_od_output(SCL);\n+    pin_input(SDA);\n+    for (int i = 0; i < 9; i++) {\n+        if (pin_read(SDA)) break;\n+        pin_write(SCL, 0); delay_us(5);\n+        pin_write(SCL, 1); delay_us(5);\n+    }\n+    i2c_gpio_stop();\n+}\n void i2c_init(void) {\n+    i2c_bus_clear();\n     i2c_periph_init();\n }",
@@ -1744,6 +1744,207 @@
     ],
     "title": "Switching a load with a MOSFET from a GPIO: 5 rules",
     "topic": "electronics",
+    "type": "concept"
+  },
+  {
+    "bugLines": [
+      9,
+      11
+    ],
+    "code": "static LOG: Mutex<RefCell<Vec<u8, 16>>> =\n    Mutex::new(RefCell::new(Vec::new()));\n\nfn log(cs: CriticalSection, b: u8) {\n    LOG.borrow(cs).borrow_mut().push(b).ok();\n}\n\nfn on_error(cs: CriticalSection) {\n    let mut buf = LOG.borrow(cs).borrow_mut();\n    buf.clear();\n    log(cs, 0xFF);\n}",
+    "difficulty": 2,
+    "explain": "RefCell checks borrows at run time. on_error holds a mutable borrow in buf. Then log() asks for a second one, and borrow_mut panics with BorrowMutError. The critical section does not help here. Drop buf first, or push through buf itself.",
+    "fix": "fn on_error(cs: CriticalSection) {\n    {\n        let mut buf = LOG.borrow(cs).borrow_mut();\n        buf.clear();\n    } // borrow ends here\n    log(cs, 0xFF);\n}",
+    "id": "bug-rs-refcell-double-borrow",
+    "lang": "rust",
+    "tags": [
+      "critical-section",
+      "panic-in-firmware"
+    ],
+    "title": "The firmware panics when an error happens. Tap the bug.",
+    "topic": "rust",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      8
+    ],
+    "code": "static uint8_t rx[256];\nstatic size_t rx_len;\n\nvoid rx_drop(size_t n) {\n    if (n > rx_len) {\n        n = rx_len;\n    }\n    memcpy(rx, rx + n, rx_len - n);\n    rx_len -= n;\n}",
+    "difficulty": 2,
+    "explain": "The source and the destination overlap. memcpy with overlapping memory is undefined behavior. A fast copy loop (word or DMA based) can corrupt the data. memmove is made for this case.",
+    "fix": "memmove(rx, rx + n, rx_len - n);",
+    "id": "bug-c-memcpy-overlap",
+    "lang": "c",
+    "tags": [
+      "memcpy-overlap",
+      "buffer-overflow"
+    ],
+    "title": "After a frame is removed from the RX buffer, the next frame is corrupted. Tap the bug.",
+    "topic": "c",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      6
+    ],
+    "code": "std::string make_name(int id) {\n    return \"sensor-\" + std::to_string(id);\n}\n\nvoid log_sensor(int id) {\n    const char *name = make_name(id).c_str();\n    uart_puts(name);\n}",
+    "difficulty": 2,
+    "explain": "make_name() returns a temporary std::string. It is destroyed at the end of the line. So name points to freed memory, and uart_puts reads garbage. Keep the string in a variable that lives long enough.",
+    "fix": "void log_sensor(int id) {\n    std::string name = make_name(id);\n    uart_puts(name.c_str());\n}",
+    "id": "bug-cpp-c-str-temporary",
+    "lang": "cpp",
+    "tags": [
+      "dangling-ref",
+      "temporary-lifetime"
+    ],
+    "title": "The log shows random text instead of the sensor name. Tap the bug.",
+    "topic": "cpp",
+    "type": "bug"
+  },
+  {
+    "diff": "-fn parse(b: &[u8; 4]) -> Header {\n-    Header {\n-        id: u16::from_le_bytes([b[0], b[1]]),\n-        len: u16::from_le_bytes([b[2], b[3]]),\n-    }\n-}\n+#[repr(C)]\n+struct Header { id: u16, len: u16 }\n+\n+fn parse(b: &[u8; 4]) -> Header {\n+    unsafe { core::mem::transmute(*b) }\n+}",
+    "difficulty": 2,
+    "explain": "transmute copies the bytes as they are. The result depends on the CPU byte order, so it only works on a little-endian target. On a big-endian MCU the fields are swapped. The old code was safe and the compiler makes it fast too. Keep from_le_bytes.",
+    "fix": "#[repr(C)]\nstruct Header { id: u16, len: u16 }\n\nfn parse(b: &[u8; 4]) -> Header {\n    Header {\n        id: u16::from_le_bytes([b[0], b[1]]),\n        len: u16::from_le_bytes([b[2], b[3]]),\n    }\n}",
+    "id": "pr-rs-transmute-bytes",
+    "lang": "rust",
+    "pr": {
+      "author": "perf-fan",
+      "body": "Removes the field-by-field parsing. One transmute is faster.",
+      "title": "Parse sensor header faster",
+      "verdict": "changes"
+    },
+    "tags": [
+      "unsafe",
+      "alignment"
+    ],
+    "topic": "rust",
+    "type": "pr"
+  },
+  {
+    "diff": "+static int wait_flag(volatile uint32_t *reg,\n+                     uint32_t mask, uint32_t ms) {\n+    uint32_t start = ms_tick();\n+    while (!(*reg & mask)) {\n+        if ((uint32_t)(ms_tick() - start) >= ms) {\n+            return -ETIMEDOUT;\n+        }\n+    }\n+    return 0;\n+}\n+\n int spi_read(uint8_t *out) {\n     SPI1->DR = 0xFF;\n-    while (!(SPI1->SR & SPI_SR_RXNE)) { }\n+    if (wait_flag(&SPI1->SR, SPI_SR_RXNE, 10)) {\n+        return -ETIMEDOUT;\n+    }\n     *out = (uint8_t)SPI1->DR;\n     return 0;\n }",
+    "difficulty": 2,
+    "explain": "This PR is good. The register is read through a volatile pointer, so the loop reads it every time. The elapsed time uses unsigned subtraction, so it is safe when the tick counter wraps. The error goes up to the caller.",
+    "id": "pr-c-wait-flag-timeout",
+    "lang": "c",
+    "pr": {
+      "author": "fw-dev",
+      "body": "The board froze when the sensor was missing. Now the wait ends after 10 ms and the error goes to the caller.",
+      "title": "Add timeout to SPI RXNE wait",
+      "verdict": "approve"
+    },
+    "tags": [
+      "peripheral-timing",
+      "tick-wrap"
+    ],
+    "topic": "embedded",
+    "type": "pr"
+  },
+  {
+    "diff": " void send_reversed(const uint8_t *data, size_t n) {\n-    for (int i = (int)n - 1; i >= 0; --i) {\n+    for (auto i = n - 1; i >= 0; --i) {\n         send_byte(data[i]);\n     }\n }",
+    "difficulty": 2,
+    "explain": "auto becomes size_t, which is unsigned. The test i >= 0 is always true. After index 0, i wraps to a huge number and the loop reads far outside the buffer. If n is 0, it fails at the first step. Count down with the i-- > 0 pattern.",
+    "fix": "void send_reversed(const uint8_t *data, size_t n) {\n    for (size_t i = n; i-- > 0; ) {\n        send_byte(data[i]);\n    }\n}",
+    "id": "pr-cpp-auto-size-t-loop",
+    "lang": "cpp",
+    "pr": {
+      "author": "modern-cpp",
+      "body": "Cleanup. No cast needed with auto.",
+      "title": "Use auto in reverse send loop",
+      "verdict": "changes"
+    },
+    "tags": [
+      "signed-unsigned",
+      "loop-counter"
+    ],
+    "topic": "cpp",
+    "type": "pr"
+  },
+  {
+    "answer": 1,
+    "code": "fn main() {\n    let x: i8 = i8::MIN;\n    println!(\n        \"{} {} {}\",\n        x.wrapping_abs(),\n        x.saturating_abs(),\n        x.unsigned_abs()\n    );\n}",
+    "difficulty": 2,
+    "explain": "i8 goes from -128 to 127, so +128 does not fit. wrapping_abs wraps back to -128. saturating_abs stops at 127. unsigned_abs returns a u8, so 128 fits. A plain abs() panics in debug builds. Use unsigned_abs for sensor deltas.",
+    "id": "rs-abs-min",
+    "lang": "rust",
+    "options": [
+      "128 128 128",
+      "-128 127 128",
+      "127 127 128",
+      "-128 -128 -128"
+    ],
+    "tags": [
+      "integer-overflow",
+      "signed-abs"
+    ],
+    "title": "Absolute value of the smallest i8. What does this print?",
+    "topic": "rust",
+    "type": "quiz",
+    "verify": {
+      "expect": "-128 127 128",
+      "lang": "rust"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "#include <cstdint>\n#include <iostream>\n\nint main() {\n    uint8_t v = 65;\n    std::cout << v << ' ' << +v << ' ' << (int)v;\n}",
+    "difficulty": 1,
+    "explain": "uint8_t is an unsigned char, so cout prints it as a character: 65 is 'A'. The unary + promotes it to int, and the cast also gives int. When you log a byte, cast it to int, or you see letters or nothing at all.",
+    "id": "cpp-uint8-cout",
+    "lang": "cpp",
+    "options": [
+      "65 65 65",
+      "A 65 65",
+      "A A 65",
+      "A 65 A"
+    ],
+    "tags": [
+      "char-print",
+      "integer-promotion"
+    ],
+    "title": "Debug print of a byte. What does this print?",
+    "topic": "cpp",
+    "type": "quiz",
+    "verify": {
+      "expect": "A 65 65",
+      "lang": "cpp"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "The ADC sample capacitor must charge through the sensor output. With 100 kΩ it does not charge in the short sample time, so the value is low. A 100 nF capacitor at the pin gives the charge, or a buffer gives a low impedance. A longer sample time also helps.",
+    "id": "el-adc-source-impedance",
+    "options": [
+      "A 100 nF capacitor at the ADC pin, or an op-amp buffer",
+      "A 100 kΩ pull-up on the ADC pin",
+      "A faster ADC clock",
+      "A series diode before the pin"
+    ],
+    "tags": [
+      "adc",
+      "source-impedance"
+    ],
+    "title": "A sensor with 100 kΩ output feeds the ADC pin directly. The readings are low and noisy. What helps most?",
+    "topic": "electronics",
+    "type": "quiz"
+  },
+  {
+    "bullets": [
+      "No static mut. Use Mutex<RefCell<Option<T>>> with critical_section::with.",
+      "Simple flags and counters: AtomicBool or AtomicU32. No lock needed.",
+      "Only one borrow_mut at a time. A second one panics. Do not call helpers while you hold a borrow.",
+      "Keep the critical section short. No blocking calls or long loops inside.",
+      "On Cortex-M0, atomics have no compare-and-swap. Use critical-section based types."
+    ],
+    "difficulty": 2,
+    "id": "concept-rs-isr-sharing",
+    "tags": [
+      "critical-section",
+      "isr"
+    ],
+    "title": "Share data with an ISR in Rust: 5 rules",
+    "topic": "rust",
     "type": "concept"
   }
 ]

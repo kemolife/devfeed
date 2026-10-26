@@ -820,5 +820,110 @@
     "title": "Works on your Mac. On the Linux server: Class \"App\\Service\\Mailer\" not found. Why?",
     "topic": "composer",
     "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "code": "const a = [10, 9, 1];\na.sort();\nconsole.log(a.join(','));\nconst b = [10, 9, 1].sort((x, y) => x - y);\nconsole.log(b.join(','));",
+    "difficulty": 1,
+    "explain": "sort() without a function turns the numbers into strings and sorts them as text. \"10\" comes before \"9\" because \"1\" is smaller than \"9\". For numbers, always give a compare function: (x, y) => x - y.",
+    "id": "js-sort-default",
+    "lang": "js",
+    "options": [
+      "1,9,10 and 1,9,10",
+      "1,10,9 and 1,9,10",
+      "10,9,1 and 1,9,10",
+      "1,10,9 and 1,10,9"
+    ],
+    "tags": [
+      "type-coercion",
+      "sort-default"
+    ],
+    "title": "What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "1,10,9\n1,9,10",
+      "lang": "js"
+    }
+  },
+  {
+    "bugLines": [
+      2,
+      3
+    ],
+    "code": "async function saveAll(items) {\n  items.forEach(async (item) => {\n    await api.save(item);\n  });\n  showMessage('All saved!');\n}",
+    "difficulty": 2,
+    "explain": "forEach does not wait for async functions. It starts all the saves and returns at once. So showMessage runs before any save is finished, and errors are lost. Use for...of with await, or Promise.all with map.",
+    "fix": "async function saveAll(items) {\n  await Promise.all(items.map((item) => api.save(item)));\n  showMessage('All saved!');\n}",
+    "id": "bug-js-foreach-async",
+    "lang": "js",
+    "tags": [
+      "async",
+      "ai-code-review"
+    ],
+    "title": "'All saved!' shows at once, before the saving is done. Tap the bug.",
+    "topic": "js",
+    "type": "bug"
+  },
+  {
+    "answer": 1,
+    "code": "$a = [1, 2] + [3, 4, 5];\necho implode(',', $a), \"\\n\";\n$b = array_merge([1, 2], [3, 4, 5]);\necho implode(',', $b);",
+    "difficulty": 2,
+    "explain": "+ on arrays is a union by key. Keys 0 and 1 already exist on the left, so the left values win. Only key 2 (value 5) is added. array_merge appends the values and renumbers the keys. Use array_merge to join lists.",
+    "id": "php-array-plus-merge",
+    "lang": "php",
+    "options": [
+      "1,2,3,4,5 and 1,2,3,4,5",
+      "1,2,5 and 1,2,3,4,5",
+      "1,2,5 and 1,2,5",
+      "3,4,5 and 1,2,3,4,5"
+    ],
+    "tags": [
+      "array-union"
+    ],
+    "title": "+ on arrays. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "1,2,5\n1,2,3,4,5",
+      "lang": "php"
+    }
+  },
+  {
+    "diff": " \"require\": {\n     \"php\": \">=8.2\",\n-    \"symfony/mailer\": \"^7.1\",\n+    \"symfony/mailer\": \"*\",\n     \"doctrine/orm\": \"^3.0\"\n }",
+    "difficulty": 1,
+    "explain": "* accepts every version, also a future 8.0 with breaking changes. A later composer update can break the app without any change in your code. Use ^7.2: it allows 7.2 and newer 7.x versions, but not 8.0.",
+    "fix": "\"require\": {\n    \"php\": \">=8.2\",\n    \"symfony/mailer\": \"^7.2\",\n    \"doctrine/orm\": \"^3.0\"\n}",
+    "id": "pr-composer-star-version",
+    "lang": "php",
+    "pr": {
+      "author": "copilot-fan",
+      "body": "I want mailer 7.2. With * Composer always takes the newest version, so I never need to edit this line again.",
+      "title": "Allow newer mailer",
+      "verdict": "changes"
+    },
+    "tags": [
+      "version-constraints"
+    ],
+    "topic": "composer",
+    "type": "pr"
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "reset --soft HEAD~1 removes the commit but keeps your changes staged, so you can add the file and commit again. --hard throws the changes away. revert makes a new commit. checkout . drops your unstaged edits. Only reset commits that are not pushed.",
+    "id": "git-undo-last-commit",
+    "options": [
+      "git reset --soft HEAD~1",
+      "git reset --hard HEAD~1",
+      "git revert HEAD",
+      "git checkout ."
+    ],
+    "tags": [
+      "git-history"
+    ],
+    "title": "Your last commit is not pushed yet, but the message is wrong and you forgot a file. You want to undo the commit and keep all changes in your files. Which command?",
+    "topic": "git",
+    "type": "quiz"
   }
 ]

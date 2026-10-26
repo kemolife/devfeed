@@ -1,0 +1,203 @@
+[
+  {
+    "id": "bug-rs-refcell-double-borrow",
+    "type": "bug",
+    "topic": "rust",
+    "tags": [
+      "critical-section",
+      "panic-in-firmware"
+    ],
+    "difficulty": 2,
+    "title": "The firmware panics when an error happens. Tap the bug.",
+    "lang": "rust",
+    "code": "static LOG: Mutex<RefCell<Vec<u8, 16>>> =\n    Mutex::new(RefCell::new(Vec::new()));\n\nfn log(cs: CriticalSection, b: u8) {\n    LOG.borrow(cs).borrow_mut().push(b).ok();\n}\n\nfn on_error(cs: CriticalSection) {\n    let mut buf = LOG.borrow(cs).borrow_mut();\n    buf.clear();\n    log(cs, 0xFF);\n}",
+    "bugLines": [
+      9,
+      11
+    ],
+    "explain": "RefCell checks borrows at run time. on_error holds a mutable borrow in buf. Then log() asks for a second one, and borrow_mut panics with BorrowMutError. The critical section does not help here. Drop buf first, or push through buf itself.",
+    "fix": "fn on_error(cs: CriticalSection) {\n    {\n        let mut buf = LOG.borrow(cs).borrow_mut();\n        buf.clear();\n    } // borrow ends here\n    log(cs, 0xFF);\n}"
+  },
+  {
+    "id": "bug-c-memcpy-overlap",
+    "type": "bug",
+    "topic": "c",
+    "tags": [
+      "memcpy-overlap",
+      "buffer-overflow"
+    ],
+    "difficulty": 2,
+    "title": "After a frame is removed from the RX buffer, the next frame is corrupted. Tap the bug.",
+    "lang": "c",
+    "code": "static uint8_t rx[256];\nstatic size_t rx_len;\n\nvoid rx_drop(size_t n) {\n    if (n > rx_len) {\n        n = rx_len;\n    }\n    memcpy(rx, rx + n, rx_len - n);\n    rx_len -= n;\n}",
+    "bugLines": [
+      8
+    ],
+    "explain": "The source and the destination overlap. memcpy with overlapping memory is undefined behavior. A fast copy loop (word or DMA based) can corrupt the data. memmove is made for this case.",
+    "fix": "memmove(rx, rx + n, rx_len - n);"
+  },
+  {
+    "id": "bug-cpp-c-str-temporary",
+    "type": "bug",
+    "topic": "cpp",
+    "tags": [
+      "dangling-ref",
+      "temporary-lifetime"
+    ],
+    "difficulty": 2,
+    "title": "The log shows random text instead of the sensor name. Tap the bug.",
+    "lang": "cpp",
+    "code": "std::string make_name(int id) {\n    return \"sensor-\" + std::to_string(id);\n}\n\nvoid log_sensor(int id) {\n    const char *name = make_name(id).c_str();\n    uart_puts(name);\n}",
+    "bugLines": [
+      6
+    ],
+    "explain": "make_name() returns a temporary std::string. It is destroyed at the end of the line. So name points to freed memory, and uart_puts reads garbage. Keep the string in a variable that lives long enough.",
+    "fix": "void log_sensor(int id) {\n    std::string name = make_name(id);\n    uart_puts(name.c_str());\n}"
+  },
+  {
+    "id": "pr-rs-transmute-bytes",
+    "type": "pr",
+    "topic": "rust",
+    "tags": [
+      "unsafe",
+      "alignment"
+    ],
+    "difficulty": 2,
+    "lang": "rust",
+    "pr": {
+      "title": "Parse sensor header faster",
+      "author": "perf-fan",
+      "body": "Removes the field-by-field parsing. One transmute is faster.",
+      "verdict": "changes"
+    },
+    "diff": "-fn parse(b: &[u8; 4]) -> Header {\n-    Header {\n-        id: u16::from_le_bytes([b[0], b[1]]),\n-        len: u16::from_le_bytes([b[2], b[3]]),\n-    }\n-}\n+#[repr(C)]\n+struct Header { id: u16, len: u16 }\n+\n+fn parse(b: &[u8; 4]) -> Header {\n+    unsafe { core::mem::transmute(*b) }\n+}",
+    "explain": "transmute copies the bytes as they are. The result depends on the CPU byte order, so it only works on a little-endian target. On a big-endian MCU the fields are swapped. The old code was safe and the compiler makes it fast too. Keep from_le_bytes.",
+    "fix": "#[repr(C)]\nstruct Header { id: u16, len: u16 }\n\nfn parse(b: &[u8; 4]) -> Header {\n    Header {\n        id: u16::from_le_bytes([b[0], b[1]]),\n        len: u16::from_le_bytes([b[2], b[3]]),\n    }\n}"
+  },
+  {
+    "id": "pr-c-wait-flag-timeout",
+    "type": "pr",
+    "topic": "embedded",
+    "tags": [
+      "peripheral-timing",
+      "tick-wrap"
+    ],
+    "difficulty": 2,
+    "lang": "c",
+    "pr": {
+      "title": "Add timeout to SPI RXNE wait",
+      "author": "fw-dev",
+      "body": "The board froze when the sensor was missing. Now the wait ends after 10 ms and the error goes to the caller.",
+      "verdict": "approve"
+    },
+    "diff": "+static int wait_flag(volatile uint32_t *reg,\n+                     uint32_t mask, uint32_t ms) {\n+    uint32_t start = ms_tick();\n+    while (!(*reg & mask)) {\n+        if ((uint32_t)(ms_tick() - start) >= ms) {\n+            return -ETIMEDOUT;\n+        }\n+    }\n+    return 0;\n+}\n+\n int spi_read(uint8_t *out) {\n     SPI1->DR = 0xFF;\n-    while (!(SPI1->SR & SPI_SR_RXNE)) { }\n+    if (wait_flag(&SPI1->SR, SPI_SR_RXNE, 10)) {\n+        return -ETIMEDOUT;\n+    }\n     *out = (uint8_t)SPI1->DR;\n     return 0;\n }",
+    "explain": "This PR is good. The register is read through a volatile pointer, so the loop reads it every time. The elapsed time uses unsigned subtraction, so it is safe when the tick counter wraps. The error goes up to the caller."
+  },
+  {
+    "id": "pr-cpp-auto-size-t-loop",
+    "type": "pr",
+    "topic": "cpp",
+    "tags": [
+      "signed-unsigned",
+      "loop-counter"
+    ],
+    "difficulty": 2,
+    "lang": "cpp",
+    "pr": {
+      "title": "Use auto in reverse send loop",
+      "author": "modern-cpp",
+      "body": "Cleanup. No cast needed with auto.",
+      "verdict": "changes"
+    },
+    "diff": " void send_reversed(const uint8_t *data, size_t n) {\n-    for (int i = (int)n - 1; i >= 0; --i) {\n+    for (auto i = n - 1; i >= 0; --i) {\n         send_byte(data[i]);\n     }\n }",
+    "explain": "auto becomes size_t, which is unsigned. The test i >= 0 is always true. After index 0, i wraps to a huge number and the loop reads far outside the buffer. If n is 0, it fails at the first step. Count down with the i-- > 0 pattern.",
+    "fix": "void send_reversed(const uint8_t *data, size_t n) {\n    for (size_t i = n; i-- > 0; ) {\n        send_byte(data[i]);\n    }\n}"
+  },
+  {
+    "id": "rs-abs-min",
+    "type": "quiz",
+    "topic": "rust",
+    "tags": [
+      "integer-overflow",
+      "signed-abs"
+    ],
+    "difficulty": 2,
+    "title": "Absolute value of the smallest i8. What does this print?",
+    "lang": "rust",
+    "code": "fn main() {\n    let x: i8 = i8::MIN;\n    println!(\n        \"{} {} {}\",\n        x.wrapping_abs(),\n        x.saturating_abs(),\n        x.unsigned_abs()\n    );\n}",
+    "options": [
+      "128 128 128",
+      "-128 127 128",
+      "127 127 128",
+      "-128 -128 -128"
+    ],
+    "answer": 1,
+    "explain": "i8 goes from -128 to 127, so +128 does not fit. wrapping_abs wraps back to -128. saturating_abs stops at 127. unsigned_abs returns a u8, so 128 fits. A plain abs() panics in debug builds. Use unsigned_abs for sensor deltas.",
+    "verify": {
+      "lang": "rust",
+      "expect": "-128 127 128"
+    }
+  },
+  {
+    "id": "cpp-uint8-cout",
+    "type": "quiz",
+    "topic": "cpp",
+    "tags": [
+      "char-print",
+      "integer-promotion"
+    ],
+    "difficulty": 1,
+    "title": "Debug print of a byte. What does this print?",
+    "lang": "cpp",
+    "code": "#include <cstdint>\n#include <iostream>\n\nint main() {\n    uint8_t v = 65;\n    std::cout << v << ' ' << +v << ' ' << (int)v;\n}",
+    "options": [
+      "65 65 65",
+      "A 65 65",
+      "A A 65",
+      "A 65 A"
+    ],
+    "answer": 1,
+    "explain": "uint8_t is an unsigned char, so cout prints it as a character: 65 is 'A'. The unary + promotes it to int, and the cast also gives int. When you log a byte, cast it to int, or you see letters or nothing at all.",
+    "verify": {
+      "lang": "cpp",
+      "expect": "A 65 65"
+    }
+  },
+  {
+    "id": "el-adc-source-impedance",
+    "type": "quiz",
+    "topic": "electronics",
+    "tags": [
+      "adc",
+      "source-impedance"
+    ],
+    "difficulty": 2,
+    "title": "A sensor with 100 kΩ output feeds the ADC pin directly. The readings are low and noisy. What helps most?",
+    "options": [
+      "A 100 nF capacitor at the ADC pin, or an op-amp buffer",
+      "A 100 kΩ pull-up on the ADC pin",
+      "A faster ADC clock",
+      "A series diode before the pin"
+    ],
+    "answer": 0,
+    "explain": "The ADC sample capacitor must charge through the sensor output. With 100 kΩ it does not charge in the short sample time, so the value is low. A 100 nF capacitor at the pin gives the charge, or a buffer gives a low impedance. A longer sample time also helps."
+  },
+  {
+    "id": "concept-rs-isr-sharing",
+    "type": "concept",
+    "topic": "rust",
+    "tags": [
+      "critical-section",
+      "isr"
+    ],
+    "difficulty": 2,
+    "title": "Share data with an ISR in Rust: 5 rules",
+    "bullets": [
+      "No static mut. Use Mutex<RefCell<Option<T>>> with critical_section::with.",
+      "Simple flags and counters: AtomicBool or AtomicU32. No lock needed.",
+      "Only one borrow_mut at a time. A second one panics. Do not call helpers while you hold a borrow.",
+      "Keep the critical section short. No blocking calls or long loops inside.",
+      "On Cortex-M0, atomics have no compare-and-swap. Use critical-section based types."
+    ]
+  }
+]
