@@ -1869,5 +1869,182 @@
     ],
     "topic": "project",
     "type": "pr"
+  },
+  {
+    "answer": 0,
+    "code": "$headers = ['id', 'fruit'];\n$rows = [\n    ['id' => 1, 'fruit' => 'apple'],\n    ['fruit' => 'pear', 'id' => 2],\n];\nforeach ($rows as $row) {\n    $v = [];\n    foreach ($headers as $h) {\n        $v[] = $row[$h];\n    }\n    echo implode(',', $v), \"\\n\";\n}",
+    "difficulty": 2,
+    "explain": "getRowValues() loops over the header names from row 1 and reads each value by key. The order inside row 2 does not matter. It throws only when the set of keys differs. This is why a row never ends up in the wrong column.",
+    "id": "fp-csv-key-order",
+    "lang": "php",
+    "options": [
+      "1,apple and 2,pear",
+      "1,apple and pear,2",
+      "An error: different keys than row 1",
+      "1,apple and nothing for row 2"
+    ],
+    "tags": [
+      "csv",
+      "data-types"
+    ],
+    "title": "Senior asks: row 1 has keys id, fruit. Row 2 has the keys in another order. What does CsvFileActions::write() save for rows 1 and 2?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "1,apple\n2,pear",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "var_dump(basename(trim(' fruits.csv ')));\nvar_dump(trim('  ') === '');",
+    "difficulty": 1,
+    "explain": "getRequired() trims the value first. So ' fruits.csv ' becomes 'fruits.csv' and then basename() runs. A value with only spaces is empty after trim, so the code throws InvalidRequestException (400). Trim before you check for empty. Otherwise ' ' would pass.",
+    "id": "fp-trim-file-name",
+    "lang": "php",
+    "options": [
+      "\"fruits.csv\", then true: 'file is required' error",
+      "\" fruits.csv \", then false",
+      "An error for both",
+      "\"fruits.csv\", then false"
+    ],
+    "tags": [
+      "validation",
+      "request-input"
+    ],
+    "title": "Senior asks: the URL has ?file=%20fruits.csv%20 (with spaces). What does getFileName() give, and what about ?file=%20%20?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "string(10) \"fruits.csv\"\nbool(true)",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 3,
+    "explain": "CORS controls who can read the answer, not who can send. A POST with a text/plain body is a 'simple request', so the browser sends it without a preflight. Your write action runs. Delete is safer by accident: DELETE needs a preflight. Fix: require an auth token or CSRF token, or require Content-Type: application/json.",
+    "id": "fp-cors-simple-post",
+    "options": [
+      "The browser blocks it, PHP never runs",
+      "The request is sent and PHP writes the file. Only reading the answer is blocked",
+      "PHP refuses it because the Origin header is different",
+      "It works only if the user is logged in"
+    ],
+    "tags": [
+      "security",
+      "http"
+    ],
+    "title": "Senior asks: another website runs fetch('http://your-api/?action=write&file=a.csv', {method: 'POST', body: '[]', mode: 'no-cors'}). Your API sends no CORS headers. What happens?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "diff": "+final readonly class FileName\n+{\n+    public function __construct(public string $value)\n+    {\n+        if ($value === '' || $value !== basename($value)) {\n+            throw new InvalidRequestException('Invalid file name.');\n+        }\n+    }\n+}",
+    "difficulty": 2,
+    "explain": "Good PR. It is small, it only adds a class, and the object cannot be wrong after it is created. A readonly class makes the value fixed. basename() cannot change the name silently anymore. A name like ../x is refused with an error. Next step: use it in the controller and service, and add a test.",
+    "id": "fp-pr-filename-value-object",
+    "lang": "php",
+    "pr": {
+      "author": "olha",
+      "body": "basename() is repeated in three places. This class checks the name once. The next PR will use it in FileService.",
+      "title": "Add a FileName value object",
+      "verdict": "approve"
+    },
+    "tags": [
+      "oop",
+      "readonly",
+      "validation"
+    ],
+    "topic": "project",
+    "type": "pr"
+  },
+  {
+    "answer": 0,
+    "code": "class Address {\n    public function __construct(public string $city) {}\n}\nclass User {\n    public function __construct(public ?Address $address = null) {}\n}\n$user = new User();\necho $user->address?->city ?? 'unknown', \"\\n\";\nvar_dump($user->address?->city);",
+    "difficulty": 1,
+    "explain": "?-> stops the chain when the left side is null and the whole expression becomes null. No warning, no error. ?? then gives 'unknown' for the first line. var_dump shows NULL. Without ?->, reading ->city on null gives a warning and null in PHP 8.",
+    "id": "php-nullsafe-chain",
+    "lang": "php",
+    "options": [
+      "unknown, then NULL",
+      "Fatal error on the first line",
+      "unknown, then an empty line",
+      "NULL, then NULL"
+    ],
+    "tags": [
+      "null-safe"
+    ],
+    "title": "PHP 8. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "unknown\nNULL",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "const user = { name: 'Ann' };\nuser.name = 'Bob';\ntry {\n  user = { name: 'Cy' };\n} catch (e) {\n  console.log(e.name);\n}\nconsole.log(user.name);",
+    "difficulty": 1,
+    "explain": "const protects the variable, not the object inside. Changing user.name is allowed. Assigning a new object to user throws TypeError (Assignment to constant variable). So the output is TypeError, then Bob. Use Object.freeze() if the object itself must not change.",
+    "id": "js-const-object",
+    "lang": "js",
+    "options": [
+      "TypeError, then Bob",
+      "TypeError, then Ann",
+      "Bob only, no error",
+      "TypeError, then Cy"
+    ],
+    "tags": [
+      "const",
+      "scope"
+    ],
+    "title": "What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "TypeError\nBob",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "git reflog lists where HEAD pointed in the past, including the commit you just reset away. Copy its hash and run git reset --hard <hash> (or git branch rescue <hash>). The commit stays for weeks until garbage collection. git log does not show it because no branch points to it.",
+    "id": "git-reflog-lost-commit",
+    "options": [
+      "git reflog",
+      "git stash list",
+      "git log --all",
+      "git fetch"
+    ],
+    "tags": [
+      "git-history"
+    ],
+    "title": "You ran git reset --hard HEAD~1 by mistake. Your last commit was not pushed and is gone from git log. Which command helps you find it?",
+    "topic": "git",
+    "type": "quiz"
+  },
+  {
+    "diff": " #[Route('/products', methods: ['POST'])]\n public function create(Request $request, EntityManagerInterface $em): JsonResponse\n {\n     $product = new Product();\n+    $product->setName($request->request->get('name'));\n+    $product->setPrice((float) $request->request->get('price'));\n     $em->persist($product);\n     $em->flush();\n \n     return $this->json(['id' => $product->getId()], 201);\n }",
+    "difficulty": 2,
+    "explain": "Nothing checks the input. A missing name gives null and a 500 error. The price 'abc' becomes 0.0 and a negative price is saved. A JSON body is not even read by request->request. Use a DTO with #[MapRequestPayload] and Assert rules. Symfony then returns 422 for bad data before your code runs.",
+    "fix": "final class CreateProductDto\n{\n    public function __construct(\n        #[Assert\\NotBlank]\n        #[Assert\\Length(max: 100)]\n        public readonly string $name,\n        #[Assert\\Positive]\n        public readonly float $price,\n    ) {\n    }\n}\n\n#[Route('/products', methods: ['POST'])]\npublic function create(\n    #[MapRequestPayload] CreateProductDto $dto,\n    EntityManagerInterface $em,\n): JsonResponse {\n    $product = new Product();\n    $product->setName($dto->name);\n    $product->setPrice($dto->price);\n    $em->persist($product);\n    $em->flush();\n\n    return $this->json(['id' => $product->getId()], 201);\n}",
+    "id": "pr-sf-create-no-validation",
+    "lang": "php",
+    "pr": {
+      "author": "copilot-fan",
+      "body": "Copilot wrote the controller. It saves name and price from the request.",
+      "title": "Add POST /products",
+      "verdict": "changes"
+    },
+    "tags": [
+      "validation",
+      "request-input",
+      "ai-code-review"
+    ],
+    "topic": "symfony",
+    "type": "pr"
   }
 ]

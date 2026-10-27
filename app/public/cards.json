@@ -1946,5 +1946,202 @@
     "title": "Share data with an ISR in Rust: 5 rules",
     "topic": "rust",
     "type": "concept"
+  },
+  {
+    "bugLines": [
+      2
+    ],
+    "code": "void clear_buf(uint8_t buf[16]) {\n    memset(buf, 0, sizeof(buf));\n}\n\nvoid key_done(void) {\n    uint8_t key[16];\n    load_key(key);\n    use_key(key);\n    clear_buf(key);\n}",
+    "difficulty": 2,
+    "explain": "An array parameter is only a pointer. sizeof(buf) is the pointer size: 4 bytes on a 32-bit MCU. memset clears 4 bytes and 12 key bytes stay on the stack. Pass the length as a second parameter. The [16] in the signature is only a comment.",
+    "fix": "void clear_buf(uint8_t *buf, size_t len) {\n    memset(buf, 0, len);\n}\n\nvoid key_done(void) {\n    uint8_t key[16];\n    load_key(key);\n    use_key(key);\n    clear_buf(key, sizeof(key));\n}",
+    "id": "bug-c-sizeof-param",
+    "lang": "c",
+    "tags": [
+      "array-decay"
+    ],
+    "title": "32-bit MCU. Only the first 4 bytes of the key are cleared. Tap the bug.",
+    "topic": "c",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      3
+    ],
+    "code": "void USART1_IRQHandler(void) {\n    if (!(USART1->SR & USART_SR_TXE)) return;\n    if (tx_tail == tx_head) return;\n    USART1->DR = tx_buf[tx_tail];\n    tx_tail = (tx_tail + 1) % TX_LEN;\n}",
+    "difficulty": 2,
+    "explain": "TXE stays 1 while the data register is empty. If TXEIE stays on, the interrupt fires again and again. The ISR returns at once, and main() gets almost no CPU time. When the buffer is empty, clear TXEIE in CR1. Set it again when you queue new data.",
+    "fix": "void USART1_IRQHandler(void) {\n    if (!(USART1->SR & USART_SR_TXE)) return;\n    if (tx_tail == tx_head) {\n        USART1->CR1 &= ~USART_CR1_TXEIE;  // nothing to send\n        return;\n    }\n    USART1->DR = tx_buf[tx_tail];\n    tx_tail = (tx_tail + 1) % TX_LEN;\n}",
+    "id": "bug-uart-txe-storm",
+    "lang": "c",
+    "tags": [
+      "isr",
+      "peripheral-timing"
+    ],
+    "title": "STM32 UART TX with interrupts. After the last byte is sent, main() runs very slowly. Tap the bug.",
+    "topic": "embedded",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      2
+    ],
+    "code": "fn newest(samples: &[u16], count: usize) -> u16 {\n    let last = count - 1;\n    samples[last]\n}",
+    "difficulty": 1,
+    "explain": "With count = 0, the usize subtraction underflows. A debug build panics with 'attempt to subtract with overflow'. A release build wraps to usize::MAX and the index panics instead. Use checked_sub and return Option, so the caller must handle the empty case.",
+    "fix": "fn newest(samples: &[u16], count: usize) -> Option<u16> {\n    let last = count.checked_sub(1)?;\n    samples.get(last).copied()\n}",
+    "id": "bug-rs-count-minus-one",
+    "lang": "rust",
+    "tags": [
+      "integer-overflow",
+      "panic-in-firmware"
+    ],
+    "title": "Right after boot, before any sample arrives, the firmware panics. Tap the bug.",
+    "topic": "rust",
+    "type": "bug"
+  },
+  {
+    "diff": " static void log_push(uint8_t b) {\n+    __disable_irq();\n     log_buf[log_head++ % LOG_LEN] = b;\n+    __enable_irq();\n }\n \n void stats_update(uint8_t v) {\n     __disable_irq();\n     g_sum += v;\n     log_push(v);\n     g_cnt++;\n     __enable_irq();\n }",
+    "difficulty": 2,
+    "explain": "__enable_irq() does not restore the old state, it always turns interrupts on. In stats_update() the nested call re-enables IRQs, so g_cnt++ is no longer protected. Save PRIMASK, disable, and restore the saved value. Then the helper works inside and outside a critical section.",
+    "fix": "static void log_push(uint8_t b) {\n    uint32_t primask = __get_PRIMASK();\n    __disable_irq();\n    log_buf[log_head++ % LOG_LEN] = b;\n    __set_PRIMASK(primask);   // restore, not enable\n}",
+    "id": "pr-c-nested-irq-disable",
+    "lang": "c",
+    "pr": {
+      "author": "junior-dev",
+      "body": "log_push() is called from main and from an ISR. I added __disable_irq() and __enable_irq() inside it. stats_update() already has its own critical section.",
+      "title": "Protect log_push() from the UART ISR",
+      "verdict": "changes"
+    },
+    "tags": [
+      "critical-section",
+      "isr"
+    ],
+    "topic": "embedded",
+    "type": "pr"
+  },
+  {
+    "diff": "-static uint16_t sine_lut[8] = {\n+static constexpr uint16_t sine_lut[8] = {\n     2048, 2680, 3156, 3434,\n     3434, 3156, 2680, 2048\n };",
+    "difficulty": 1,
+    "explain": "A non-const global array lives in RAM, and startup code copies its values from flash. constexpr makes it const data, so it stays in .rodata in flash. It saves 16 bytes of RAM and the startup copy. Good change. Just do not pass it to code that needs a non-const pointer.",
+    "id": "pr-cpp-constexpr-lut-flash",
+    "lang": "cpp",
+    "pr": {
+      "author": "fw-dev",
+      "body": "RAM is tight. The table is never changed, so it does not need a RAM copy at startup.",
+      "title": "Keep the sine table in flash",
+      "verdict": "approve"
+    },
+    "tags": [
+      "constexpr",
+      "memory"
+    ],
+    "topic": "cpp",
+    "type": "pr"
+  },
+  {
+    "diff": " typedef struct {\n     uint8_t  version;\n     uint32_t baud;\n     uint16_t crc;\n } cfg_t;\n \n uint16_t cfg_crc(const cfg_t *c) {\n-    uint16_t crc = crc16_update(0, &c->version, 1);\n-    return crc16_update(crc, (const uint8_t *)&c->baud, 4);\n+    return crc16((const uint8_t *)c, offsetof(cfg_t, crc));\n }",
+    "difficulty": 2,
+    "explain": "The compiler adds 3 padding bytes between version and baud. Their values are not defined. The new CRC also covers them, so the same config can give different CRCs, and the check fails after a reboot. Make the padding an explicit reserved field and keep it zero.",
+    "fix": "typedef struct {\n    uint8_t  version;\n    uint8_t  reserved[3];   // explicit padding, always 0\n    uint32_t baud;\n    uint16_t crc;\n} cfg_t;\n\nuint16_t cfg_crc(const cfg_t *c) {\n    return crc16((const uint8_t *)c, offsetof(cfg_t, crc));\n}",
+    "id": "pr-c-crc-over-struct",
+    "lang": "c",
+    "pr": {
+      "author": "fw-dev",
+      "body": "Simpler: one crc16() over the struct bytes instead of one call per field.",
+      "title": "Compute the config CRC in one call",
+      "verdict": "changes"
+    },
+    "tags": [
+      "struct-padding",
+      "memory-layout"
+    ],
+    "topic": "c",
+    "type": "pr"
+  },
+  {
+    "answer": 3,
+    "code": "fn main() {\n    let mut buf = [0u8; 4];\n    let first = &buf[0];\n    buf[1] = 5;\n    println!(\"{}\", first);\n}",
+    "difficulty": 2,
+    "explain": "first is a shared borrow of buf and it is used again in println!. Writing buf[1] while that borrow is alive is not allowed. The compiler refuses: one mutable access or many shared ones, never both. The same rule protects a buffer that DMA or an ISR also uses.",
+    "id": "rs-borrow-while-write",
+    "lang": "rust",
+    "options": [
+      "Prints 0",
+      "Prints 5",
+      "Panics at runtime",
+      "Compile error"
+    ],
+    "tags": [
+      "borrow-checker"
+    ],
+    "title": "What happens?",
+    "topic": "rust",
+    "type": "quiz",
+    "verify": {
+      "compileFail": true,
+      "lang": "rust"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "#include <stdio.h>\n\nint main(void) {\n    int s = 1;\n    switch (s) {\n    case 0: puts(\"idle\");\n    case 1: puts(\"run\");\n    case 2: puts(\"stop\"); break;\n    default: puts(\"err\");\n    }\n}",
+    "difficulty": 1,
+    "explain": "switch jumps to case 1 and then keeps running into case 2 until it finds break. Output: run, then stop. A forgotten break in a state machine is a classic bug. Add break to every case, or write an explicit fallthrough comment or attribute.",
+    "id": "c-switch-fallthrough",
+    "lang": "c",
+    "options": [
+      "run",
+      "run, then stop",
+      "run, stop, err",
+      "idle, run, stop"
+    ],
+    "tags": [
+      "switch-fallthrough"
+    ],
+    "title": "What does this print?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "run\nstop",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "When the line is low, the pull-up current is (3.3 - 0.4) V / 3 mA ≈ 970 Ω. A smaller resistor pushes more than 3 mA into the pin and VOL rises, so the bus level is not a clean 0. A larger resistor is safe but slows the rising edge. Pick a value between the min and the speed limit.",
+    "id": "el-i2c-pullup-min",
+    "options": [
+      "About 100 Ω",
+      "About 1 kΩ",
+      "About 10 kΩ",
+      "About 47 kΩ"
+    ],
+    "tags": [
+      "i2c",
+      "pull-up",
+      "ohms-law"
+    ],
+    "title": "I2C at 3.3 V. The device can sink 3 mA and keeps VOL at 0.4 V. What is the smallest safe pull-up?",
+    "topic": "electronics",
+    "type": "quiz"
+  },
+  {
+    "bullets": [
+      "TXE stays 1 while the data register is empty. Enable TXEIE only when the buffer has data.",
+      "In the ISR, when the buffer is empty, clear TXEIE first. Otherwise the ISR fires forever.",
+      "main writes head, the ISR writes tail. One writer per index means no lock is needed.",
+      "Full buffer: drop or return an error in main. Never wait inside the ISR."
+    ],
+    "difficulty": 2,
+    "id": "concept-uart-tx-isr",
+    "tags": [
+      "isr",
+      "peripheral-timing"
+    ],
+    "title": "Interrupt-driven UART TX: 4 rules",
+    "topic": "embedded",
+    "type": "concept"
   }
 ]
