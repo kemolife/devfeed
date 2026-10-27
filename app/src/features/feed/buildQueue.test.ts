@@ -1,6 +1,6 @@
 import type { CardProgress } from '../../store/progressStore';
 import type { Card } from '../../types/card';
-import { buildQueue, matchesFilters, weakPatterns } from './buildQueue';
+import { buildQueue, matchesFilters, MISSED_DELAY_MS, weakPatterns } from './buildQueue';
 
 const concept = (id: string, topic: Card['topic']): Card => ({
   id,
@@ -31,20 +31,46 @@ const seen = (lastCorrect: boolean, lastTs: number): CardProgress => ({
   lastTs,
 });
 
-test('missed cards come first, then unseen, then known', () => {
-  const cards = [concept('known', 'c'), concept('new', 'c'), concept('missed', 'c')];
-  const progress = { known: seen(true, 1), missed: seen(false, 2) };
+const NOW = 10 * MISSED_DELAY_MS;
+const ids = (q: Card[]) => q.map((c) => c.id);
 
-  const ids = buildQueue(cards, progress, [], () => 0).map((c) => c.id);
+test('full order: missed (due), fresh, viewed, missed (not due), known', () => {
+  const cards = ['known', 'missedRecent', 'viewed', 'fresh', 'missedOld'].map((id) => concept(id, 'c'));
+  const progress = {
+    known: seen(true, NOW - 1000),
+    missedRecent: seen(false, NOW - 1000),
+    missedOld: seen(false, NOW - MISSED_DELAY_MS),
+  };
+  const viewed = { viewed: NOW - 5000 };
 
-  expect(ids).toEqual(['missed', 'new', 'known']);
+  expect(ids(buildQueue(cards, progress, [], viewed, NOW, () => 0))).toEqual([
+    'missedOld',
+    'fresh',
+    'viewed',
+    'missedRecent',
+    'known',
+  ]);
 });
 
-test('older misses come before newer misses', () => {
-  const cards = [concept('a', 'c'), concept('b', 'c')];
-  const progress = { a: seen(false, 200), b: seen(false, 100) };
+test('a card answered wrong a minute ago does not come back first on reopen', () => {
+  const cards = [concept('wrong', 'c'), concept('new1', 'c'), concept('new2', 'c')];
+  const progress = { wrong: seen(false, NOW - 60_000) };
 
-  expect(buildQueue(cards, progress, []).map((c) => c.id)).toEqual(['b', 'a']);
+  expect(ids(buildQueue(cards, progress, [], {}, NOW)).at(-1)).toBe('wrong');
+});
+
+test('scrolled-past cards come after never-shown ones, oldest view first', () => {
+  const cards = [concept('v2', 'c'), concept('new', 'c'), concept('v1', 'c')];
+  const viewed = { v1: NOW - 9000, v2: NOW - 1000 };
+
+  expect(ids(buildQueue(cards, {}, [], viewed, NOW))).toEqual(['new', 'v1', 'v2']);
+});
+
+test('older due misses come before newer due misses', () => {
+  const cards = [concept('a', 'c'), concept('b', 'c')];
+  const progress = { a: seen(false, NOW - MISSED_DELAY_MS - 100), b: seen(false, NOW - MISSED_DELAY_MS - 200) };
+
+  expect(ids(buildQueue(cards, progress, [], {}, NOW))).toEqual(['b', 'a']);
 });
 
 test('"pr" filter selects PR cards of any topic', () => {

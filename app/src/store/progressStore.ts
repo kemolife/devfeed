@@ -20,11 +20,14 @@ interface ProgressState {
   cards: Record<string, CardProgress>;
   /** Wrong answers per bug pattern tag, all time. */
   tagMisses: Record<string, number>;
+  /** When a card was last on screen, answered or not. Lets the feed put scrolled-past cards after new ones. */
+  viewed: Record<string, number>;
   today: Today;
   streak: { lastDate: string | null; days: number };
   filters: FeedFilter[];
   dailyGoal: number;
   record: (id: string, tags: string[], correct: boolean) => void;
+  markViewed: (id: string) => void;
   toggleFilter: (f: FeedFilter) => void;
   clearFilters: () => void;
 }
@@ -42,6 +45,7 @@ export const useProgressStore = create<ProgressState>()(
     (set) => ({
       cards: {},
       tagMisses: {},
+      viewed: {},
       today: { date: todayKey(), answered: 0, correct: 0 },
       streak: { lastDate: null, days: 0 },
       filters: [],
@@ -72,6 +76,7 @@ export const useProgressStore = create<ProgressState>()(
             streak: nextStreak(s.streak, date),
           };
         }),
+      markViewed: (id) => set((s) => ({ viewed: { ...s.viewed, [id]: Date.now() } })),
       toggleFilter: (f) =>
         set((s) => ({
           filters: s.filters.includes(f) ? s.filters.filter((x) => x !== f) : [...s.filters, f],

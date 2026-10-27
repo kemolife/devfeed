@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { Code } from '../../components/Code';
 import type { Card } from '../../types/card';
+import { useMarkViewed } from './useMarkViewed';
 
 const TOPIC_LABEL: Record<Card['topic'], string> = {
   rust: 'Rust',
@@ -32,9 +33,14 @@ interface CardShellProps {
 }
 
 export function CardShell({ card, index, children }: CardShellProps) {
+  const ref = useRef<HTMLElement>(null);
+  useMarkViewed(ref, card.id);
+
   return (
     <section
+      ref={ref}
       id={`card-${index}`}
+      data-card-id={card.id}
       className="flex min-h-dvh snap-start flex-col justify-center px-4 pt-32 pb-12"
     >
       <div className="mx-auto w-full max-w-xl">

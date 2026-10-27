@@ -15,30 +15,42 @@ function shuffle<T>(items: T[], rng: () => number): T[] {
   return out;
 }
 
+/** A card answered wrong comes back after this time, not on the very next app start. */
+export const MISSED_DELAY_MS = 12 * 60 * 60 * 1000;
+
 /**
  * Feed order, a light spaced repetition:
- * 1. cards answered wrong last time (oldest first) — they come back until you get them right
- * 2. unseen cards (shuffled)
- * 3. cards already answered right (least recently seen first)
+ * 1. cards answered wrong at least 12 h ago (oldest first): time to try again
+ * 2. cards never shown (shuffled)
+ * 3. cards shown but not answered, e.g. scrolled past (least recently shown first)
+ * 4. cards answered wrong less than 12 h ago: they wait for the next day
+ * 5. cards already answered right (least recently answered first)
  */
 export function buildQueue(
   cards: Card[],
   progress: Record<string, CardProgress>,
   filters: FeedFilter[],
+  viewed: Record<string, number> = {},
+  now: number = Date.now(),
   rng: () => number = Math.random,
 ): Card[] {
   const pool = cards.filter((c) => matchesFilters(c, filters));
-  const byOldest = (a: Card, b: Card) =>
-    (progress[a.id]?.lastTs ?? 0) - (progress[b.id]?.lastTs ?? 0);
+  const answeredAt = (c: Card) => progress[c.id]?.lastTs ?? 0;
+  const byAnswered = (a: Card, b: Card) => answeredAt(a) - answeredAt(b);
+  const byViewed = (a: Card, b: Card) => (viewed[a.id] ?? 0) - (viewed[b.id] ?? 0);
 
-  const missed = pool.filter((c) => progress[c.id]?.lastCorrect === false).sort(byOldest);
-  const unseen = shuffle(
-    pool.filter((c) => !progress[c.id]),
+  const missed = pool.filter((c) => progress[c.id]?.lastCorrect === false).sort(byAnswered);
+  const missedDue = missed.filter((c) => now - answeredAt(c) >= MISSED_DELAY_MS);
+  const missedLater = missed.filter((c) => now - answeredAt(c) < MISSED_DELAY_MS);
+  const unanswered = pool.filter((c) => !progress[c.id]);
+  const fresh = shuffle(
+    unanswered.filter((c) => viewed[c.id] === undefined),
     rng,
   );
-  const known = pool.filter((c) => progress[c.id]?.lastCorrect === true).sort(byOldest);
+  const viewedOnly = unanswered.filter((c) => viewed[c.id] !== undefined).sort(byViewed);
+  const known = pool.filter((c) => progress[c.id]?.lastCorrect === true).sort(byAnswered);
 
-  return [...missed, ...unseen, ...known];
+  return [...missedDue, ...fresh, ...viewedOnly, ...missedLater, ...known];
 }
 
 /** Top missed patterns, for "train these" on the done screen. */

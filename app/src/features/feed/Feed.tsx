@@ -43,7 +43,11 @@ export function Feed() {
   // Built once per filter change. Progress is read without subscribing,
   // so answering a card does not reshuffle the feed under your finger.
   const queue = useMemo(
-    () => (cards ? buildQueue(cards, useProgressStore.getState().cards, filters) : []),
+    () => {
+      if (!cards) return [];
+      const { cards: progress, viewed } = useProgressStore.getState();
+      return buildQueue(cards, progress, filters, viewed);
+    },
     [cards, filters],
   );
 
