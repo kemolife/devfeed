@@ -2046,5 +2046,186 @@
     ],
     "topic": "symfony",
     "type": "pr"
+  },
+  {
+    "answer": 1,
+    "code": "$allowed = ['list' => 'GET', 'delete' => 'DELETE'];\n$action = strtolower('DELETE');\n$method = 'GET';\n\necho isset($allowed[$action])\n    ? ($allowed[$action] === $method ? 'run' : '405')\n    : '404';",
+    "difficulty": 2,
+    "explain": "handle() makes the action lower case, so DELETE is accepted as delete. Then checkAction() compares the real HTTP method: it must be DELETE, but it is GET, so the answer is 405. The method check is what stops a link or a crawler from deleting files.",
+    "id": "fp-action-case",
+    "lang": "php",
+    "options": [
+      "The file is deleted",
+      "405 Method Not Allowed",
+      "404 unsupported action",
+      "500 error"
+    ],
+    "tags": [
+      "http",
+      "security"
+    ],
+    "title": "Senior asks: someone sends GET ?action=DELETE&file=a.csv. What happens?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "405",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "file_get_contents() only reads the text. It does not run it, so there is no leak. But every visit starts PHP, and Response sends no ETag or cache headers. A static file lets the web server do this fast. It is fine for a small project, but static files are better served by the server.",
+    "id": "fp-home-html-php",
+    "options": [
+      "PHP runs for every page load, and there are no cache headers",
+      "The HTML is run as PHP code and can leak secrets",
+      "The jQuery file can no longer load",
+      "Browsers cannot show HTML from PHP"
+    ],
+    "tags": [
+      "server",
+      "architecture"
+    ],
+    "title": "Senior asks: index.php sends home.html with file_get_contents(). What is the downside?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 3,
+    "explain": "Both calls see no file, so both return 201. LOCK_EX stops mixed content: the writes run one after the other and the last one wins. The check and the write are two steps, so it is a small race. Here it is only a wrong status code, so it is acceptable. Do not use this pattern for money or ids.",
+    "id": "fp-new-file-201-race",
+    "options": [
+      "Both get 201, and the last write wins",
+      "One gets 201, the other gets 409",
+      "An exception is thrown for the second client",
+      "The file has mixed content from both"
+    ],
+    "tags": [
+      "race-condition",
+      "filesystem"
+    ],
+    "title": "Senior asks: write() checks is_file() first to answer 201 or 200. Two clients create the same new file at the same time. What can happen?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "code": "$names = ['b.csv', 'A.json', 'a.csv', 'notes.txt', '.tmp.json'];\nsort($names);\n\n$ok = array_filter($names, fn ($n) =>\n    in_array(strtolower(pathinfo($n, PATHINFO_EXTENSION)), ['csv', 'json']));\n\necho implode(',', $ok);",
+    "difficulty": 2,
+    "explain": "scandir() sorts by byte value: '.' comes before 'A', and 'A' before 'a'. Only the extension is checked, so hidden files like .tmp.json are listed too. Only notes.txt is dropped. If you want to hide dot files, add str_starts_with($name, '.') to the check.",
+    "id": "fp-list-order-hidden",
+    "lang": "php",
+    "options": [
+      "A.json,a.csv,b.csv",
+      ".tmp.json,A.json,a.csv,b.csv",
+      "a.csv,A.json,b.csv",
+      "All five names"
+    ],
+    "tags": [
+      "filesystem",
+      "validation"
+    ],
+    "title": "storage/ has: b.csv, A.json, a.csv, notes.txt, .tmp.json. What does listFiles() return?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": ".tmp.json,A.json,a.csv,b.csv",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "$v = \"1\";\nswitch ($v) {\n    case 1: echo \"switch int\"; break;\n}\necho \"\\n\";\necho match ($v) {\n    1 => \"match int\",\n    default => \"match default\",\n};",
+    "difficulty": 2,
+    "explain": "switch compares with == (loose), so \"1\" == 1 is true. match compares with === (strict), so \"1\" does not match 1 and default runs. Without default, match throws UnhandledMatchError. Prefer match when types matter.",
+    "id": "php-switch-vs-match",
+    "lang": "php",
+    "options": [
+      "switch int, then match default",
+      "switch int, then match int",
+      "Nothing, then match default",
+      "UnhandledMatchError"
+    ],
+    "tags": [
+      "loose-compare",
+      "match"
+    ],
+    "title": "PHP 8. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "switch int\nmatch default",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "class Box {\n    public function __construct(public stdClass $data) {}\n}\n$a = new Box((object) ['n' => 1]);\n$b = clone $a;\n$b->data->n = 2;\necho $a->data->n;",
+    "difficulty": 2,
+    "explain": "clone is shallow. $b is a new Box, but $b->data points to the same stdClass object as $a->data. Changing it through $b changes it for $a too. For a deep copy, write __clone() and clone the inner object there, or use readonly value objects.",
+    "id": "oop-clone-shallow",
+    "lang": "php",
+    "options": [
+      "1",
+      "2",
+      "Error",
+      "null"
+    ],
+    "tags": [
+      "objects-vs-arrays",
+      "oop"
+    ],
+    "title": "What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "2",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "console.log(\n  NaN === NaN,\n  [NaN].includes(NaN),\n  [NaN].indexOf(NaN)\n);",
+    "difficulty": 2,
+    "explain": "NaN is never equal to itself with ===, and indexOf uses ===, so it returns -1. includes() uses a different rule (SameValueZero) and finds NaN. To test for NaN use Number.isNaN(x).",
+    "id": "js-nan-compare",
+    "lang": "js",
+    "options": [
+      "false true -1",
+      "true true 0",
+      "false false -1",
+      "true false 0"
+    ],
+    "tags": [
+      "type-coercion"
+    ],
+    "title": "What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "false true -1",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "~ lets the last number you wrote go up. ~2.3.1 means >=2.3.1 <2.4.0, so only patch updates. ~2.3 would mean >=2.3 <3.0. The caret ^2.3.1 means >=2.3.1 <3.0.0. Use ~ when you want only bug fixes.",
+    "id": "composer-tilde",
+    "options": [
+      ">= 2.3.1 and < 2.4.0",
+      ">= 2.3.1 and < 3.0.0",
+      "Only 2.3.1",
+      "Any 2.3.x, including 2.3.0"
+    ],
+    "tags": [
+      "version-constraints",
+      "composer"
+    ],
+    "title": "\"vendor/pkg\": \"~2.3.1\" allows which versions?",
+    "topic": "composer",
+    "type": "quiz"
   }
 ]

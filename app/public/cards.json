@@ -2143,5 +2143,208 @@
     "title": "Interrupt-driven UART TX: 4 rules",
     "topic": "embedded",
     "type": "concept"
+  },
+  {
+    "bugLines": [
+      8
+    ],
+    "code": "#include <assert.h>\n#include <stdint.h>\n\nint uart_read(uint8_t *b);\n\nvoid poll_rx(void) {\n    uint8_t b;\n    assert(uart_read(&b) == 0);\n    process(b);\n}",
+    "difficulty": 2,
+    "explain": "With -DNDEBUG, assert() is removed completely. The call to uart_read() disappears too, so b is never written. Never put code with side effects inside assert(). Run the call first, then assert on the result.",
+    "fix": "void poll_rx(void) {\n    uint8_t b = 0;\n    int rc = uart_read(&b);\n    assert(rc == 0);\n    if (rc != 0) {\n        return;\n    }\n    process(b);\n}",
+    "id": "bug-c-assert-side-effect",
+    "lang": "c",
+    "tags": [
+      "macro",
+      "ignored-error"
+    ],
+    "title": "Debug build works. Release build (-DNDEBUG) reads garbage. Tap the bug.",
+    "topic": "c",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      3,
+      4
+    ],
+    "code": "void forward(const uint8_t *src) {\n    std::vector<uint8_t> buf;\n    buf.reserve(64);\n    memcpy(buf.data(), src, 64);\n    send(buf.data(), buf.size());\n}",
+    "difficulty": 2,
+    "explain": "reserve() only allocates memory. The size stays 0. memcpy writes 64 bytes into elements that do not exist yet, which is undefined behavior, and buf.size() is still 0. Use resize(64), or construct the vector with the size.",
+    "fix": "void forward(const uint8_t *src) {\n    std::vector<uint8_t> buf(src, src + 64);\n    send(buf.data(), buf.size());\n}",
+    "id": "bug-cpp-reserve-memcpy",
+    "lang": "cpp",
+    "tags": [
+      "buffer-overflow",
+      "memory"
+    ],
+    "title": "send() sends 0 bytes. No crash, no error. Tap the bug.",
+    "topic": "cpp",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      3
+    ],
+    "code": "fn on_frame(frame: &[u8]) {\n    let mut id = [0u8; 4];\n    id.copy_from_slice(&frame[..4]);\n    handle(u32::from_le_bytes(id));\n}",
+    "difficulty": 1,
+    "explain": "frame comes from the air, so its length is not trusted. &frame[..4] panics when the frame has fewer than 4 bytes. A panic in firmware usually means a reset. Check the length and drop bad frames. first_chunk::<4>() does both in one step.",
+    "fix": "fn on_frame(frame: &[u8]) {\n    let Some(head) = frame.first_chunk::<4>() else {\n        return; // too short: drop it\n    };\n    handle(u32::from_le_bytes(*head));\n}",
+    "id": "bug-rs-short-frame-panic",
+    "lang": "rust",
+    "tags": [
+      "panic-in-firmware",
+      "buffer-overflow"
+    ],
+    "title": "A short radio frame resets the MCU. Tap the bug.",
+    "topic": "rust",
+    "type": "bug"
+  },
+  {
+    "diff": " typedef struct __attribute__((packed)) {\n     uint8_t  type;\n     uint8_t  flags;\n     uint16_t len;\n     uint32_t crc;\n } frame_hdr_t;\n+\n+_Static_assert(sizeof(frame_hdr_t) == 8,\n+               \"frame_hdr_t must match the wire format\");",
+    "difficulty": 1,
+    "explain": "Good change. 1 + 1 + 2 + 4 = 8 bytes, so the check passes today. If someone adds a field or removes packed, the build fails at once and not on the bus. Not every PR has a bug: approve good code fast.",
+    "id": "pr-c-static-assert-wire-hdr",
+    "lang": "c",
+    "pr": {
+      "author": "senior-dev",
+      "body": "The header must match the wire format. Fail the build if the size changes.",
+      "title": "Check frame header size at compile time",
+      "verdict": "approve"
+    },
+    "tags": [
+      "struct-padding",
+      "memory-layout"
+    ],
+    "topic": "c",
+    "type": "pr"
+  },
+  {
+    "diff": " void USART1_IRQHandler(void) {\n     rx_cb(USART1->DR);\n }\n \n void uart_start(rx_cb_t cb) {\n+    NVIC_EnableIRQ(USART1_IRQn);\n     rx_cb = cb;\n-    NVIC_EnableIRQ(USART1_IRQn);\n }",
+    "difficulty": 2,
+    "explain": "RXNEIE is already on, so the ISR can fire right after NVIC_EnableIRQ. At that moment rx_cb is still NULL, and the ISR calls a NULL pointer: HardFault. Set up all state first, enable the IRQ last. Also guard the pointer, and always read DR.",
+    "fix": "void USART1_IRQHandler(void) {\n    uint8_t b = (uint8_t)USART1->DR;  // always read: clears RXNE\n    if (rx_cb) {\n        rx_cb(b);\n    }\n}\n\nvoid uart_start(rx_cb_t cb) {\n    rx_cb = cb;                       // 1. state ready\n    NVIC_ClearPendingIRQ(USART1_IRQn);\n    NVIC_EnableIRQ(USART1_IRQn);      // 2. IRQ last\n}",
+    "id": "pr-c-irq-before-callback",
+    "lang": "c",
+    "pr": {
+      "author": "junior-dev",
+      "body": "The bootloader leaves RXNEIE on. Enable the NVIC first so the first byte is not lost.",
+      "title": "Enable UART IRQ first, do not miss the first byte",
+      "verdict": "changes"
+    },
+    "tags": [
+      "init-order",
+      "isr"
+    ],
+    "topic": "embedded",
+    "type": "pr"
+  },
+  {
+    "diff": "-static mut READY: bool = false;\n+static READY: AtomicBool = AtomicBool::new(false);\n static mut SAMPLE: u16 = 0;\n \n fn adc_isr() {\n     unsafe { SAMPLE = read_adc(); }\n-    unsafe { READY = true; }\n+    READY.store(true, Ordering::Relaxed);\n }\n \n fn main_loop() {\n-    if unsafe { READY } {\n+    if READY.load(Ordering::Relaxed) {\n         let s = unsafe { SAMPLE };\n         process(s);\n     }\n }",
+    "difficulty": 3,
+    "explain": "The flag is atomic, but SAMPLE is a normal variable. Relaxed gives no order between the two, so the compiler may move the write to SAMPLE after the flag store. Use Release when you set the flag and Acquire when you read it. Then the sample is published before the flag.",
+    "fix": "static READY: AtomicBool = AtomicBool::new(false);\nstatic mut SAMPLE: u16 = 0;\n\nfn adc_isr() {\n    unsafe { SAMPLE = read_adc(); }\n    READY.store(true, Ordering::Release); // publish SAMPLE\n}\n\nfn main_loop() {\n    if READY.swap(false, Ordering::Acquire) {\n        let s = unsafe { SAMPLE };\n        process(s);\n    }\n}",
+    "id": "pr-rs-atomic-relaxed-publish",
+    "lang": "rust",
+    "pr": {
+      "author": "junior-dev",
+      "body": "static mut bool is unsafe. AtomicBool is safe and Relaxed is the fastest.",
+      "title": "Replace static mut READY with AtomicBool",
+      "verdict": "changes"
+    },
+    "tags": [
+      "atomicity",
+      "isr",
+      "volatile"
+    ],
+    "topic": "rust",
+    "type": "pr"
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n\nint main(void) {\n    int i = 0;\n    int ok = (i++ > 0) && (i++ > 0);\n    printf(\"%d %d\\n\", ok, i);\n}",
+    "difficulty": 2,
+    "explain": "The left side is 0 > 0, which is false, and i becomes 1. && stops there, so the right side never runs and i stays 1. There is a sequence point after the left operand, so it is not UB. Careful: a function call on the right side of && can be skipped too.",
+    "id": "c-short-circuit-side-effect",
+    "lang": "c",
+    "options": [
+      "0 1",
+      "0 2",
+      "1 2",
+      "Undefined behavior"
+    ],
+    "tags": [
+      "side-effects",
+      "macro"
+    ],
+    "title": "What does this print?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "0 1",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "fn main() {\n    let timeout: u16 = 5;\n    let elapsed: u16 = 8;\n    println!(\"{}\", timeout.saturating_sub(elapsed));\n    println!(\"{}\", timeout.wrapping_sub(elapsed));\n    println!(\"{:?}\", timeout.checked_sub(elapsed));\n}",
+    "difficulty": 1,
+    "explain": "saturating_sub stops at 0. wrapping_sub goes around: 5 - 8 = 65533 for u16. checked_sub gives None when the result would be below 0. Pick the one that fits: wrapping for tick counters, checked when an underflow is an error.",
+    "id": "rs-saturating-vs-wrapping-sub",
+    "lang": "rust",
+    "options": [
+      "0, 65533, None",
+      "0, 0, None",
+      "It panics",
+      "65533, 65533, Some(65533)"
+    ],
+    "tags": [
+      "integer-overflow",
+      "tick-wrap"
+    ],
+    "title": "What does this print?",
+    "topic": "rust",
+    "type": "quiz",
+    "verify": {
+      "expect": "0\n65533\nNone",
+      "lang": "rust"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "CS is active low. During reset and boot the MCU pin is a floating input, so the flash can see random CS pulses and take clock edges as commands. A pull-up keeps CS high (chip not selected) until the firmware drives the pin.",
+    "id": "el-spi-cs-pullup",
+    "options": [
+      "10 kΩ pull-up from CS to VCC",
+      "10 kΩ pull-down from CS to GND",
+      "100 nF from CS to GND",
+      "1 kΩ in series with MOSI"
+    ],
+    "tags": [
+      "pull-up",
+      "spi",
+      "gpio"
+    ],
+    "title": "The SPI flash sometimes has wrong data after a reset. CS is a normal GPIO. What do you add?",
+    "topic": "electronics",
+    "type": "quiz"
+  },
+  {
+    "bullets": [
+      "First set up everything the ISR uses: buffers, indexes, callbacks, clocks.",
+      "Clear old pending flags before you enable the IRQ, or you get a ghost interrupt at once.",
+      "Enable the peripheral interrupt bit, then the NVIC line last.",
+      "In the ISR, always clear or read the source flag, even when the callback is NULL."
+    ],
+    "difficulty": 1,
+    "id": "concept-irq-startup-order",
+    "tags": [
+      "init-order",
+      "isr",
+      "review-checklist"
+    ],
+    "title": "Enabling an interrupt: 4 rules for the order",
+    "topic": "embedded",
+    "type": "concept"
   }
 ]
