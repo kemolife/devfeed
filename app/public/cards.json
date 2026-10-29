@@ -2346,5 +2346,208 @@
     "title": "Enabling an interrupt: 4 rules for the order",
     "topic": "embedded",
     "type": "concept"
+  },
+  {
+    "bugLines": [
+      5,
+      6,
+      7
+    ],
+    "code": "int readings[4] = {1000, 2000, 3000, 4000};\nchar buf[16];\nsize_t n = 0;\n\nfor (int i = 0; i < 4; i++) {\n    n += snprintf(buf + n, sizeof buf - n,\n                  \"%d,\", readings[i]);\n}",
+    "difficulty": 2,
+    "explain": "snprintf returns the length it WANTED to write, not what fit. After the third value n is 20, which is more than 16. Then sizeof buf - n wraps to a huge size_t and buf + n points outside the array. Stop when n >= sizeof buf.",
+    "fix": "for (int i = 0; i < 4 && n < sizeof buf; i++) {\n    n += snprintf(buf + n, sizeof buf - n,\n                  \"%d,\", readings[i]);\n}",
+    "id": "bug-c-snprintf-offset",
+    "lang": "c",
+    "tags": [
+      "buffer-overflow",
+      "truncation"
+    ],
+    "title": "Building a CSV line. With four 4-digit values, memory after buf is corrupted. Tap the bug.",
+    "topic": "c",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      6,
+      7
+    ],
+    "code": "use core::sync::atomic::{AtomicU32, Ordering};\n\nstatic EVENTS: AtomicU32 = AtomicU32::new(0);\n\nfn count_event() {\n    let n = EVENTS.load(Ordering::Relaxed);\n    EVENTS.store(n + 1, Ordering::Relaxed);\n}",
+    "difficulty": 2,
+    "explain": "Each call is atomic, but load + store together are not. If the ISR fires between them, main writes back an old n + 1 and the ISR count is lost. Use one atomic read-modify-write: fetch_add. On Cortex-M0 there is no fetch_add, so use a critical section.",
+    "fix": "fn count_event() {\n    // one atomic step (not on thumbv6m)\n    EVENTS.fetch_add(1, Ordering::Relaxed);\n}",
+    "id": "bug-rs-atomic-load-store",
+    "lang": "rust",
+    "tags": [
+      "rmw-race",
+      "atomicity",
+      "isr"
+    ],
+    "title": "Event counter. It is called from main and from an ISR. The count is sometimes too low. Tap the bug.",
+    "topic": "rust",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      3,
+      6
+    ],
+    "code": "struct Spi {\n    uint8_t cs;\n    Gpio gpio;\n\n    explicit Spi(uint8_t pin)\n        : gpio(cs), cs(pin) {}\n};",
+    "difficulty": 2,
+    "explain": "Members are initialized in the order they are DECLARED, not in the order of the init list. cs comes first, but gpio(cs) is written first and reads cs too early. Use the argument: gpio(pin). Compile with -Wreorder to get a warning.",
+    "fix": "struct Spi {\n    uint8_t cs;\n    Gpio gpio;\n\n    explicit Spi(uint8_t pin)\n        : cs(pin), gpio(pin) {}\n};",
+    "id": "bug-cpp-member-init-order",
+    "lang": "cpp",
+    "tags": [
+      "init-order"
+    ],
+    "title": "The chip-select pin is random after construction. Tap the bug.",
+    "topic": "cpp",
+    "type": "bug"
+  },
+  {
+    "diff": " #define MODE_MASK (SPI_CR1_CPOL | SPI_CR1_CPHA)\n \n void spi_set_mode(uint32_t mode) {\n     SPI1->CR1 &= ~SPI_CR1_SPE;\n-    SPI1->CR1 |= mode;\n+    SPI1->CR1 = (SPI1->CR1 & ~MODE_MASK)\n+              | (mode & MODE_MASK);\n     SPI1->CR1 |= SPI_CR1_SPE;\n }",
+    "difficulty": 2,
+    "explain": "Good. |= can only set bits, so the old mode stayed. The fix clears CPOL and CPHA, then sets the new ones. The mask on mode stops other bits from leaking in. SPI is disabled (SPE off) while CR1 changes. Pattern: to change a field, clear it first.",
+    "id": "pr-spi-mode-mask",
+    "lang": "c",
+    "pr": {
+      "author": "junior-dev",
+      "body": "After mode 3, switching to mode 0 kept CPOL set. |= never clears old bits. Now I clear the mode bits first.",
+      "title": "Fix SPI mode change at runtime",
+      "verdict": "approve"
+    },
+    "tags": [
+      "bit-manipulation",
+      "spi"
+    ],
+    "topic": "embedded",
+    "type": "pr"
+  },
+  {
+    "diff": " static HANDLERS: [fn(); 2] = [led_on, led_off];\n \n fn handle(cmd: u8) {\n-    match cmd {\n-        0 => led_on(),\n-        1 => led_off(),\n-        _ => {}\n-    }\n+    HANDLERS[cmd as usize]();\n }",
+    "difficulty": 2,
+    "explain": "cmd comes from the UART. The old match ignored unknown values. The table index panics for cmd >= 2, so one bad byte resets the MCU. Use .get(): it returns None when the index is out of range. Pattern: never index with outside data.",
+    "fix": "static HANDLERS: [fn(); 2] = [led_on, led_off];\n\nfn handle(cmd: u8) {\n    if let Some(h) = HANDLERS.get(cmd as usize) {\n        h();\n    }\n}",
+    "id": "pr-rs-handler-table",
+    "lang": "rust",
+    "pr": {
+      "author": "junior-dev",
+      "body": "Less code. New commands are one line in the table.",
+      "title": "Replace match with a handler table",
+      "verdict": "changes"
+    },
+    "tags": [
+      "panic-in-firmware",
+      "unchecked-index"
+    ],
+    "topic": "rust",
+    "type": "pr"
+  },
+  {
+    "diff": "+const char *fmt_temp(uint16_t t_dc) {\n+    char buf[8];\n+    snprintf(buf, sizeof buf, \"%d.%d\",\n+             t_dc / 10, t_dc % 10);\n+    return buf;\n+}",
+    "difficulty": 2,
+    "explain": "buf lives on the stack of fmt_temp. After return the memory is free, and the next call reuses it. The log shows garbage or crashes. The caller must own the buffer. Pass it in with its size. Compilers warn: -Wreturn-local-addr.",
+    "fix": "void fmt_temp(char *out, size_t n, uint16_t t_dc) {\n    snprintf(out, n, \"%d.%d\",\n             t_dc / 10, t_dc % 10);\n}\n\n// caller:\nchar txt[8];\nfmt_temp(txt, sizeof txt, 235);",
+    "id": "pr-c-return-local-buf",
+    "lang": "c",
+    "pr": {
+      "author": "junior-dev",
+      "body": "Used in three log lines. Returns text like 23.5.",
+      "title": "Add helper to format temperature",
+      "verdict": "changes"
+    },
+    "tags": [
+      "dangling-ref",
+      "buffer-overflow"
+    ],
+    "topic": "c",
+    "type": "pr"
+  },
+  {
+    "answer": 1,
+    "code": "#include <stdio.h>\n#include <string.h>\n\nint main(void) {\n    char a[] = \"hello\";\n    char b[8] = \"hi\";\n    printf(\"%zu %zu %zu %zu\\n\",\n           sizeof a, strlen(a),\n           sizeof b, strlen(b));\n}",
+    "difficulty": 2,
+    "explain": "The array a[] gets the size of the text plus the NUL byte: 6. strlen does not count the NUL: 5. b has a fixed size of 8, so sizeof is 8, but strlen stops at the first NUL: 2. sizeof is the memory size, strlen is the text length.",
+    "id": "c-sizeof-strlen-array",
+    "lang": "c",
+    "options": [
+      "5 5 8 2",
+      "6 5 8 2",
+      "6 5 2 2",
+      "6 6 8 3"
+    ],
+    "tags": [
+      "string-termination",
+      "memory-layout"
+    ],
+    "title": "What does this print?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "6 5 8 2",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "use std::mem::size_of;\n\n#[repr(C)]\nstruct A { a: u8, b: u32, c: u8 }\n\n#[repr(C, packed)]\nstruct B { a: u8, b: u32, c: u8 }\n\nfn main() {\n    println!(\"{} {}\",\n        size_of::<A>(), size_of::<B>());\n}",
+    "difficulty": 2,
+    "explain": "repr(C) uses C layout: 3 padding bytes after a so b is 4-byte aligned, and 3 after c so the size is a multiple of 4. Total 12. packed removes all padding: 1+4+1 = 6. But a reference to a packed field can be unaligned, so Rust forbids it. Copy the field first.",
+    "id": "rs-repr-c-packed-size",
+    "lang": "rust",
+    "options": [
+      "6 6",
+      "12 6",
+      "8 6",
+      "12 12"
+    ],
+    "tags": [
+      "struct-padding",
+      "memory-layout"
+    ],
+    "title": "Two structs with the same fields. What does this print?",
+    "topic": "rust",
+    "type": "quiz",
+    "verify": {
+      "expect": "12 6",
+      "lang": "rust"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "During reset and boot, MCU pins are high impedance. The gate floats and can pick up noise, so the MOSFET turns on a little. A pull-down to GND keeps an N-channel gate off until the firmware drives the pin. A pull-up would turn it ON. The pull-down is large, so it hardly loads the pin.",
+    "id": "el-mosfet-gate-pulldown",
+    "options": [
+      "100 kΩ from gate to GND",
+      "100 kΩ from gate to 3.3 V",
+      "A bigger capacitor across the motor",
+      "A diode from gate to the MCU pin"
+    ],
+    "tags": [
+      "mosfet",
+      "gpio"
+    ],
+    "title": "An MCU pin drives an N-channel low-side MOSFET gate. At power-up the motor twitches for a moment. What do you add?",
+    "topic": "electronics",
+    "type": "quiz"
+  },
+  {
+    "bullets": [
+      "Is there a // SAFETY: comment? It must say why the rule holds, not repeat the code.",
+      "Raw pointers: aligned, valid for the whole length, and not used after the owner is gone (think DMA buffers).",
+      "static mut: replace it with atomics or a critical-section Mutex. One writer is not safe if an ISR also reads.",
+      "transmute and pointer casts: check size, alignment and valid bit patterns (bool, enums, references).",
+      "Keep the unsafe block small. Hide it in a safe function that checks its inputs."
+    ],
+    "difficulty": 2,
+    "id": "concept-rs-unsafe-review",
+    "tags": [
+      "unsafe"
+    ],
+    "title": "Reviewing unsafe in Rust firmware: 5 questions",
+    "topic": "rust",
+    "type": "concept"
   }
 ]

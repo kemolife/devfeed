@@ -2227,5 +2227,193 @@
     "title": "\"vendor/pkg\": \"~2.3.1\" allows which versions?",
     "topic": "composer",
     "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "code": "echo json_encode(\n    'Äpfel',\n    JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR\n);",
+    "difficulty": 2,
+    "explain": "JsonFileActions::write() does not use JSON_UNESCAPED_UNICODE, so json_encode() writes non-ASCII letters as \\u escapes. The file is still valid JSON and read() gives \"Äpfel\" back. But people who open the file see codes. Add the flag if humans read the files.",
+    "id": "fp-json-unicode-escape",
+    "lang": "php",
+    "options": [
+      "\"Äpfel\"",
+      "\"\\u00c4pfel\"",
+      "\"?pfel\"",
+      "An exception is thrown"
+    ],
+    "tags": [
+      "json",
+      "data-types"
+    ],
+    "title": "Senior asks: a user saves the text \"Äpfel\" with write on a .json file. What is in the file?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "\"\\u00c4pfel\"",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "$f = fopen('php://temp', 'r+');\nfputcsv($f, ['Apple, red', 3], ',', '\"', '\\\\');\nrewind($f);\necho rtrim(stream_get_contents($f));",
+    "difficulty": 2,
+    "explain": "fputcsv() puts quotes around a value that has the separator, a quote or a new line. So the file keeps two columns, and read() with READ_CSV gets \"Apple, red\" back. Writing CSV by hand with implode(',') would break this row into three columns.",
+    "id": "fp-csv-quote-comma",
+    "lang": "php",
+    "options": [
+      "Apple, red,3",
+      "\"Apple, red\",3",
+      "Apple\\, red,3",
+      "An exception is thrown"
+    ],
+    "tags": [
+      "csv",
+      "data-types"
+    ],
+    "title": "Senior asks: a CSV row has the fruit \"Apple, red\" (with a comma). What does write() save?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "\"Apple, red\",3",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "$data = json_decode(\n    '{\"name\":\"x\",\"items\":[1,2,3]}', true\n);\necho 'File \"a.json\" has '\n    . count($data) . ' records.';",
+    "difficulty": 2,
+    "explain": "count() only counts the top level. The object has two keys, name and items, so the message says 2 records. The 3 items inside are not counted. The message is made for a list of rows, so for an object it is misleading. You could say 'keys' or check array_is_list().",
+    "id": "fp-read-count-keys",
+    "lang": "php",
+    "options": [
+      "File \"a.json\" has 1 records.",
+      "File \"a.json\" has 2 records.",
+      "File \"a.json\" has 4 records.",
+      "File \"a.json\" has 5 records."
+    ],
+    "tags": [
+      "json",
+      "error-messages"
+    ],
+    "title": "Senior asks: a.json has one object with a name and a list of 3 items. What does read() tell the user?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "File \"a.json\" has 2 records.",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "The Symfony router maps URL and HTTP method to one controller method. Wrong method gives 405 and unknown path gives 404 without your code. So ACTION_METHODS, checkAction() and match disappear. The method list now lives in one place: the attribute.",
+    "id": "fp-symfony-route-attribute",
+    "options": [
+      "Route attributes like #[Route('/files/{name}', methods: ['DELETE'])] on controller methods",
+      "A bigger switch with more cases in index.php",
+      "One service that reads $_GET['action']",
+      "Nothing: Symfony has no routing"
+    ],
+    "tags": [
+      "architecture",
+      "http"
+    ],
+    "title": "Senior asks: you move the project to full Symfony. What replaces ACTION_METHODS and the match in handle()?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "code": "$list = [5, 0, 7];\n$clean = array_filter($list);\necho json_encode($clean);",
+    "difficulty": 2,
+    "explain": "array_filter() removes 0 and keeps the old keys 0 and 2. A PHP array with keys that are not 0,1,2... in order becomes a JSON object. The front end expects a list and gets an object. Use array_values(array_filter($list)) to get [5,7].",
+    "id": "php-array-filter-keys",
+    "lang": "php",
+    "options": [
+      "[5,7]",
+      "{\"0\":5,\"2\":7}",
+      "[5,0,7]",
+      "{\"5\":0,\"7\":1}"
+    ],
+    "tags": [
+      "array-keys",
+      "json"
+    ],
+    "title": "An API returns a filtered list. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "{\"0\":5,\"2\":7}",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "class A {\n    public static int $n = 0;\n    public static function inc(): void {\n        static::$n++;\n    }\n}\nclass B extends A {}\n\nA::inc();\nB::inc();\necho A::$n, B::$n;",
+    "difficulty": 2,
+    "explain": "A child class does not get its own copy of a static property. A::$n and B::$n are the same variable, so two calls give 2 for both. To give B its own counter, declare public static int $n = 0; again inside B. Static state is shared: be careful with it.",
+    "id": "oop-static-shared-child",
+    "lang": "php",
+    "options": [
+      "11",
+      "22",
+      "20",
+      "02"
+    ],
+    "tags": [
+      "late-static-binding",
+      "inheritance"
+    ],
+    "title": "A static counter and a child class. What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "22",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "composer audit checks the packages in composer.lock against a list of known security advisories. validate checks the composer.json file. outdated only shows newer versions, not security. dump-autoload rebuilds the class map. Run audit in CI so a bad package fails the build.",
+    "id": "composer-audit",
+    "options": [
+      "composer audit",
+      "composer validate",
+      "composer outdated",
+      "composer dump-autoload"
+    ],
+    "tags": [
+      "composer-commands",
+      "security"
+    ],
+    "title": "You want to know if your installed packages have known security problems. Which command?",
+    "topic": "composer",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "code": "const res = new Response('', { status: 404 });\n\nPromise.resolve(res)\n  .then(r => console.log('then', r.ok))\n  .catch(() => console.log('catch'));",
+    "difficulty": 2,
+    "explain": "fetch() only rejects on network errors, like no connection. A 404 or 500 answer is a normal result, so .then() runs and r.ok is false. Always check r.ok (or r.status) yourself. Unlike jQuery $.ajax, where the error callback runs for 404.",
+    "id": "js-response-404-ok",
+    "lang": "js",
+    "options": [
+      "catch",
+      "then false",
+      "then true",
+      "Nothing"
+    ],
+    "tags": [
+      "async",
+      "http"
+    ],
+    "title": "A fetch() gets the answer 404. What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "then false",
+      "lang": "js"
+    }
   }
 ]
