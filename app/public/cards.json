@@ -2549,5 +2549,205 @@
     "title": "Reviewing unsafe in Rust firmware: 5 questions",
     "topic": "rust",
     "type": "concept"
+  },
+  {
+    "bugLines": [
+      3
+    ],
+    "code": "// timeout in ms from config, up to 3 hours\nvoid set_timeout(uint32_t ms) {\n    uint64_t us = ms * 1000;\n    timer_arm(us);\n}",
+    "difficulty": 2,
+    "explain": "ms * 1000 is done in 32 bits, because both values are uint32_t. It wraps above 4294967 ms (about 71 minutes). Only then the result is widened to uint64_t. Cast one operand first, so the multiplication is 64-bit.",
+    "fix": "void set_timeout(uint32_t ms) {\n    uint64_t us = (uint64_t)ms * 1000;\n    timer_arm(us);\n}",
+    "id": "bug-c-mul-before-widen",
+    "lang": "c",
+    "tags": [
+      "integer-overflow",
+      "truncation"
+    ],
+    "title": "Timeouts above ~71 minutes fire too early. Tap the bug.",
+    "topic": "c",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      10
+    ],
+    "code": "struct IrqGuard;\nimpl IrqGuard {\n    fn new() -> Self { disable_irq(); IrqGuard }\n}\nimpl Drop for IrqGuard {\n    fn drop(&mut self) { enable_irq(); }\n}\n\nfn bump() {\n    let _ = IrqGuard::new();\n    unsafe { COUNT += 1; }\n}",
+    "difficulty": 2,
+    "explain": "let _ = does not keep the value. The guard is dropped at once, so interrupts are enabled again before COUNT changes. The lock protects nothing. Bind it to a name, like _guard. The guard then lives to the end of the block.",
+    "fix": "fn bump() {\n    let _guard = IrqGuard::new();\n    unsafe { COUNT += 1; }\n}   // _guard is dropped here",
+    "id": "bug-rs-let-underscore-guard",
+    "lang": "rust",
+    "tags": [
+      "critical-section",
+      "raii"
+    ],
+    "title": "The counter still gets corrupted, although bump() takes the lock. Tap the bug.",
+    "topic": "rust",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      3
+    ],
+    "code": "class Motor {\npublic:\n    Motor() { memset(this, 0, sizeof(*this)); }\n    virtual void stop() { pwm_off(); }\n    virtual ~Motor() = default;\nprivate:\n    uint16_t duty_;\n    uint8_t  state_;\n};\n\nvoid emergency(Motor &m) { m.stop(); }",
+    "difficulty": 3,
+    "explain": "A class with virtual functions has a hidden vtable pointer. memset on this also zeroes that pointer. The next virtual call jumps through a null pointer. It is also undefined behavior for a non-trivial type. Use member initializers instead.",
+    "fix": "class Motor {\npublic:\n    Motor() = default;\n    virtual void stop() { pwm_off(); }\n    virtual ~Motor() = default;\nprivate:\n    uint16_t duty_ = 0;\n    uint8_t  state_ = 0;\n};",
+    "id": "bug-cpp-memset-this",
+    "lang": "cpp",
+    "tags": [
+      "memory",
+      "raii"
+    ],
+    "title": "After a Motor is created, m.stop() causes a HardFault. Tap the bug.",
+    "topic": "cpp",
+    "type": "bug"
+  },
+  {
+    "diff": " void uart_init(void) {\n-    NVIC_SetPriority(USART1_IRQn, 6);\n+    NVIC_SetPriority(USART1_IRQn, 0);\n     NVIC_EnableIRQ(USART1_IRQn);\n }\n \n void USART1_IRQHandler(void) {\n     BaseType_t woken = pdFALSE;\n     uint8_t b = USART1->DR;\n     xQueueSendFromISR(rx_q, &b, &woken);\n     portYIELD_FROM_ISR(woken);\n }",
+    "difficulty": 3,
+    "explain": "FreeRTOS on Cortex-M can only be called from ISRs with a priority number at or above configMAX_SYSCALL_INTERRUPT_PRIORITY (5 here). Priority 0 is above that limit. FreeRTOS cannot mask it, so queue data can be corrupted. Keep the number at 5 or more. Use DMA or the FIFO for speed.",
+    "fix": "void uart_init(void) {\n    // This ISR calls xQueueSendFromISR, so its priority\n    // number must be >= the FreeRTOS syscall limit (5).\n    NVIC_SetPriority(USART1_IRQn, 5);\n    NVIC_EnableIRQ(USART1_IRQn);\n    // Lost bytes: use DMA circular RX or the UART FIFO.\n}",
+    "id": "pr-freertos-isr-priority-zero",
+    "lang": "c",
+    "pr": {
+      "author": "junior-dev",
+      "body": "We lose bytes at 921600 baud. Priority 0 is the highest, so the UART ISR can never wait for other interrupts.",
+      "title": "Raise UART IRQ priority to stop lost bytes",
+      "verdict": "changes"
+    },
+    "tags": [
+      "freertos",
+      "isr",
+      "critical-section"
+    ],
+    "topic": "embedded",
+    "type": "pr"
+  },
+  {
+    "diff": "-static uint8_t tx_buf[64];\n+static uint8_t tx_buf[64] __attribute__((aligned(32)));\n \n void send_frame(const uint8_t *src, size_t n) {\n     if (n > sizeof tx_buf) return;\n     memcpy(tx_buf, src, n);\n+    SCB_CleanDCache_by_Addr((uint32_t *)tx_buf,\n+                            sizeof tx_buf);\n     HAL_UART_Transmit_DMA(&huart2, tx_buf, n);\n }",
+    "difficulty": 2,
+    "explain": "Good. The CPU writes tx_buf into the D-cache, but DMA reads RAM. Clean writes the cache lines to RAM before DMA starts. The buffer is aligned to 32 bytes, and its size is a multiple of 32 (the Cortex-M7 cache line). So the clean does not touch neighbour variables.",
+    "id": "pr-c-dma-clean-before-tx",
+    "lang": "c",
+    "pr": {
+      "author": "senior-dev",
+      "body": "STM32H7, D-cache on. DMA read old bytes from RAM. The buffer is now 32-byte aligned and the cache is cleaned before the DMA starts.",
+      "title": "Fix garbage at the end of UART DMA frames",
+      "verdict": "approve"
+    },
+    "tags": [
+      "dma",
+      "cache-coherency"
+    ],
+    "topic": "embedded",
+    "type": "pr"
+  },
+  {
+    "diff": " void thermostat_step(float temp_c) {\n-    if (temp_c < 40.0f) heater_on();\n-    else                heater_off();\n+    if (temp_c < 38.0f)  heater_on();\n+    if (temp_c == 40.0f) heater_off();\n }",
+    "difficulty": 2,
+    "explain": "temp_c is a float from an ADC formula. It almost never equals 40.0f exactly. The temperature goes from 39.9 to 40.1 and the heater stays on. Hysteresis is a good idea, but compare with >=. Between 38 and 40 nothing changes, so the relay keeps its state.",
+    "fix": "#define T_ON_C  38.0f\n#define T_OFF_C 40.0f\n\nvoid thermostat_step(float temp_c) {\n    if (temp_c < T_ON_C)   heater_on();\n    if (temp_c >= T_OFF_C) heater_off();\n}",
+    "id": "pr-c-float-eq-heater",
+    "lang": "c",
+    "pr": {
+      "author": "junior-dev",
+      "body": "The relay clicked too often. Now it turns on below 38 C and off when the temperature is 40 C.",
+      "title": "Add hysteresis to the heater relay",
+      "verdict": "changes"
+    },
+    "tags": [
+      "float-precision"
+    ],
+    "topic": "c",
+    "type": "pr"
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    int left = 10;  // bytes left in buffer\n    if (left - sizeof(uint32_t) * 3 > 0)\n        puts(\"room\");\n    else\n        puts(\"full\");\n}",
+    "difficulty": 2,
+    "explain": "sizeof gives size_t, which is unsigned. left is converted to size_t, so 10 - 12 wraps to a huge number. A huge number is > 0, so it prints room. The buffer is really too small. Compare before you subtract: left > 12.",
+    "id": "c-unsigned-sizeof-diff",
+    "lang": "c",
+    "options": [
+      "room",
+      "full",
+      "Undefined behavior",
+      "Compile error"
+    ],
+    "tags": [
+      "signed-unsigned",
+      "integer-promotion"
+    ],
+    "title": "What does this print?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "room",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "#include <cstdio>\n\nconst char *names[] = {\n    \"red\",\n    \"green\"\n    \"blue\",\n};\n\nint main() {\n    std::printf(\"%zu\\n\",\n        sizeof names / sizeof names[0]);\n}",
+    "difficulty": 2,
+    "explain": "There is no comma after \"green\". The compiler joins neighbour string literals, so the second item is \"greenblue\". The array has 2 items and the code compiles without a warning. Menu tables and error-text tables often have this bug. Put one item per line and check the count.",
+    "id": "cpp-missing-comma-concat",
+    "lang": "cpp",
+    "options": [
+      "3",
+      "2",
+      "Compile error",
+      "4"
+    ],
+    "tags": [
+      "array-init",
+      "string-concat"
+    ],
+    "title": "What does this print?",
+    "topic": "cpp",
+    "type": "quiz",
+    "verify": {
+      "expect": "2",
+      "lang": "cpp"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "The two capacitors are in series: C/2. Stray capacitance adds in parallel: CL = C/2 + Cstray. So C = 2 x (12 - 3) = 18 pF. 24 pF forgets the stray part. 9 pF forgets that two capacitors in series give half. A wrong load slows the start-up or shifts the frequency.",
+    "id": "el-crystal-load-caps",
+    "options": [
+      "12 pF",
+      "18 pF",
+      "24 pF",
+      "9 pF"
+    ],
+    "tags": [
+      "crystal",
+      "clocks"
+    ],
+    "title": "A crystal needs a load capacitance of 12 pF. PCB stray capacitance is about 3 pF. Two equal capacitors go from the crystal pins to GND. Which value?",
+    "topic": "electronics",
+    "type": "quiz"
+  },
+  {
+    "bullets": [
+      "Source impedance: a high-impedance sensor cannot charge the sampling capacitor. Add a buffer or a longer sample time.",
+      "Put an RC filter or 100 nF at the ADC pin, close to the MCU.",
+      "The ADC reads a ratio to VREF. If VREF is a noisy supply, the readings move. Use a clean reference.",
+      "Layout: keep analog traces away from switching nets (DC-DC, PWM). Return current should not flow under the ADC input.",
+      "Average samples (oversampling) only after the hardware is good. Software cannot fix a bad input."
+    ],
+    "difficulty": 1,
+    "id": "concept-adc-noisy",
+    "tags": [
+      "adc",
+      "review-checklist"
+    ],
+    "title": "Noisy ADC readings: 5 things to check",
+    "topic": "electronics",
+    "type": "concept"
   }
 ]

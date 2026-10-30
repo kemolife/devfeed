@@ -2415,5 +2415,187 @@
       "expect": "then false",
       "lang": "js"
     }
+  },
+  {
+    "diff": "     public function delete(string $fileName): void\n     {\n-        $this->findFileActions($fileName);\n         $path = $this->getPath($fileName);\n \n         if (!is_file($path)) {\n             throw new FileNotFoundException(basename($fileName));\n         }\n \n         if (!unlink($path)) {\n             throw new StorageException('Could not delete file \"' . basename($fileName) . '\".');\n         }\n     }",
+    "difficulty": 2,
+    "explain": "The line is not dead. The result is not used, but the call throws UnsupportedFormatException for any extension except csv and json. Without it, DELETE can remove every file in storage/, like .gitkeep or notes.txt. Keep the check and give it a clear name, so nobody removes it again.",
+    "fix": "public function delete(string $fileName): void\n{\n    $this->assertSupported($fileName);\n    $path = $this->getPath($fileName);\n\n    if (!is_file($path)) {\n        throw new FileNotFoundException(basename($fileName));\n    }\n\n    if (!unlink($path)) {\n        throw new StorageException('Could not delete file \"' . basename($fileName) . '\".');\n    }\n}\n\nprivate function assertSupported(string $fileName): void\n{\n    // throws UnsupportedFormatException for other extensions\n    $this->findFileActions($fileName);\n}",
+    "id": "fp-pr-delete-ext-guard",
+    "lang": "php",
+    "pr": {
+      "author": "copilot-fan",
+      "body": "findFileActions() result is not used in delete(). I removed the dead line.",
+      "title": "Remove unused call in FileService::delete()",
+      "verdict": "changes"
+    },
+    "tags": [
+      "validation",
+      "security"
+    ],
+    "topic": "project",
+    "type": "pr"
+  },
+  {
+    "answer": 0,
+    "code": "$taken = ['fruits.csv', 'fruits_1.csv'];\n$name = 'fruits';\n$ext = 'csv';\n$free = $name . '.' . $ext;\n$n = 1;\n\nwhile (in_array($free, $taken, true)) {\n    $free = $name . '_' . $n . '.' . $ext;\n    $n++;\n}\necho $free;",
+    "difficulty": 2,
+    "explain": "The loop tries fruits.csv, then fruits_1.csv, then fruits_2.csv, and takes the first free one. Old files are never replaced. The user gets status 201 and a message with the new name. In the real class, fopen($path, 'x') does the check and the create in one step.",
+    "id": "fp-upload-name-counter",
+    "lang": "php",
+    "options": [
+      "fruits_2.csv",
+      "fruits_1.csv (old file is replaced)",
+      "An error: file exists",
+      "fruits_3.csv"
+    ],
+    "tags": [
+      "filesystem",
+      "upload"
+    ],
+    "title": "Senior asks: fruits.csv and fruits_1.csv already exist. A user uploads fruits.csv again. Which name does reserveFreeName() give?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "fruits_2.csv",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "$f = fopen('php://temp', 'r+');\nfputcsv($f, ['id', 'note'], ',', '\"', '\\\\');\nfputcsv($f, [1, null], ',', '\"', '\\\\');\nrewind($f);\n\nfgetcsv($f, null, ',', '\"', '\\\\');\n$row = fgetcsv($f, null, ',', '\"', '\\\\');\nvar_dump($row[1]);",
+    "difficulty": 2,
+    "explain": "CSV has no null. fputcsv() writes an empty field for null, and reading gives an empty string. The data changed type without any error. In JSON the same value stays null. If the difference matters, store a marker or use JSON.",
+    "id": "fp-csv-null-value",
+    "lang": "php",
+    "options": [
+      "NULL",
+      "string(0) \"\"",
+      "string(4) \"null\"",
+      "An exception is thrown"
+    ],
+    "tags": [
+      "csv",
+      "data-types"
+    ],
+    "title": "Senior asks: you write the row {\"id\": 1, \"note\": null} to a CSV file and read it back. What is note?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "string(0) \"\"",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 3,
+    "explain": "delete() checks is_file() and then calls unlink(). This is check-then-act. The first client deletes the file. For the second client unlink() returns false (and PHP prints a warning), so it throws StorageException and gets 500. A better answer for a missing file is 404, or an idempotent success.",
+    "id": "fp-delete-race",
+    "options": [
+      "404, the file is not found",
+      "500 StorageException, because unlink() fails",
+      "200, like the first client",
+      "The server waits until the first one finishes"
+    ],
+    "tags": [
+      "race-condition",
+      "filesystem"
+    ],
+    "title": "Senior asks: two clients send DELETE for the same file at the same time. Both pass is_file(). What does the slower one get?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "var_dump(in_array('1e1', ['10']));\nvar_dump(in_array('abc', [0]));\nvar_dump(in_array(null, [0]));\nvar_dump(in_array('1e1', ['10'], true));",
+    "difficulty": 2,
+    "explain": "in_array() uses == unless the third argument is true. '1e1' and '10' are both numeric strings: 10 == 10, so true. 'abc' == 0 is false in PHP 8. null == 0 is true. With strict mode the types must match, so the last line is false. Use in_array($x, $list, true) by default.",
+    "id": "php-in-array-loose",
+    "lang": "php",
+    "options": [
+      "true false true false",
+      "true true true false",
+      "false false false false",
+      "true false false false"
+    ],
+    "tags": [
+      "loose-compare",
+      "in-array"
+    ],
+    "title": "PHP 8. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "bool(true)\nbool(false)\nbool(true)\nbool(false)",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "class A {\n    public function run() { return $this->name(); }\n    private function name() { return 'A'; }\n}\nclass B extends A {\n    private function name() { return 'B'; }\n}\necho (new B)->run();",
+    "difficulty": 2,
+    "explain": "A private method is not inherited as an override. run() is written in A, so $this->name() uses the private name() of A. B::name() is a different method. If you want B to change it, make the method protected in both classes.",
+    "id": "oop-private-not-override",
+    "lang": "php",
+    "options": [
+      "A",
+      "B",
+      "Error: cannot redeclare name()",
+      "Nothing"
+    ],
+    "tags": [
+      "inheritance",
+      "visibility"
+    ],
+    "title": "What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "A",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 2,
+    "code": "console.log('A');\nsetTimeout(() => console.log('B'), 0);\nPromise.resolve().then(() => console.log('C'));\nconsole.log('D');",
+    "difficulty": 2,
+    "explain": "Normal code runs first: A, then D. A promise callback is a microtask. It runs right after the current code, before any timer. setTimeout, even with 0, goes to the timer queue and runs later. So the order is A D C B.",
+    "id": "js-microtask-order",
+    "lang": "js",
+    "options": [
+      "A B C D",
+      "A D B C",
+      "A D C B",
+      "A C D B"
+    ],
+    "tags": [
+      "async",
+      "event-loop"
+    ],
+    "title": "What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "A\nD\nC\nB",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "After a rebase the history is new, so a normal push is rejected. --force-with-lease overwrites only if the remote branch is still what you last fetched. If a colleague pushed meanwhile, it stops. Plain --force would delete their commits. Never force-push main.",
+    "id": "git-force-with-lease",
+    "options": [
+      "git push --force",
+      "git push --force-with-lease",
+      "git pull, then git push",
+      "git push origin main"
+    ],
+    "tags": [
+      "git-history"
+    ],
+    "title": "You rebased your own feature branch, which is already pushed. A normal git push is rejected. Which command is the safest way to update the remote?",
+    "topic": "git",
+    "type": "quiz"
   }
 ]
