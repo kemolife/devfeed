@@ -1,0 +1,200 @@
+[
+ {
+  "id": "bug-c-int-div-adc",
+  "type": "bug",
+  "topic": "c",
+  "tags": [
+   "integer-division",
+   "adc"
+  ],
+  "difficulty": 1,
+  "lang": "c",
+  "title": "The voltage is always 0.0 V or 3.3 V. Tap the bug.",
+  "code": "// 12-bit ADC, Vref = 3.3 V\nfloat adc_to_volts(uint16_t raw) {\n    return raw / 4095 * 3.3f;\n}",
+  "bugLines": [
+   3
+  ],
+  "explain": "raw / 4095 is an integer division. For every raw below 4095 the result is 0. Only after that the 0 becomes a float. Multiply first, or use a float divisor, so the division is done in float.",
+  "fix": "float adc_to_volts(uint16_t raw) {\n    return raw * 3.3f / 4095.0f;\n}"
+ },
+ {
+  "id": "bug-c-sizeof-count-loop",
+  "type": "bug",
+  "topic": "c",
+  "tags": [
+   "array-count",
+   "buffer-overflow"
+  ],
+  "difficulty": 2,
+  "lang": "c",
+  "title": "lut_sum() returns a random big number. Tap the bug.",
+  "code": "static const uint16_t lut[] = {10, 20, 40, 80};\n\nuint32_t lut_sum(void) {\n    uint32_t s = 0;\n    for (size_t i = 0; i < sizeof(lut); i++) {\n        s += lut[i];\n    }\n    return s;\n}",
+  "bugLines": [
+   5
+  ],
+  "explain": "sizeof(lut) is the size in bytes: 8, not the item count 4. The loop reads 4 items after the table. Divide by the size of one item. Pattern: sizeof gives bytes, not elements.",
+  "fix": "for (size_t i = 0; i < sizeof(lut) / sizeof(lut[0]); i++) {\n    s += lut[i];\n}"
+ },
+ {
+  "id": "bug-rs-embassy-no-await",
+  "type": "bug",
+  "topic": "rust",
+  "tags": [
+   "async-await",
+   "embassy"
+  ],
+  "difficulty": 2,
+  "lang": "rust",
+  "title": "The LED blinks too fast to see and other tasks never run. Tap the bug.",
+  "code": "#[embassy_executor::task]\nasync fn blink(mut led: Output<'static>) {\n    loop {\n        led.toggle();\n        Timer::after_millis(500);\n    }\n}",
+  "bugLines": [
+   5
+  ],
+  "explain": "A future does nothing until it is awaited. Timer::after_millis(500) only builds the future and drops it. There is no delay, and the task never gives control back to the executor. Add .await. The compiler warns about an unused future.",
+  "fix": "loop {\n    led.toggle();\n    Timer::after_millis(500).await;\n}"
+ },
+ {
+  "id": "pr-c-uart-send-guard",
+  "type": "pr",
+  "topic": "embedded",
+  "tags": [
+   "buffer-overflow",
+   "review-checklist"
+  ],
+  "difficulty": 1,
+  "lang": "c",
+  "pr": {
+   "title": "Validate arguments in uart_send",
+   "author": "junior-dev",
+   "body": "A caller sent 300 bytes and corrupted memory. Now the function checks the arguments and returns an error.",
+   "verdict": "approve"
+  },
+  "diff": " int uart_send(const uint8_t *buf, size_t len) {\n+    if (buf == NULL || len == 0 || len > TX_BUF_LEN) {\n+        return -EINVAL;\n+    }\n     memcpy(tx_buf, buf, len);\n     tx_len = len;\n     start_tx();\n     return 0;\n }",
+  "explain": "The check runs before memcpy, so tx_buf can not overflow. It also rejects NULL and empty data. The error is returned, not hidden, so callers can react. Small and correct. Approve."
+ },
+ {
+  "id": "pr-rs-uninit-buf",
+  "type": "pr",
+  "topic": "rust",
+  "tags": [
+   "unsafe",
+   "uninit-memory"
+  ],
+  "difficulty": 3,
+  "lang": "rust",
+  "pr": {
+   "title": "Skip zeroing the UART read buffer",
+   "author": "junior-dev",
+   "body": "Zeroing 32 bytes on every call is a waste. The UART fills the buffer anyway.",
+   "verdict": "changes"
+  },
+  "diff": " fn read_msg(uart: &mut Uart) -> Result<Msg, Error> {\n-    let mut buf = [0u8; 32];\n+    let mut buf: [u8; 32] = unsafe { MaybeUninit::uninit().assume_init() };\n     let n = uart.read(&mut buf)?;\n     parse(&buf[..n])\n }",
+  "explain": "assume_init on uninitialized memory is undefined behavior in Rust, even for u8. The optimizer may assume anything. The gain is a few cycles, so measure first. Keep the zeroed array. If it really matters, use [MaybeUninit<u8>; 32] and only read the bytes that were written.",
+  "fix": "fn read_msg(uart: &mut Uart) -> Result<Msg, Error> {\n    let mut buf = [0u8; 32]; // zeroing 32 bytes is cheap\n    let n = uart.read(&mut buf)?;\n    parse(&buf[..n])\n}"
+ },
+ {
+  "id": "pr-c-flash-write-every-change",
+  "type": "pr",
+  "topic": "embedded",
+  "tags": [
+   "flash-wear",
+   "peripheral-timing"
+  ],
+  "difficulty": 2,
+  "lang": "c",
+  "pr": {
+   "title": "Save rate setting to flash at once",
+   "author": "junior-dev",
+   "body": "The user turns a knob and the rate must survive a reboot. So I save it on every change.",
+   "verdict": "changes"
+  },
+  "diff": " void config_set_rate(uint16_t rate) {\n     cfg.rate = rate;\n+    flash_write_cfg(&cfg);\n }",
+  "explain": "A knob can change the value hundreds of times. Flash survives only about 10 000 erase cycles per sector, and each write blocks the CPU for milliseconds. Save only if the value changed, and only after it was stable for a few seconds. Do the write from the main loop.",
+  "fix": "static bool     cfg_dirty;\nstatic uint32_t last_change_ms;\n\nvoid config_set_rate(uint16_t rate) {\n    if (cfg.rate == rate) {\n        return;               // nothing changed\n    }\n    cfg.rate = rate;\n    cfg_dirty = true;\n    last_change_ms = now_ms();\n}\n\nvoid config_poll(void) {      // main loop\n    if (cfg_dirty && (uint32_t)(now_ms() - last_change_ms) > 5000) {\n        flash_write_cfg(&cfg);\n        cfg_dirty = false;\n    }\n}"
+ },
+ {
+  "id": "c-ptr-add-reg-offset",
+  "type": "quiz",
+  "topic": "c",
+  "tags": [
+   "pointer-arithmetic"
+  ],
+  "difficulty": 2,
+  "lang": "c",
+  "title": "Registers are 32-bit. How many bytes is reg + 2 from reg? (What does this print?)",
+  "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint32_t regs[4] = {0};\n    uint32_t *reg = regs;\n    printf(\"%d\\n\", (int)((char *)(reg + 2) - (char *)reg));\n}",
+  "options": [
+   "2",
+   "4",
+   "8",
+   "16"
+  ],
+  "answer": 2,
+  "explain": "Pointer arithmetic counts items, not bytes. reg + 2 moves two uint32_t items, so 2 x 4 = 8 bytes. A common bug: base + 0x08 on a uint32_t pointer moves 32 bytes. Use a byte pointer or divide the offset by 4.",
+  "verify": {
+   "lang": "c",
+   "expect": "8"
+  }
+ },
+ {
+  "id": "rs-checked-shl",
+  "type": "quiz",
+  "topic": "rust",
+  "tags": [
+   "shift-ub",
+   "integer-overflow"
+  ],
+  "difficulty": 2,
+  "lang": "rust",
+  "title": "Shift a u8 by 8 bits two ways. What does this print?",
+  "code": "fn main() {\n    let x: u8 = 1;\n    println!(\"{:?} {}\", x.checked_shl(8), x.wrapping_shl(9));\n}",
+  "options": [
+   "None 2",
+   "Some(0) 0",
+   "None 0",
+   "Some(1) 1"
+  ],
+  "answer": 0,
+  "explain": "A u8 has 8 bits, so a shift of 8 or more is out of range. checked_shl returns None. wrapping_shl does not fail: it uses the shift count modulo 8. 9 mod 8 = 1, so 1 << 1 = 2. A plain << would panic in debug and mask the count in release.",
+  "verify": {
+   "lang": "rust",
+   "expect": "None 2"
+  }
+ },
+ {
+  "id": "el-battery-average-current",
+  "type": "quiz",
+  "topic": "electronics",
+  "tags": [
+   "low-power",
+   "battery"
+  ],
+  "difficulty": 2,
+  "title": "MCU wakes every 1 s: 10 mA for 10 ms. Sleep is 10 µA the rest of the time. Average current?",
+  "options": [
+   "About 0.11 mA",
+   "About 10 mA",
+   "About 1 mA",
+   "About 0.01 mA"
+  ],
+  "answer": 0,
+  "explain": "Charge per second: active 10 mA x 10 ms = 0.1 mA·s. Sleep 0.01 mA x 0.99 s = about 0.01 mA·s. Total 0.11 mA·s per second, so 0.11 mA average. The short active time costs 10 times more than the long sleep. Cut the wake time first."
+ },
+ {
+  "id": "concept-flash-config",
+  "type": "concept",
+  "topic": "embedded",
+  "tags": [
+   "flash-wear",
+   "review-checklist"
+  ],
+  "difficulty": 1,
+  "title": "Saving settings to flash: 4 rules",
+  "bullets": [
+   "Flash wears out: about 10 000 erase cycles per sector. Never write on every change.",
+   "Write only if the value is different from what is stored.",
+   "Wait until the value is stable, then write from the main loop. Never write from an ISR.",
+   "A flash write can stall the CPU for ms. Check power loss: use a CRC or a version byte, so half-written data is rejected."
+  ]
+ }
+]

@@ -1,0 +1,164 @@
+[
+ {
+  "id": "fp-no-upload-tests",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "testing",
+   "upload"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: your tests cover read and write, but not FileNameResolver or upload. Which test do you add first?",
+  "options": [
+   "Two calls of reserveFreeName() with the same name give name.csv and name_1.csv",
+   "A test that checks the HTML of home.html",
+   "A test that calls phpinfo()",
+   "A test that mocks FileNameResolver and checks the mock"
+  ],
+  "answer": 0,
+  "explain": "Test the code that has real logic and real risk. reserveFreeName() has a loop and creates files, so a bug there loses or overwrites uploads. Use a temp folder, call it twice with the same name, and check both names. A test of a mock only tests the mock."
+ },
+ {
+  "id": "fp-vscode-launch-committed",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "git",
+   "tooling"
+  ],
+  "difficulty": 1,
+  "title": "Senior asks: .vscode/launch.json is committed in your repo. Is that a problem?",
+  "options": [
+   "Only if it has secrets or paths of your own computer. Then ignore it or share a clean version",
+   "Never. Every file in git is public and safe",
+   "Always. .vscode must never be in git",
+   "Yes, because git cannot store JSON files"
+  ],
+  "answer": 0,
+  "explain": "A shared launch.json can help the team start the debugger the same way. But it often has local paths, ports or env values. Check it before you commit. Keep personal settings out of git, for example in .gitignore."
+ },
+ {
+  "id": "fp-exception-message-user-input",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "xss",
+   "error-messages"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: an error message contains the file name from the user, for example <img src=x onerror=alert(1)>.csv. Why is your page safe today?",
+  "options": [
+   "app.js shows the message with .text(), so it is plain text, not HTML",
+   "Because the API returns JSON, browsers never run scripts",
+   "Because PHP removes all < and > characters",
+   "Because jQuery escapes everything automatically in .html()"
+  ],
+  "answer": 0,
+  "explain": ".text() puts the string in the page as text, so the tag is shown, not run. The API itself does not clean the name. Another client that uses .html() would be hit by XSS. Escape on output, in the place where you write into HTML."
+ },
+ {
+  "id": "fp-pr-fileservice-interface",
+  "type": "pr",
+  "topic": "project",
+  "tags": [
+   "oop",
+   "testing"
+  ],
+  "difficulty": 2,
+  "lang": "php",
+  "pr": {
+   "title": "Add FileServiceInterface for the controller",
+   "author": "olha",
+   "body": "The controller test mocks the concrete FileService. I add a small interface so the controller depends on a contract. FileService implements it. No behavior change.",
+   "verdict": "approve"
+  },
+  "diff": "+interface FileServiceInterface\n+{\n+    public function read(string $name): array;\n+    public function delete(string $name): void;\n+}\n+\n-final class FileService\n+class FileService implements FileServiceInterface\n {\n     public function read(string $name): array\n     {\n         // unchanged\n     }\n }\n \n class FileController\n {\n-    public function __construct(private FileService $service) {}\n+    public function __construct(private FileServiceInterface $service) {}\n }",
+  "explain": "The controller now depends on a contract, so a test can use a simple fake and the service can change later. The class is not final any more, but the interface already allows mocks. No logic changed and the diff is small. Approve."
+ },
+ {
+  "id": "php-modulo-intdiv-negative",
+  "type": "quiz",
+  "topic": "php",
+  "tags": [
+   "modulo",
+   "data-types"
+  ],
+  "difficulty": 2,
+  "lang": "php",
+  "title": "PHP 8. Negative numbers. What does this print?",
+  "code": "<?php\necho -7 % 3, \" \", intdiv(-7, 3);",
+  "options": [
+   "-1 -2",
+   "2 -3",
+   "-1 -3",
+   "1 -2"
+  ],
+  "answer": 0,
+  "explain": "In PHP the result of % has the sign of the left number: -7 % 3 is -1. intdiv() cuts the decimals toward zero: -7 / 3 = -2.33, so -2. Do not use % on a negative number to get an array index. Check the sign first.",
+  "verify": {
+   "lang": "php",
+   "expect": "-1 -2"
+  }
+ },
+ {
+  "id": "js-typeof-null",
+  "type": "quiz",
+  "topic": "js",
+  "tags": [
+   "type-coercion"
+  ],
+  "difficulty": 1,
+  "lang": "js",
+  "title": "What does Node print?",
+  "code": "console.log(typeof null, typeof undefined);",
+  "options": [
+   "object undefined",
+   "null undefined",
+   "object object",
+   "undefined undefined"
+  ],
+  "answer": 0,
+  "explain": "typeof null is \"object\". This is an old mistake in JavaScript that can not be fixed now. So you can not test for null with typeof. Use value === null. Use value == null if you want to catch both null and undefined.",
+  "verify": {
+   "lang": "js",
+   "expect": "object undefined"
+  }
+ },
+ {
+  "id": "bug-sf-open-redirect",
+  "type": "bug",
+  "topic": "symfony",
+  "tags": [
+   "open-redirect",
+   "security"
+  ],
+  "difficulty": 2,
+  "lang": "php",
+  "title": "Copilot wrote this login redirect. An attacker can send users to another site. Tap the bug.",
+  "code": "#[Route('/login/done')]\npublic function done(Request $request): Response\n{\n    $next = $request->query->get('next', '/');\n\n    return $this->redirect($next);\n}",
+  "bugLines": [
+   6
+  ],
+  "explain": "The user controls ?next=. A link like /login/done?next=https://evil.example sends the logged-in user to a fake page. Allow only paths on your own site, for example a value that starts with one slash and not two. Or use a route name.",
+  "fix": "$next = (string) $request->query->get('next', '/');\n\nif (!str_starts_with($next, '/') || str_starts_with($next, '//')) {\n    $next = '/';\n}\n\nreturn $this->redirect($next);"
+ },
+ {
+  "id": "git-gitignore-tracked",
+  "type": "quiz",
+  "topic": "git",
+  "tags": [
+   "git-basics",
+   "secrets"
+  ],
+  "difficulty": 2,
+  "title": "You committed .env by mistake. Now you add .env to .gitignore. What happens to the file in git?",
+  "options": [
+   "It stays tracked. .gitignore only affects untracked files",
+   "Git removes it from the repo at once",
+   "Git deletes the file from your disk",
+   "Git removes it from the old commits too"
+  ],
+  "answer": 0,
+  "explain": "A tracked file stays tracked, even if it is in .gitignore. Run git rm --cached .env, then commit. This does not remove it from old commits. If the file had real secrets, change them now, because they are in the history."
+ }
+]
