@@ -2759,5 +2759,174 @@
     "title": "You committed .env by mistake. Now you add .env to .gitignore. What happens to the file in git?",
     "topic": "git",
     "type": "quiz"
+  },
+  {
+    "diff": "+final class FileNameResolverTest extends TestCase\n+{\n+    private string $dir;\n+\n+    protected function setUp(): void\n+    {\n+        $this->dir = sys_get_temp_dir() . '/resolver_' . uniqid();\n+        mkdir($this->dir);\n+    }\n+\n+    protected function tearDown(): void\n+    {\n+        array_map('unlink', glob($this->dir . '/*'));\n+        rmdir($this->dir);\n+    }\n+\n+    public function testSecondSameNameGetsNumber(): void\n+    {\n+        $resolver = new FileNameResolver();\n+\n+        $this->assertSame('a.csv', $resolver->reserveFreeName($this->dir, 'a.csv'));\n+        $this->assertSame('a_1.csv', $resolver->reserveFreeName($this->dir, 'a.csv'));\n+    }\n+}",
+    "difficulty": 2,
+    "explain": "Good test. Each test has its own unique folder (uniqid), so tests do not collide with each other or with real files. tearDown cleans up. It tests the real class and its main rule, not a mock. Approve.",
+    "id": "fp-pr-resolver-test",
+    "lang": "php",
+    "pr": {
+      "author": "olha",
+      "body": "The resolver had no test. Now a test uses a fresh temp folder and checks two reservations of the same name. It removes the folder at the end.",
+      "title": "Add a test for FileNameResolver",
+      "verdict": "approve"
+    },
+    "tags": [
+      "testing",
+      "filesystem"
+    ],
+    "topic": "project",
+    "type": "pr"
+  },
+  {
+    "answer": 0,
+    "code": "<?php\n$name = pathinfo('a.tar.csv', PATHINFO_FILENAME);\n$ext  = pathinfo('a.tar.csv', PATHINFO_EXTENSION);\necho $name . '_1.' . $ext;",
+    "difficulty": 2,
+    "explain": "pathinfo() cuts only the last dot. PATHINFO_FILENAME gives a.tar and the extension is csv. The code builds name + _1 + . + extension: a.tar_1.csv. Files without an extension are the odd case: the name becomes README_1. with a dot at the end. Think about it when you review.",
+    "id": "fp-reserve-name-dots",
+    "lang": "php",
+    "options": [
+      "a.tar_1.csv",
+      "a_1.tar.csv",
+      "a.tar.csv_1",
+      "a.tar.csv"
+    ],
+    "tags": [
+      "filesystem",
+      "upload"
+    ],
+    "title": "Senior asks: a.tar.csv is already in storage/. A user uploads a.tar.csv again. Which name does reserveFreeName() give? (What does this print?)",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "a.tar_1.csv",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 3,
+    "explain": "reserveFreeName() already created an empty file with fopen('x'). If the move fails, nobody removes it, so an empty file stays. read() on it later gives an error. Fix: delete the reserved file in a catch or when move_uploaded_file() returns false, before you throw StorageException.",
+    "id": "fp-upload-move-fails",
+    "options": [
+      "An empty file with the reserved name",
+      "Nothing. PHP removes the file by itself",
+      "The full uploaded file",
+      "A half-written file with the real data"
+    ],
+    "tags": [
+      "filesystem",
+      "error-handling"
+    ],
+    "title": "Senior asks: upload() reserves a free name first, then calls move_uploaded_file(). The move fails (disk full). What is left in storage/?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "<?php\n$line = \"\\xEF\\xBB\\xBFid,fruit\";\n$head = str_getcsv($line, ',', '\"', '');\n$row = array_combine($head, [1, 'apple']);\necho isset($row['id']) ? 'yes' : 'no';",
+    "difficulty": 3,
+    "explain": "PHP does not strip the BOM. The first header becomes \"\\u{FEFF}id\", which looks the same on screen but is not equal to 'id'. So the page shows empty ids. Fix: remove the BOM from the first header (or from the start of the file) when you read.",
+    "id": "fp-csv-bom",
+    "lang": "php",
+    "options": [
+      "No. The first key is 'id' with the BOM in front, so it is another string",
+      "Yes. PHP removes the BOM when it reads a CSV",
+      "Yes, but only with SplFileObject::READ_AHEAD",
+      "The read() call throws a JsonException"
+    ],
+    "tags": [
+      "csv",
+      "data-types"
+    ],
+    "title": "Senior asks: a user saves fruits.csv from Excel as UTF-8. The file starts with a BOM (hidden bytes EF BB BF). The first header is id. Does $row['id'] exist after read()?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "no",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "The checked attribute is the start value from the HTML. It does not change when the user clicks. The checked property is the live state: true or false. Use .prop() for checked, disabled and selected. Use .attr() for things like href or data in the HTML.",
+    "id": "jq-attr-vs-prop",
+    "lang": "js",
+    "options": [
+      "$('#agree').prop('checked')",
+      "$('#agree').attr('checked')",
+      "$('#agree').val()",
+      "$('#agree').text()"
+    ],
+    "tags": [
+      "jquery-basics"
+    ],
+    "title": "A checkbox #agree starts unchecked. The user clicks it. Which call tells you the current state?",
+    "topic": "jquery",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "install reads composer.lock, not composer.json. If they do not match, you get a warning and the new package is not installed. Use composer require vendor/package. It edits composer.json, updates composer.lock and installs, all in one step.",
+    "id": "composer-edit-json-install",
+    "options": [
+      "Composer warns that the lock file is not up to date, and installs from composer.lock. The new package is missing",
+      "Composer adds the package and updates composer.lock",
+      "Composer deletes the vendor/ folder",
+      "Composer fails and installs nothing at all"
+    ],
+    "tags": [
+      "composer-lock",
+      "composer-commands"
+    ],
+    "title": "You add a package to composer.json by hand. Then you run composer install. What happens?",
+    "topic": "composer",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "<?php\nenum Status: string {\n    case Open = 'open';\n    case Closed = 'closed';\n}\n\nvar_dump(Status::tryFrom('done'));\necho Status::from('open')->name;",
+    "difficulty": 2,
+    "explain": "tryFrom() returns null when no case has that value. from() would throw a ValueError. Use tryFrom for user input and handle the null. ->name is the case name (Open), ->value is the stored string (open).",
+    "id": "oop-enum-tryfrom",
+    "lang": "php",
+    "options": [
+      "NULL then Open",
+      "Error: ValueError",
+      "false then Open",
+      "NULL then open"
+    ],
+    "tags": [
+      "enums",
+      "value-object"
+    ],
+    "title": "PHP 8.1. What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "NULL\nOpen",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "git restore <file> replaces the file with the last committed version. Your edits are lost, so be sure. git revert makes a new commit that undoes an old commit. git reset --soft moves the branch, not file content.",
+    "id": "git-restore-file",
+    "options": [
+      "git restore app.php",
+      "git revert app.php",
+      "git reset --soft HEAD~1",
+      "git stash drop"
+    ],
+    "tags": [
+      "git-basics"
+    ],
+    "title": "You changed app.php by mistake. Nothing is committed or staged. You want the old content back. Which command?",
+    "topic": "git",
+    "type": "quiz"
   }
 ]

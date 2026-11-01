@@ -1,0 +1,203 @@
+[
+ {
+  "id": "bug-c-uninit-status",
+  "type": "bug",
+  "topic": "c",
+  "tags": [
+   "uninit-memory"
+  ],
+  "difficulty": 1,
+  "lang": "c",
+  "title": "Sometimes read_temp() returns a random error code. Tap the bug.",
+  "code": "int read_temp(int16_t *out) {\n    int status;\n    if (adc_ready()) {\n        *out = adc_read();\n        status = 0;\n    }\n    return status;\n}",
+  "bugLines": [
+   2,
+   7
+  ],
+  "explain": "If adc_ready() is false, status is never set. The function returns whatever was on the stack. Give every local a value on all paths. Set status first, for example to -EBUSY, and change it on success.",
+  "fix": "int read_temp(int16_t *out) {\n    int status = -EBUSY;\n    if (adc_ready()) {\n        *out = adc_read();\n        status = 0;\n    }\n    return status;\n}"
+ },
+ {
+  "id": "bug-cpp-vector-ref-grow",
+  "type": "bug",
+  "topic": "cpp",
+  "tags": [
+   "dangling-ref",
+   "memory"
+  ],
+  "difficulty": 2,
+  "lang": "cpp",
+  "title": "Host test of a log buffer. Sometimes the value is not changed, sometimes it crashes. Tap the bug.",
+  "code": "std::vector<int> log = {1, 2, 3};\nint &last = log.back();\nlog.push_back(4);\nlast = 99;",
+  "bugLines": [
+   3,
+   4
+  ],
+  "explain": "push_back can grow the vector. Then it moves all items to new memory, and last points to freed memory. Writing to it is undefined behavior. Take the reference after the last push_back, or use an index. On firmware, prefer a fixed-size buffer.",
+  "fix": "std::vector<int> log = {1, 2, 3};\nlog.push_back(4);\nint &last = log.back();\nlast = 99;"
+ },
+ {
+  "id": "bug-rs-iter-sum-u8",
+  "type": "bug",
+  "topic": "rust",
+  "tags": [
+   "integer-overflow",
+   "panic-in-firmware"
+  ],
+  "difficulty": 2,
+  "lang": "rust",
+  "title": "Frame checksum panics in the debug build on long frames. The release build does not. Tap the bug.",
+  "code": "fn checksum(data: &[u8]) -> u8 {\n    data.iter().sum()\n}",
+  "bugLines": [
+   2
+  ],
+  "explain": "sum() on u8 uses normal addition. In debug it panics on overflow. In release it wraps silently, so the behavior depends on the build profile. If you want a sum mod 256, say so with wrapping_add. If the value must be exact, use a wider type.",
+  "fix": "fn checksum(data: &[u8]) -> u8 {\n    data.iter().fold(0u8, |a, &b| a.wrapping_add(b))\n}"
+ },
+ {
+  "id": "pr-c-atomic-exchange-event",
+  "type": "pr",
+  "topic": "embedded",
+  "tags": [
+   "atomicity",
+   "isr",
+   "rmw-race"
+  ],
+  "difficulty": 2,
+  "lang": "c",
+  "pr": {
+   "title": "Do not lose button events",
+   "author": "junior-dev",
+   "body": "A button press is sometimes ignored. I use an atomic exchange to read and clear the flag in one step. Cortex-M4 build.",
+   "verdict": "approve"
+  },
+  "diff": " #include <stdatomic.h>\n \n-static volatile bool btn_event;\n+static atomic_bool btn_event;\n \n void EXTI0_IRQHandler(void) {\n-    btn_event = true;\n+    atomic_store(&btn_event, true);\n }\n \n void main_step(void) {\n-    if (btn_event) {\n-        btn_event = false;\n-        handle_button();\n-    }\n+    if (atomic_exchange(&btn_event, false)) {\n+        handle_button();\n+    }\n }",
+  "explain": "The old code had a gap between the read and the clear. If the ISR fired in that gap, the new event was erased. atomic_exchange reads the old value and writes false in one step, so no event is lost. On Cortex-M3/M4 it uses LDREX/STREX. M0 has no such instructions, so check your toolchain there. Approve."
+ },
+ {
+  "id": "pr-cpp-enum-cast-switch",
+  "type": "pr",
+  "topic": "cpp",
+  "tags": [
+   "enum-range",
+   "ub"
+  ],
+  "difficulty": 2,
+  "lang": "cpp",
+  "pr": {
+   "title": "Use enum class for the mode byte",
+   "author": "junior-dev",
+   "body": "The host sends a mode byte. An enum class is safer than magic numbers.",
+   "verdict": "changes"
+  },
+  "diff": "+enum class Mode : uint8_t { Off, Slow, Fast };\n+\n+Mode parse_mode(uint8_t raw) {\n+    return static_cast<Mode>(raw);\n+}\n+\n+uint8_t duty_for(Mode m) {\n+    switch (m) {\n+        case Mode::Off:  return 0;\n+        case Mode::Slow: return 40;\n+        case Mode::Fast: return 90;\n+    }\n+}",
+  "explain": "The host can send any byte, for example 7. The cast gives a Mode that has no case. Then duty_for runs to the end of a non-void function. This is undefined behavior in C++. Check the raw value when you parse it. Also return a safe value after the switch.",
+  "fix": "enum class Mode : uint8_t { Off, Slow, Fast };\n\nstd::optional<Mode> parse_mode(uint8_t raw) {\n    if (raw > static_cast<uint8_t>(Mode::Fast)) {\n        return std::nullopt;   // reject bad input\n    }\n    return static_cast<Mode>(raw);\n}\n\nuint8_t duty_for(Mode m) {\n    switch (m) {\n        case Mode::Off:  return 0;\n        case Mode::Slow: return 40;\n        case Mode::Fast: return 90;\n    }\n    return 0;                  // safe default\n}"
+ },
+ {
+  "id": "pr-c-mutex-early-return",
+  "type": "pr",
+  "topic": "embedded",
+  "tags": [
+   "lock-leak",
+   "freertos"
+  ],
+  "difficulty": 2,
+  "lang": "c",
+  "pr": {
+   "title": "Reject too long log lines",
+   "author": "junior-dev",
+   "body": "Long lines overflowed the log buffer. Now they are rejected.",
+   "verdict": "changes"
+  },
+  "diff": " int log_write(const char *s) {\n     xSemaphoreTake(log_mtx, portMAX_DELAY);\n+    if (strlen(s) > LOG_MAX) {\n+        return -1;\n+    }\n     append(s);\n     xSemaphoreGive(log_mtx);\n     return 0;\n }",
+  "explain": "The new return exits while the mutex is still taken. The next caller waits forever, and the log task and every other task that logs deadlock. Every exit path must release the lock. Best: check the input before you take the lock.",
+  "fix": "int log_write(const char *s) {\n    if (strlen(s) > LOG_MAX) {\n        return -1;               // before the lock\n    }\n    xSemaphoreTake(log_mtx, portMAX_DELAY);\n    append(s);\n    xSemaphoreGive(log_mtx);\n    return 0;\n}"
+ },
+ {
+  "id": "c-int8-compare-promote",
+  "type": "quiz",
+  "topic": "c",
+  "tags": [
+   "integer-promotion",
+   "sign-extension"
+  ],
+  "difficulty": 2,
+  "title": "What does this print?",
+  "options": [
+   "1 1",
+   "0 1",
+   "1 0",
+   "0 0"
+  ],
+  "answer": 1,
+  "explain": "int8_t c = -1 is promoted to int, so it stays -1. The literal 0xFF is the int 255. So -1 == 255 is false: 0. The cast (uint8_t)c gives 255, which equals 255: 1. Compare bytes as the same type, for example uint8_t.",
+  "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    int8_t c = -1;\n    printf(\"%d %d\\n\", c == 0xFF,\n           (uint8_t)c == 0xFF);\n}",
+  "lang": "c",
+  "verify": {
+   "lang": "c",
+   "expect": "0 1"
+  }
+ },
+ {
+  "id": "cpp-chain-returns-copy",
+  "type": "quiz",
+  "topic": "cpp",
+  "tags": [
+   "copy-not-ref"
+  ],
+  "difficulty": 2,
+  "title": "What does this print?",
+  "options": [
+   "3 3",
+   "2 3",
+   "2 2",
+   "3 2"
+  ],
+  "answer": 1,
+  "explain": "add() returns a reference, but d is declared as a value (Counter d). So the line copies the object after two add() calls: d.n is 2 and c.n is 2. Then d.add() changes only the copy: d.n is 3. Write Counter &d to keep a reference.",
+  "code": "#include <cstdio>\n\nstruct Counter {\n    int n = 0;\n    Counter &add() { n++; return *this; }\n};\n\nint main() {\n    Counter c;\n    Counter d = c.add().add();\n    d.add();\n    std::printf(\"%d %d\\n\", c.n, d.n);\n}",
+  "lang": "cpp",
+  "verify": {
+   "lang": "cpp",
+   "expect": "2 3"
+  }
+ },
+ {
+  "id": "el-led-parallel-one-resistor",
+  "type": "quiz",
+  "topic": "electronics",
+  "tags": [
+   "ohms-law",
+   "gpio"
+  ],
+  "difficulty": 2,
+  "title": "Two LEDs in parallel share one resistor, from one 3.3 V GPIO. One LED is bright and the other is dim. Why, and what is the fix?",
+  "options": [
+   "Vf is not equal for both LEDs. The one with lower Vf takes more current. Give each LED its own resistor",
+   "The GPIO is too slow. Add a capacitor",
+   "The resistor is too small. Use a bigger one for both LEDs",
+   "LEDs can not be in parallel with a resistor at 3.3 V"
+  ],
+  "answer": 0,
+  "explain": "Every LED has a slightly different forward voltage. In parallel, the voltage is the same, so the LED with lower Vf takes most of the current and the other one gets little. One resistor per LED sets each current. It also protects the GPIO pin from the sum of both currents."
+ },
+ {
+  "id": "concept-lock-discipline",
+  "type": "concept",
+  "topic": "embedded",
+  "tags": [
+   "lock-leak",
+   "freertos",
+   "review-checklist"
+  ],
+  "difficulty": 2,
+  "title": "Reviewing code with locks: 4 rules",
+  "bullets": [
+   "Find every return, break and error path between take and give. Each one must release the lock.",
+   "Check the input before you take the lock. Then there is no early exit inside it.",
+   "Never block, wait for a queue or call unknown callbacks while you hold a lock.",
+   "In an ISR use the FromISR API. Never take a normal mutex there."
+  ]
+ }
+]
