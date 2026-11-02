@@ -2928,5 +2928,175 @@
     "title": "You changed app.php by mistake. Nothing is committed or staged. You want the old content back. Which command?",
     "topic": "git",
     "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "getRowValues() checks every value with is_scalar(). An array is not scalar, so it throws InvalidFileContentException. The controller maps that to 422 (valid JSON, but the content is wrong for CSV). CSV has no way to store a list in a cell. The check also stops the \"Array\" text from being saved by mistake.",
+    "id": "fp-csv-nested-422",
+    "options": [
+      "200, and tags is saved as \"Array\"",
+      "422 with a message that the value of \"tags\" must be text or a number",
+      "500 Internal server error",
+      "400 because the JSON is invalid"
+    ],
+    "tags": [
+      "validation",
+      "csv"
+    ],
+    "title": "Senior asks: the page sends the row {\"id\": 1, \"tags\": [\"a\", \"b\"]} to write for fruits.csv. What does the user get?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 2,
+    "code": "$f = fopen('php://temp', 'r+');\nfputcsv($f, ['active', 'paid'], ',', '\"', '\\\\');\nfputcsv($f, [true, false], ',', '\"', '\\\\');\nrewind($f);\necho stream_get_contents($f);",
+    "difficulty": 2,
+    "explain": "fputcsv() turns values into strings. true becomes \"1\" and false becomes \"\" (an empty string). So the line is \"1,\". When you read it back, both are strings: \"1\" and \"\". The type is lost, and false looks like an empty cell. If you need booleans, write them as text like \"yes\" and \"no\".",
+    "id": "fp-csv-bool-value",
+    "lang": "php",
+    "options": [
+      "true,false",
+      "1,0",
+      "1,",
+      ","
+    ],
+    "tags": [
+      "csv",
+      "data-types"
+    ],
+    "title": "Senior asks: you write the row {\"active\": true, \"paid\": false} to a CSV file. fputcsv() is used as in CsvFileActions. What is the second line of the file?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "active,paid\n1,",
+      "lang": "php"
+    }
+  },
+  {
+    "diff": " private function success(string $message, array $data = [], int $statusCode = 200): JsonResponse\n {\n-    return new JsonResponse(['status' => 'success', 'message' => $message, 'data' => $data], $statusCode);\n+    $response = new JsonResponse(['status' => 'success', 'message' => $message, 'data' => $data], $statusCode);\n+    $response->headers->set('Access-Control-Allow-Origin', '*');\n+\n+    return $response;\n }",
+    "difficulty": 2,
+    "explain": "The wildcard lets any website read the answers from this API in a visitor's browser. The API has no login, so that includes list and read of all files. The jQuery page is on the same origin and does not need CORS at all. Do not add * to make an error go away. If another site really needs access, allow one exact origin and add authentication first.",
+    "fix": "private function success(string $message, array $data = [], int $statusCode = 200): JsonResponse\n{\n    // No CORS header: our own page is on the same origin.\n    // If one other site needs access, allow only its exact origin\n    // and add authentication first.\n    return new JsonResponse(['status' => 'success', 'message' => $message, 'data' => $data], $statusCode);\n}",
+    "id": "fp-pr-cors-wildcard",
+    "lang": "php",
+    "pr": {
+      "author": "olha",
+      "body": "Another page could not call the API. I added Access-Control-Allow-Origin: * to every answer, now it works.",
+      "title": "Fix browser error: add CORS header",
+      "verdict": "changes"
+    },
+    "tags": [
+      "security",
+      "http"
+    ],
+    "topic": "project",
+    "type": "pr"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "has('action') only asks if the key exists. The key exists, with an empty value, so index.php goes on to the controller. getRequired() trims the value, sees an empty string and throws InvalidRequestException. That is a 400 with a clear message. The home page is shown only when the key is missing completely.",
+    "id": "fp-empty-action",
+    "options": [
+      "The home page is shown",
+      "400: Parameter \"action\" is required.",
+      "404 Not Found",
+      "500 Internal server error"
+    ],
+    "tags": [
+      "request-input",
+      "http"
+    ],
+    "title": "Senior asks: someone opens /index.php?action= (empty value). index.php checks query->has('action'). What happens?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "code": "var_dump(str_contains('abc', ''));\nvar_dump(str_contains('', 'a'));",
+    "difficulty": 1,
+    "explain": "In PHP 8, an empty needle is found in every string, so str_contains('abc', '') is true. An empty string does not contain 'a', so the second is false. Watch out when the needle comes from user input: an empty search text matches everything. Check for an empty value first.",
+    "id": "php-str-contains-empty",
+    "lang": "php",
+    "options": [
+      "bool(false) and bool(false)",
+      "bool(true) and bool(false)",
+      "bool(true) and bool(true)",
+      "bool(false) and bool(true)"
+    ],
+    "tags": [
+      "strings",
+      "php8"
+    ],
+    "title": "PHP 8. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "bool(true)\nbool(false)",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 2,
+    "code": "const a = [NaN];\nconsole.log(a.includes(NaN), a.indexOf(NaN));",
+    "difficulty": 2,
+    "explain": "NaN is not equal to itself (NaN === NaN is false). indexOf uses === , so it never finds NaN and returns -1. includes uses a different rule (SameValueZero) that treats NaN as equal to NaN, so it returns true. Use includes when NaN may be in the array. Use Number.isNaN() to test one value.",
+    "id": "js-includes-nan",
+    "lang": "js",
+    "options": [
+      "true 0",
+      "false -1",
+      "true -1",
+      "false 0"
+    ],
+    "tags": [
+      "type-coercion",
+      "arrays"
+    ],
+    "title": "What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "true -1",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 1,
+    "explain": "git stash saves your uncommitted changes and gives you a clean working folder. Switch branch, do the check, switch back, then git stash pop brings your changes back. git reset --hard would delete your work for good. A small 'wip' commit on your own branch also works, but stash is the quick way.",
+    "id": "git-stash-switch",
+    "options": [
+      "git reset --hard, then switch branch",
+      "git stash, switch branch, later git stash pop",
+      "git commit -m 'wip' --amend on the other branch",
+      "Copy the project folder and delete your changes"
+    ],
+    "tags": [
+      "git-basics"
+    ],
+    "title": "You have changes you are not ready to commit. A colleague asks you to check another branch now. What is the clean way?",
+    "topic": "git",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "--no-dev skips everything in require-dev: PHPUnit, debug tools, fixtures. The server gets a smaller vendor folder and fewer attack points. composer.lock is still used, so the versions are the same as on your laptop. The autoloader is still generated. That is why test tools belong in require-dev, not in require.",
+    "id": "composer-no-dev-prod",
+    "options": [
+      "Packages from require-dev (like PHPUnit) are not installed",
+      "composer.lock is ignored",
+      "Only the newest versions are installed",
+      "Autoload is not generated"
+    ],
+    "tags": [
+      "require-dev",
+      "composer-commands"
+    ],
+    "title": "On the production server you run composer install --no-dev. What is different from your laptop?",
+    "topic": "composer",
+    "type": "quiz"
   }
 ]

@@ -1,0 +1,203 @@
+[
+ {
+  "id": "bug-cpp-slicing-by-value",
+  "type": "bug",
+  "topic": "cpp",
+  "tags": [
+   "copy-not-ref",
+   "oop"
+  ],
+  "difficulty": 2,
+  "lang": "cpp",
+  "title": "Every sensor reports 0, but Temp::read() returns 21. Tap the bug.",
+  "code": "struct Sensor {\n    virtual int read() { return 0; }\n};\n\nstruct Temp : Sensor {\n    int read() override { return 21; }\n};\n\nint sample(Sensor s) {\n    return s.read();\n}\n\nint main() {\n    Temp t;\n    return sample(t);\n}",
+  "bugLines": [
+   9
+  ],
+  "explain": "sample() takes Sensor by value. Passing a Temp copies only the Sensor part. This is object slicing. The copy is a plain Sensor, so read() returns 0. Pass by reference or pointer: const Sensor& (if read() is const) or Sensor&.",
+  "fix": "int sample(Sensor& s) {\n    return s.read();\n}"
+ },
+ {
+  "id": "bug-rs-endian-from-le",
+  "type": "bug",
+  "topic": "rust",
+  "tags": [
+   "endianness",
+   "truncation"
+  ],
+  "difficulty": 2,
+  "lang": "rust",
+  "title": "The sensor sends temperature big-endian. 25.00 C shows as a huge wrong value. Tap the bug.",
+  "code": "// raw bytes from I2C: [MSB, LSB]\nfn temp_c(raw: [u8; 2]) -> f32 {\n    let v = i16::from_le_bytes(raw);\n    v as f32 / 100.0\n}\n\n// raw = [0x09, 0xC4] means 2500 -> 25.00 C",
+  "bugLines": [
+   3
+  ],
+  "explain": "The first byte on the wire is the most significant. from_le_bytes treats the first byte as the least significant, so 0x09C4 becomes 0xC409. Use from_be_bytes when the datasheet says big-endian. Always check byte order in the datasheet.",
+  "fix": "let v = i16::from_be_bytes(raw);"
+ },
+ {
+  "id": "bug-c-char-getc-eof",
+  "type": "bug",
+  "topic": "c",
+  "tags": [
+   "signed-unsigned",
+   "sign-extension"
+  ],
+  "difficulty": 2,
+  "lang": "c",
+  "title": "ARM GCC (plain char is unsigned). After the UART is idle, this loop never ends. Tap the bug.",
+  "code": "// uart_getc() returns the byte 0..255,\n// or -1 when the FIFO is empty.\nint uart_getc(void);\n\nvoid drain(void) {\n    char ch;\n    while ((ch = uart_getc()) != -1) {\n        handle(ch);\n    }\n}",
+  "bugLines": [
+   6,
+   7
+  ],
+  "explain": "On ARM plain char is unsigned. -1 is stored as 255, and 255 is never equal to -1. The loop never stops. It also cannot tell the byte 0xFF from 'empty'. Keep the result in an int and compare that int.",
+  "fix": "int ch;\nwhile ((ch = uart_getc()) != -1) {\n    handle((uint8_t)ch);\n}"
+ },
+ {
+  "id": "pr-cpp-clamp-duty",
+  "type": "pr",
+  "topic": "cpp",
+  "tags": [
+   "review-checklist"
+  ],
+  "difficulty": 1,
+  "lang": "cpp",
+  "pr": {
+   "title": "Use std::clamp for PWM duty",
+   "author": "junior-dev",
+   "body": "Replace the hand-written if chain with std::clamp. Same limits, less code.",
+   "verdict": "approve"
+  },
+  "diff": "-int duty_limit(int duty) {\n-    if (duty < 0)   return 0;\n-    if (duty > 255) return 255;\n-    return duty;\n-}\n+#include <algorithm>\n+\n+int duty_limit(int duty) {\n+    return std::clamp(duty, 0, 255);\n+}",
+  "explain": "Correct. All three arguments are int, so there is no type mix. std::clamp(v, lo, hi) needs lo <= hi, and 0 <= 255 is true. It returns a reference, but the function returns int by value, so nothing dangles. Approve."
+ },
+ {
+  "id": "pr-c-flags-bitfield",
+  "type": "pr",
+  "topic": "embedded",
+  "tags": [
+   "rmw-race",
+   "isr",
+   "memory"
+  ],
+  "difficulty": 2,
+  "lang": "c",
+  "pr": {
+   "title": "Pack event flags into bitfields",
+   "author": "junior-dev",
+   "body": "Saves RAM: two flags now share one byte. The ISR sets rx, main clears tx.",
+   "verdict": "changes"
+  },
+  "diff": "-static volatile uint8_t rx_flag;\n-static volatile uint8_t tx_flag;\n+static volatile struct {\n+    uint8_t rx : 1;\n+    uint8_t tx : 1;\n+} flags;\n \n void USART1_IRQHandler(void) {\n-    rx_flag = 1;\n+    flags.rx = 1;\n }\n \n void main_loop(void) {\n-    tx_flag = 0;\n+    flags.tx = 0;\n }",
+  "explain": "Both bitfields live in one byte. Writing one of them is a read-modify-write of that whole byte. If the ISR fires between the read and the write in main, its rx = 1 is lost. With separate bytes, each write is one store. Saving one byte of RAM is not worth a lost event. Keep separate flags, or use atomics.",
+  "fix": "static volatile uint8_t rx_flag;\nstatic volatile uint8_t tx_flag;\n\nvoid USART1_IRQHandler(void) {\n    rx_flag = 1;\n}\n\nvoid main_loop(void) {\n    tx_flag = 0;\n}"
+ },
+ {
+  "id": "pr-rs-embassy-blocking-delay",
+  "type": "pr",
+  "topic": "rust",
+  "tags": [
+   "async-await",
+   "embassy",
+   "latency"
+  ],
+  "difficulty": 2,
+  "lang": "rust",
+  "pr": {
+   "title": "Use a short delay in the blink task",
+   "author": "junior-dev",
+   "body": "Timer needs extra setup. cortex_m::asm::delay is simpler and works the same.",
+   "verdict": "changes"
+  },
+  "diff": " #[embassy_executor::task]\n async fn blink(mut led: Output<'static>) {\n     loop {\n         led.toggle();\n-        Timer::after_millis(500).await;\n+        cortex_m::asm::delay(32_000_000);\n     }\n }",
+  "explain": "asm::delay is a busy loop. It never gives control back to the executor, so every other task on this executor stops for the whole delay. Timer::after_millis(500).await suspends only this task. In async code, never block. Always await.",
+  "fix": "#[embassy_executor::task]\nasync fn blink(mut led: Output<'static>) {\n    loop {\n        led.toggle();\n        Timer::after_millis(500).await;\n    }\n}"
+ },
+ {
+  "id": "rs-move-in-loop",
+  "type": "quiz",
+  "topic": "rust",
+  "tags": [
+   "borrow-checker"
+  ],
+  "difficulty": 1,
+  "lang": "rust",
+  "title": "Send the same frame twice. What happens?",
+  "code": "fn send(data: Vec<u8>) {\n    println!(\"{}\", data.len());\n}\n\nfn main() {\n    let frame = vec![1u8, 2, 3];\n    for _ in 0..2 {\n        send(frame);\n    }\n}",
+  "options": [
+   "Prints 3 twice",
+   "Prints 3 once",
+   "Panics at runtime",
+   "Compile error"
+  ],
+  "answer": 3,
+  "explain": "send takes the Vec by value, so the first call moves it. In the second loop turn frame is already gone: error 'use of moved value'. Pass &frame (and take &[u8]) or call frame.clone(). The compiler stops a double use before it runs.",
+  "verify": {
+   "lang": "rust",
+   "compileFail": true
+  }
+ },
+ {
+  "id": "c-ternary-unsigned-promote",
+  "type": "quiz",
+  "topic": "c",
+  "tags": [
+   "signed-unsigned",
+   "integer-promotion"
+  ],
+  "difficulty": 3,
+  "lang": "c",
+  "title": "What does this print?",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    int x = -1;\n    unsigned u = 0;\n    printf(\"%d\\n\", (1 ? x : u) > 0);\n}",
+  "options": [
+   "0",
+   "1",
+   "Undefined behavior",
+   "Compile error"
+  ],
+  "answer": 1,
+  "explain": "The two branches of ?: get a common type. int and unsigned int become unsigned int. So x (-1) turns into 4294967295, even though the condition picks x. Then 4294967295 > 0 is true: 1. Mixing signed and unsigned values hides sign bugs.",
+  "verify": {
+   "lang": "c",
+   "expect": "1"
+  }
+ },
+ {
+  "id": "el-shunt-power",
+  "type": "quiz",
+  "topic": "electronics",
+  "tags": [
+   "ohms-law",
+   "current-sense"
+  ],
+  "difficulty": 2,
+  "title": "A 0.1 Ω shunt measures a 2 A motor current. How much heat does the shunt make, and which resistor rating is safe?",
+  "options": [
+   "0.2 W, use 0.25 W",
+   "0.4 W, use 0.25 W",
+   "0.4 W, use 1 W",
+   "4 W, use 5 W"
+  ],
+  "answer": 2,
+  "explain": "P = I² x R = 2 x 2 x 0.1 = 0.4 W. A 0.25 W resistor would be overloaded. Use a rating at least 2x higher: 1 W. Also the shunt drops 0.2 V (V = I x R), which the ADC amplifier must handle."
+ },
+ {
+  "id": "concept-datasheet-checks",
+  "type": "concept",
+  "topic": "electronics",
+  "tags": [
+   "review-checklist",
+   "logic-levels"
+  ],
+  "difficulty": 1,
+  "title": "Before you wire a new chip: 5 datasheet checks",
+  "bullets": [
+   "Absolute maximum ratings: supply and pin voltage. Do not go above them, even for a moment.",
+   "Logic levels: is the chip's VIH below your MCU's VOH? If not, add a level shifter.",
+   "Reset state: which pins float or output at power-up? Add pull-ups or pull-downs for them.",
+   "Current: how much can a pin sink or source? Add resistors, or a driver for big loads.",
+   "Supply: decoupling cap values and power-up order. Put the caps next to the pins."
+  ]
+ }
+]
