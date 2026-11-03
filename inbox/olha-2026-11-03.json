@@ -1,0 +1,174 @@
+[
+ {
+  "id": "fp-delete-ghost-ext",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "http",
+   "validation"
+  ],
+  "difficulty": 2,
+  "lang": "php",
+  "title": "Senior asks: DELETE ?action=delete&file=ghost.txt. The file does not exist. Which status does the client get?",
+  "code": "public function delete(string $fileName): void\n{\n    $this->findFileActions($fileName);\n    $path = $this->getPath($fileName);\n\n    if (!is_file($path)) {\n        throw new FileNotFoundException(\n            basename($fileName)\n        );\n    }\n}",
+  "options": [
+   "404",
+   "400",
+   "405",
+   "500"
+  ],
+  "answer": 1,
+  "explain": "findFileActions() runs first. It checks the extension, and .txt is not supported, so it throws UnsupportedFormatException. The controller maps this to the default 400. Only ghost.csv or ghost.json would reach is_file() and give 404. The order of checks decides the answer."
+ },
+ {
+  "id": "fp-compose-per-request",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "architecture",
+   "performance"
+  ],
+  "difficulty": 1,
+  "title": "Senior asks: index.php runs new FileService(...) on every request. Is that a performance problem?",
+  "options": [
+   "Yes. Objects must be created once and kept in memory.",
+   "No. PHP starts fresh for each request. A few small objects cost almost nothing.",
+   "Yes. Each request loads the whole storage folder into memory.",
+   "No, because PHP keeps the objects between requests."
+  ],
+  "answer": 1,
+  "explain": "With PHP-FPM or Apache, each request starts a clean script. Nothing stays in memory between requests. The constructor only stores a path and a list of strategies. It does not read storage/. So the cost is tiny. Real work (disk, parsing) is what you should watch."
+ },
+ {
+  "id": "fp-json-empty-object",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "json",
+   "data-types"
+  ],
+  "difficulty": 2,
+  "lang": "php",
+  "title": "Senior asks: the page sends the body {} to write for notes.json. What is in the file after that?",
+  "code": "$data = json_decode('{}', true);\necho json_encode($data, JSON_PRETTY_PRINT);",
+  "options": [
+   "{}",
+   "[]",
+   "null",
+   "An error: Request body is not valid JSON."
+  ],
+  "answer": 1,
+  "explain": "With assoc = true, an empty JSON object becomes an empty PHP array. decodeJson() accepts it (is_array is true). json_encode of an empty array is []. So {} turns into [] on disk. PHP arrays have no empty-object type. Use stdClass if you must keep {}.",
+  "verify": {
+   "expect": "[]",
+   "lang": "php"
+  }
+ },
+ {
+  "id": "fp-pr-glob-list",
+  "type": "pr",
+  "topic": "project",
+  "tags": [
+   "filesystem",
+   "review-checklist"
+  ],
+  "difficulty": 2,
+  "lang": "php",
+  "pr": {
+   "title": "Shorter listFiles() with glob()",
+   "author": "olha-dev",
+   "body": "One line instead of seven. Same result.",
+   "verdict": "changes"
+  },
+  "diff": " public function listFiles(): array\n {\n-    $fileNames = [];\n-\n-    foreach (scandir($this->storagePath) as $fileName) {\n-        if (is_file($this->getPath($fileName)) && $this->isSupported($fileName)) {\n-            $fileNames[] = $fileName;\n-        }\n-    }\n-\n-    return $fileNames;\n+    return glob($this->storagePath . '/*.{csv,json}', GLOB_BRACE);\n }",
+  "explain": "Not the same result. glob() returns full paths, not file names. It is case-sensitive, so A.CSV is missed (isSupported() lowercases). GLOB_BRACE does not exist on some systems, such as Alpine. The formats are hard-coded and ignore the strategy list. Keep the filter and use array_values() so JSON stays a list.",
+  "fix": "public function listFiles(): array\n{\n    $names = array_filter(\n        scandir($this->storagePath),\n        fn (string $name) => is_file($this->getPath($name))\n            && $this->isSupported($name),\n    );\n\n    return array_values($names);\n}"
+ },
+ {
+  "id": "php-empty-string-zero",
+  "type": "quiz",
+  "topic": "php",
+  "tags": [
+   "falsy-zero",
+   "loose-compare"
+  ],
+  "difficulty": 2,
+  "lang": "php",
+  "title": "PHP 8. What does this print?",
+  "code": "$a = empty(\"0\");\n$b = empty(\"0.0\");\n$c = empty(\" \");\necho json_encode([$a, $b, $c]);",
+  "options": [
+   "[true,true,true]",
+   "[true,false,false]",
+   "[false,false,false]",
+   "[true,true,false]"
+  ],
+  "answer": 1,
+  "explain": "empty() is true for \"0\" (the string zero is falsy in PHP). But \"0.0\" and \" \" are non-empty strings, so they are truthy. A form field with the value 0 counts as empty. Use $value === '' or isset() when 0 is valid.",
+  "verify": {
+   "expect": "[true,false,false]",
+   "lang": "php"
+  }
+ },
+ {
+  "id": "oop-immutable-with",
+  "type": "quiz",
+  "topic": "oop",
+  "tags": [
+   "readonly",
+   "value-object"
+  ],
+  "difficulty": 2,
+  "lang": "php",
+  "title": "An immutable value object. What does this print?",
+  "code": "final class Money {\n    public function __construct(\n        public readonly int $cents,\n    ) {}\n\n    public function add(int $c): static {\n        return new static($this->cents + $c);\n    }\n}\n\n$a = new Money(100);\n$b = $a->add(50);\necho $a->cents, ' ', $b->cents;",
+  "options": [
+   "150 150",
+   "100 150",
+   "100 100",
+   "Error: cannot modify readonly property"
+  ],
+  "answer": 1,
+  "explain": "A readonly property cannot change after it is set. So add() does not change $this. It builds a new Money with the new value. $a stays 100 and $b is 150. This is the \"with\" pattern for value objects: no side effects, safe to share.",
+  "verify": {
+   "expect": "100 150",
+   "lang": "php"
+  }
+ },
+ {
+  "id": "bug-sf-find-null",
+  "type": "bug",
+  "topic": "symfony",
+  "tags": [
+   "null-check",
+   "ai-code-review"
+  ],
+  "difficulty": 1,
+  "lang": "php",
+  "title": "Open /product/999 (no such id): a 500 error page, not 404. Tap the bug.",
+  "code": "#[Route('/product/{id}')]\npublic function show(\n    ProductRepository $repo, int $id\n): Response {\n    $product = $repo->find($id);\n\n    return $this->render('product/show.html.twig', [\n        'name' => $product->getName(),\n    ]);\n}",
+  "bugLines": [
+   5,
+   8
+  ],
+  "explain": "find() returns null when the row does not exist. Then null->getName() throws an Error and the user sees a 500. Check for null and call createNotFoundException(). AI code often forgets this case.",
+  "fix": "$product = $repo->find($id);\n\nif ($product === null) {\n    throw $this->createNotFoundException();\n}\n\nreturn $this->render('product/show.html.twig', [\n    'name' => $product->getName(),\n]);"
+ },
+ {
+  "id": "bug-jq-each-return",
+  "type": "bug",
+  "topic": "jquery",
+  "tags": [
+   "callback-return",
+   "ai-code-review"
+  ],
+  "difficulty": 2,
+  "lang": "js",
+  "title": "Some inputs are empty, but hasEmpty() always returns false. Tap the bug.",
+  "code": "function hasEmpty() {\n  $('input').each(function () {\n    if ($(this).val() === '') {\n      return true;\n    }\n  });\n  return false;\n}",
+  "bugLines": [
+   4
+  ],
+  "explain": "return true inside each() returns from the callback, not from hasEmpty(). In each(), true only means continue. So the last line always runs. Use a variable, and return false in the callback to stop the loop.",
+  "fix": "function hasEmpty() {\n  let found = false;\n  $('input').each(function () {\n    if ($(this).val() === '') {\n      found = true;\n      return false; // stops each()\n    }\n  });\n  return found;\n}"
+ }
+]

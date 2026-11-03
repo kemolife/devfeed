@@ -1,0 +1,203 @@
+[
+ {
+  "id": "bug-cpp-min-ref-temp",
+  "type": "bug",
+  "topic": "cpp",
+  "tags": [
+   "dangling-ref",
+   "temporary-lifetime"
+  ],
+  "difficulty": 2,
+  "lang": "cpp",
+  "title": "PWM output is random when duty is above 255. Tap the bug.",
+  "code": "#include <algorithm>\n\nint limit_duty(int duty) {\n    const int& d = std::min(duty, 255);\n    pwm_set(d);\n    return d;\n}",
+  "bugLines": [
+   4
+  ],
+  "explain": "std::min returns a reference to one of its arguments. When duty > 255, that is the temporary 255. The temporary dies at the end of the line, so d dangles. This is undefined behavior. Copy the result into a value, not a reference.",
+  "fix": "const int d = std::min(duty, 255);"
+ },
+ {
+  "id": "bug-rs-buf-vs-n",
+  "type": "bug",
+  "topic": "rust",
+  "tags": [
+   "stale-data",
+   "off-by-one"
+  ],
+  "difficulty": 1,
+  "lang": "rust",
+  "title": "uart.read() returns the byte count. The parser gets extra 0x00 bytes. Tap the bug.",
+  "code": "fn drain(uart: &mut Uart, p: &mut Parser) {\n    let mut buf = [0u8; 8];\n    let n = uart.read(&mut buf);\n    for b in buf.iter() {\n        p.feed(*b);\n    }\n}",
+  "bugLines": [
+   4
+  ],
+  "explain": "read() fills only the first n bytes. The loop walks the whole 8-byte array, so the parser also gets the old zero bytes. Always use the returned length: only look at buf[..n].",
+  "fix": "for b in &buf[..n] {\n    p.feed(*b);\n}"
+ },
+ {
+  "id": "bug-c-strcmp-truthy",
+  "type": "bug",
+  "topic": "c",
+  "tags": [
+   "ignored-error",
+   "logic-inversion"
+  ],
+  "difficulty": 1,
+  "lang": "c",
+  "title": "Every command resets the board, except RESET. Tap the bug.",
+  "code": "void on_line(const char *line) {\n    if (strcmp(line, \"RESET\")) {\n        system_reset();\n    }\n}",
+  "bugLines": [
+   2
+  ],
+  "explain": "strcmp returns 0 when the strings are equal. A non-zero value is true in C, so the branch runs for every different string. Write strcmp(...) == 0 for equality.",
+  "fix": "if (strcmp(line, \"RESET\") == 0) {\n    system_reset();\n}"
+ },
+ {
+  "id": "pr-c-memcmp-mac",
+  "type": "pr",
+  "topic": "embedded",
+  "tags": [
+   "timing-attack",
+   "review-checklist"
+  ],
+  "difficulty": 3,
+  "lang": "c",
+  "pr": {
+   "title": "Simplify mac_ok() with memcmp",
+   "author": "junior-dev",
+   "body": "The loop is long. memcmp does the same in one line.",
+   "verdict": "changes"
+  },
+  "diff": "-bool mac_ok(const uint8_t *rx, const uint8_t *calc) {\n-    uint8_t diff = 0;\n-    for (int i = 0; i < 8; i++) {\n-        diff |= rx[i] ^ calc[i];\n-    }\n-    return diff == 0;\n-}\n+bool mac_ok(const uint8_t *rx, const uint8_t *calc) {\n+    return memcmp(rx, calc, 8) == 0;\n+}",
+  "explain": "The old loop is on purpose: it always checks all 8 bytes, so the run time does not depend on the data. memcmp may stop at the first different byte. An attacker can measure this and guess the MAC byte by byte. Keep the constant-time compare and add a comment.",
+  "fix": "// Constant time on purpose: do not use memcmp here.\nbool mac_ok(const uint8_t *rx, const uint8_t *calc) {\n    uint8_t diff = 0;\n    for (int i = 0; i < 8; i++) {\n        diff |= rx[i] ^ calc[i];\n    }\n    return diff == 0;\n}"
+ },
+ {
+  "id": "pr-rs-be-bytes-approve",
+  "type": "pr",
+  "topic": "rust",
+  "tags": [
+   "endianness",
+   "review-checklist"
+  ],
+  "difficulty": 1,
+  "lang": "rust",
+  "pr": {
+   "title": "Use from_be_bytes for the voltage register",
+   "author": "junior-dev",
+   "body": "The sensor sends the high byte first. Replace the manual shift with from_be_bytes.",
+   "verdict": "approve"
+  },
+  "diff": "-fn raw_to_mv(hi: u8, lo: u8) -> u16 {\n-    ((hi as u16) << 8) | lo as u16\n-}\n+fn raw_to_mv(hi: u8, lo: u8) -> u16 {\n+    u16::from_be_bytes([hi, lo])\n+}",
+  "explain": "Correct. from_be_bytes([hi, lo]) means the first byte is the most significant, the same as (hi << 8) | lo. The result is the same and the intent is clearer. No casts, no overflow. Approve."
+ },
+ {
+  "id": "pr-c-wfi-lost-wakeup",
+  "type": "pr",
+  "topic": "embedded",
+  "tags": [
+   "low-power",
+   "isr",
+   "lost-wakeup"
+  ],
+  "difficulty": 3,
+  "lang": "c",
+  "pr": {
+   "title": "Sleep while waiting for the UART frame",
+   "author": "junior-dev",
+   "body": "The CPU spins in a loop. Add __WFI() to save power.",
+   "verdict": "changes"
+  },
+  "diff": " void idle_wait(void) {\n-    while (!data_ready) { }\n+    while (!data_ready) {\n+        __WFI();\n+    }\n }",
+  "explain": "The ISR can set data_ready after the check and before __WFI(). Then the CPU sleeps with the data waiting, until some other interrupt comes. This is a lost wakeup. Mask interrupts, check the flag, then call __WFI(). On Cortex-M a pending interrupt still wakes the core, even when it is masked.",
+  "fix": "void idle_wait(void) {\n    for (;;) {\n        __disable_irq();\n        if (data_ready) {\n            __enable_irq();\n            break;\n        }\n        __WFI();         // wakes on a pending IRQ\n        __enable_irq();  // now the ISR runs\n    }\n}"
+ },
+ {
+  "id": "rs-shl-vs-rotate",
+  "type": "quiz",
+  "topic": "rust",
+  "tags": [
+   "bit-manipulation"
+  ],
+  "difficulty": 2,
+  "lang": "rust",
+  "title": "What does this print?",
+  "code": "fn main() {\n    let x: u8 = 0b1000_0001;\n    let a = x << 1;\n    let b = x.rotate_left(1);\n    println!(\"{} {}\", a, b);\n}",
+  "options": [
+   "2 3",
+   "2 2",
+   "130 3",
+   "Panics in the debug build"
+  ],
+  "answer": 0,
+  "explain": "x << 1 drops the top bit: 0b0000_0010 = 2. Rust only panics when the shift amount is 8 or more, not when bits are lost. rotate_left moves the top bit to the bottom: 0b0000_0011 = 3. Use rotate for CRCs and hashes.",
+  "verify": {
+   "expect": "2 3",
+   "lang": "rust"
+  }
+ },
+ {
+  "id": "c-float-trunc-round",
+  "type": "quiz",
+  "topic": "c",
+  "tags": [
+   "float-cast",
+   "truncation"
+  ],
+  "difficulty": 2,
+  "lang": "c",
+  "title": "What does this print?",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    printf(\"%d %d %d\\n\", (int)2.9, (int)-2.9,\n           (int)(-2.6 + 0.5));\n}",
+  "options": [
+   "3 -3 -3",
+   "2 -2 -2",
+   "2 -3 -3",
+   "3 -2 -2"
+  ],
+  "answer": 1,
+  "explain": "A cast from float to int cuts the fraction, toward zero. So 2.9 gives 2 and -2.9 gives -2. Adding 0.5 rounds only positive numbers: -2.6 + 0.5 = -2.1, which becomes -2. Use lroundf() for correct rounding.",
+  "verify": {
+   "expect": "2 -2 -2",
+   "lang": "c"
+  }
+ },
+ {
+  "id": "el-connector-esd",
+  "type": "quiz",
+  "topic": "electronics",
+  "tags": [
+   "esd",
+   "pcb"
+  ],
+  "difficulty": 2,
+  "title": "A sensor pin goes to an outside connector. Users can touch it. What protects the MCU pin best?",
+  "options": [
+   "A 100 nF capacitor to GND at the MCU pin",
+   "A TVS diode to GND near the connector, plus a series resistor",
+   "A pull-up resistor to 3.3 V",
+   "A bigger decoupling capacitor on VCC"
+  ],
+  "answer": 1,
+  "explain": "A static discharge can be thousands of volts. A TVS diode near the connector shunts the pulse to GND. The series resistor limits the current that reaches the MCU pin. A small capacitor or a pull-up does not stop such a pulse."
+ },
+ {
+  "id": "concept-cpp-lifetime",
+  "type": "concept",
+  "topic": "cpp",
+  "tags": [
+   "raii",
+   "dangling-ref",
+   "init-order"
+  ],
+  "difficulty": 2,
+  "title": "C++ object lifetime in firmware: 5 rules",
+  "bullets": [
+   "std::min and std::max return references. Copy the result into a value, never into a reference.",
+   "A lambda with [&] must not outlive its function. Callbacks stored for later capture by value.",
+   "Pass polymorphic objects by reference or pointer. By value copies only the base part (slicing).",
+   "A guard needs a name: Lock guard(m);. A nameless temporary dies at the semicolon.",
+   "Globals in different files have no fixed init order. Build them on first use."
+  ]
+ }
+]
