@@ -1,0 +1,169 @@
+[
+ {
+  "id": "fp-throwable-vs-exception",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "exceptions",
+   "error-handling"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: index.php uses catch (Throwable), not catch (Exception). What is the difference? What does this print?",
+  "options": [
+   "TypeError",
+   "Exception",
+   "Nothing, PHP turns 'abc' into 0",
+   "Fatal error: Uncaught TypeError"
+  ],
+  "answer": 0,
+  "explain": "In PHP 7+, many engine errors (TypeError, ValueError) are Error objects, not Exception. catch (Exception) does not see them. Throwable is the parent of both. That is why the front controller catches Throwable: any failure becomes a clean 500 JSON, not a white page.",
+  "lang": "php",
+  "code": "<?php\nfunction setLimit(int $n): void {}\ntry {\n    setLimit('abc');\n} catch (Exception $e) {\n    echo 'Exception';\n} catch (Throwable $e) {\n    echo get_class($e);\n}",
+  "verify": {
+   "lang": "php",
+   "expect": "TypeError"
+  }
+ },
+ {
+  "id": "fp-json-float-roundtrip",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "json",
+   "data-types"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: a client sends {\"price\": 10.0, \"qty\": 2} to write on a .json file. The API decodes it and saves it again. What is in the file (compact)?",
+  "options": [
+   "{\"price\":10.0,\"qty\":2}",
+   "{\"price\":10,\"qty\":2}",
+   "{\"price\":\"10.0\",\"qty\":2}",
+   "{\"price\":10.0,\"qty\":2.0}"
+  ],
+  "answer": 0,
+  "explain": "json_decode gives price as float and qty as int. PHP 7.1+ json_encode writes a float with a decimal point (10.0). The int stays 2. The types survive the round trip, so the file keeps the same shape the client sent.",
+  "lang": "php",
+  "code": "<?php\n$in = '{\"price\": 10.0, \"qty\": 2}';\n$data = json_decode($in, true);\necho json_encode($data);",
+  "verify": {
+   "lang": "php",
+   "expect": "{\"price\":10.0,\"qty\":2}"
+  }
+ },
+ {
+  "id": "fp-201-location",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "http",
+   "api-design"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: write() answers 201 when it creates a new file. What does the HTTP standard suggest to add to a 201 answer?",
+  "options": [
+   "A Location header with the URL of the new file",
+   "An Allow header with the methods",
+   "A Retry-After header",
+   "Nothing, 201 needs no extra data"
+  ],
+  "answer": 0,
+  "explain": "201 Created means a new resource exists. The standard says the answer should tell where: a Location header (for example ?action=read&file=a.csv). Then the client does not need to guess the address. Allow belongs to 405, not to 201."
+ },
+ {
+  "id": "fp-test-data-provider",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "testing"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: you want to test the CSV read with 8 bad inputs (BOM, empty file, duplicate headers...). The test code is the same, only the input changes. What do you use in PHPUnit?",
+  "options": [
+   "A data provider method (#[DataProvider]) that returns the input sets",
+   "Copy the test method 8 times",
+   "One test with a foreach inside it",
+   "A mock object for each input"
+  ],
+  "answer": 0,
+  "explain": "A data provider runs one test method once per input set. Each set is shown as its own result, so you see which input failed. A foreach inside one test stops at the first failure and hides the rest. Copied tests are hard to keep in sync."
+ },
+ {
+  "id": "bug-jq-double-bind",
+  "type": "bug",
+  "topic": "jquery",
+  "tags": [
+   "event-delegation",
+   "async"
+  ],
+  "difficulty": 2,
+  "lang": "js",
+  "title": "#save is outside #list. After some minutes, one click on Save sends the data many times. Tap the bug.",
+  "code": "function loadList() {\n  $.get('/items', function (html) {\n    $('#list').html(html);\n    $('#save').on('click', saveAll);\n  });\n}\nsetInterval(loadList, 5000);",
+  "bugLines": [
+   4
+  ],
+  "explain": "loadList runs every 5 seconds and adds one more click handler to #save each time. The old handlers stay. After a minute one click calls saveAll 12 times. Bind a handler once, outside the repeated function.",
+  "fix": "$('#save').on('click', saveAll); // once\n\nfunction loadList() {\n  $.get('/items', function (html) {\n    $('#list').html(html);\n  });\n}\nsetInterval(loadList, 5000);"
+ },
+ {
+  "id": "composer-dev-in-prod",
+  "type": "quiz",
+  "topic": "composer",
+  "tags": [
+   "require-dev",
+   "composer-commands"
+  ],
+  "difficulty": 2,
+  "title": "Works on your laptop. In production: Class \"Faker\\Factory\" not found. src/ uses it, and composer.json has fakerphp/faker in require-dev. Why?",
+  "options": [
+   "Production runs composer install --no-dev, so dev packages are not installed",
+   "Faker does not work on Linux",
+   "composer.lock is missing on the server",
+   "PSR-4 paths are case-sensitive"
+  ],
+  "answer": 0,
+  "explain": "require-dev packages are for tests and tools. The production deploy skips them with --no-dev. If code in src/ needs a package at run time, move it to require. Check: would the app run without this package? If not, it is not a dev dependency."
+ },
+ {
+  "id": "git-stash-switch",
+  "type": "quiz",
+  "topic": "git",
+  "tags": [
+   "git-basics"
+  ],
+  "difficulty": 1,
+  "title": "You have uncommitted changes. A teammate needs a quick fix on another branch. You want to keep your work safe, without a commit. Which command?",
+  "options": [
+   "git stash",
+   "git reset --hard",
+   "git checkout .",
+   "git commit --amend"
+  ],
+  "answer": 0,
+  "explain": "git stash puts your changes on a shelf and gives you a clean working folder. Switch branches, fix, come back, then run git stash pop. reset --hard and checkout . delete your changes. --amend changes the last commit, which is not what you want."
+ },
+ {
+  "id": "oop-object-equality",
+  "type": "quiz",
+  "topic": "oop",
+  "tags": [
+   "objects-vs-arrays",
+   "oop"
+  ],
+  "difficulty": 2,
+  "title": "What does this print (true/false for each line)?",
+  "options": [
+   "true, false, true",
+   "true, true, true",
+   "false, false, true",
+   "false, false, false"
+  ],
+  "answer": 0,
+  "explain": "== on objects compares the class and all property values: $a and $b are equal. === asks if it is the same object. $a and $b are two objects, so false. $c is another handle to $a, so true. Use === when you need the same instance.",
+  "lang": "php",
+  "code": "<?php\nclass Point {\n    public function __construct(public int $x) {}\n}\n$a = new Point(1);\n$b = new Point(1);\n$c = $a;\nvar_dump($a == $b, $a === $b, $a === $c);",
+  "verify": {
+   "lang": "php",
+   "expect": "bool(true)\nbool(false)\nbool(true)"
+  }
+ }
+]

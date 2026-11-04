@@ -1,0 +1,27 @@
+[
+ {
+  "id": "fp-json-float-roundtrip",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "json",
+   "data-types"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: a client sends {\"price\": 10.0, \"qty\": 2} to write on a .json file. The API decodes it and saves it again. What is in the file (compact)?",
+  "options": [
+   "{\"price\":10,\"qty\":2}",
+   "{\"price\":10.0,\"qty\":2}",
+   "{\"price\":\"10.0\",\"qty\":2}",
+   "{\"price\":10.0,\"qty\":2.0}"
+  ],
+  "answer": 0,
+  "explain": "json_decode makes price a float. json_encode writes a float with no decimals as 10, unless you pass JSON_PRESERVE_ZERO_FRACTION. So 10.0 becomes 10 in the file. For money this is a reason to store cents as int or the price as a string.",
+  "lang": "php",
+  "code": "<?php\n$in = '{\"price\": 10.0, \"qty\": 2}';\n$data = json_decode($in, true);\necho json_encode($data);",
+  "verify": {
+   "lang": "php",
+   "expect": "{\"price\":10,\"qty\":2}"
+  }
+ }
+]

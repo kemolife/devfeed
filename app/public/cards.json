@@ -3550,5 +3550,180 @@
     "title": "C++ object lifetime in firmware: 5 rules",
     "topic": "cpp",
     "type": "concept"
+  },
+  {
+    "bugLines": [
+      3
+    ],
+    "code": "void check_fault(void) {\n    int st = read_status();\n    if (st = FAULT_OVERTEMP) {\n        motor_off();\n    }\n}",
+    "difficulty": 1,
+    "explain": "A single = assigns. st gets the value FAULT_OVERTEMP, and a non-zero value is true, so the branch always runs. It also destroys the real status. Use ==. Turn on -Wall: the compiler warns about this.",
+    "fix": "if (st == FAULT_OVERTEMP) {\n    motor_off();\n}",
+    "id": "bug-c-assign-in-if",
+    "lang": "c",
+    "tags": [
+      "logic-inversion",
+      "ignored-error"
+    ],
+    "title": "The motor stops on every call, even without a fault. Tap the bug.",
+    "topic": "c",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      3
+    ],
+    "code": "fn on_frame(rx: &[u8], key: &mut [u8; 16]) {\n    if rx.first() == Some(&CMD_SET_KEY) {\n        key.copy_from_slice(&rx[1..]);\n    }\n}",
+    "difficulty": 2,
+    "explain": "copy_from_slice panics when the two slices have different lengths. Here the frame length comes from outside, so anyone can send a wrong one. In firmware a panic is a reset. Check the length first and return an error.",
+    "fix": "if rx.first() == Some(&CMD_SET_KEY) {\n    if rx.len() != 17 {\n        return; // or return Err(BadLength)\n    }\n    key.copy_from_slice(&rx[1..]);\n}",
+    "id": "bug-rs-copy-from-slice-len",
+    "lang": "rust",
+    "tags": [
+      "panic-in-firmware",
+      "buffer-overflow"
+    ],
+    "title": "A radio frame with a wrong length resets the MCU. Tap the bug.",
+    "topic": "rust",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      2
+    ],
+    "code": "struct Sensor {\n    Sensor() { init(); }\n    virtual void init() {}\n    virtual ~Sensor() {}\n};\nstruct Bme : Sensor {\n    void init() override { i2c_write(0xF4, 0x27); }\n};\n\nBme bme;",
+    "difficulty": 3,
+    "explain": "While the Sensor constructor runs, the object is only a Sensor. The Bme part does not exist yet, so init() calls Sensor::init, not Bme::init. Never call virtual functions in a constructor. Call init() after construction, or use a factory.",
+    "fix": "Bme bme;\nbme.init();   // object is complete now",
+    "id": "bug-cpp-virtual-in-ctor",
+    "lang": "cpp",
+    "tags": [
+      "init-order",
+      "oop"
+    ],
+    "title": "Bme is never configured: i2c_write() is never called. Tap the bug.",
+    "topic": "cpp",
+    "type": "bug"
+  },
+  {
+    "diff": "-int sensor_read(uint8_t reg, uint8_t *out) {\n-    return i2c_read(SENSOR_ADDR, reg, out, 1);\n-}\n+int sensor_read(uint8_t reg, uint8_t *out) {\n+    int rc = -1;\n+    for (int i = 0; i < 3 && rc != 0; i++) {\n+        rc = i2c_read(SENSOR_ADDR, reg, out, 1);\n+    }\n+    return rc;\n+}",
+    "difficulty": 2,
+    "explain": "Good change. The retry is bounded (3 tries), so it cannot hang. The last error goes back to the caller, so errors are not hidden. Each try has its own timeout. Compare with an endless while loop, which would block the firmware if the sensor is dead.",
+    "id": "pr-c-i2c-bounded-retry",
+    "lang": "c",
+    "pr": {
+      "author": "junior-dev",
+      "body": "The sensor sometimes NACKs right after wake-up. i2c_read() already has its own timeout.",
+      "title": "Retry the sensor read 3 times",
+      "verdict": "approve"
+    },
+    "tags": [
+      "i2c",
+      "review-checklist"
+    ],
+    "topic": "embedded",
+    "type": "pr"
+  },
+  {
+    "diff": " void log_boot(uint64_t t_us) {\n-    printf(\"boot at %u us\\n\", (unsigned)t_us);\n+    printf(\"boot at %lu us\\n\", t_us);\n }",
+    "difficulty": 3,
+    "explain": "On 32-bit ARM, %lu reads only 32 bits, but a uint64_t takes 64 bits on the call. The number is wrong, and later arguments can shift too. Many embedded printf versions have no %llu. Safe way: print the two halves.",
+    "fix": "void log_boot(uint64_t t_us) {\n    // two 32-bit halves, works with newlib-nano\n    printf(\"boot at 0x%08lx%08lx us\\n\",\n           (unsigned long)(t_us >> 32),\n           (unsigned long)(t_us & 0xFFFFFFFFu));\n}",
+    "id": "pr-c-printf-u64-lu",
+    "lang": "c",
+    "pr": {
+      "author": "junior-dev",
+      "body": "The log was cut after 71 minutes. Print the whole 64-bit time.",
+      "title": "Log the full 64-bit boot time",
+      "verdict": "changes"
+    },
+    "tags": [
+      "truncation",
+      "review-checklist"
+    ],
+    "topic": "embedded",
+    "type": "pr"
+  },
+  {
+    "diff": " #[interrupt]\n fn USART1() {\n     critical_section::with(|cs| {\n-        if let Some(uart) = UART.borrow(cs).borrow_mut().as_mut() {\n+        if let Some(uart) = UART.borrow(cs).take() {\n             let b = uart.read_byte();\n             RX.borrow(cs).borrow_mut().push(b);\n         }\n     });\n }",
+    "difficulty": 3,
+    "explain": "RefCell::take() moves the Uart out and leaves None. The first interrupt works. At the end the Uart is dropped. The next interrupt finds None and does nothing, so RX stops after one byte. Borrow it with as_mut() and leave it in place.",
+    "fix": "#[interrupt]\nfn USART1() {\n    critical_section::with(|cs| {\n        if let Some(uart) = UART.borrow(cs).borrow_mut().as_mut() {\n            let b = uart.read_byte();\n            RX.borrow(cs).borrow_mut().push(b);\n        }\n    });\n}",
+    "id": "pr-rs-take-uart-isr",
+    "lang": "rust",
+    "pr": {
+      "author": "junior-dev",
+      "body": "as_mut() is long. take() gives us the Uart by value. UART is Mutex<RefCell<Option<Uart>>>.",
+      "title": "Own the UART inside the ISR",
+      "verdict": "changes"
+    },
+    "tags": [
+      "critical-section",
+      "isr"
+    ],
+    "topic": "rust",
+    "type": "pr"
+  },
+  {
+    "answer": 1,
+    "code": "fn main() {\n    let s = \"25°C\";\n    println!(\"{} {}\", s.len(), s.chars().count());\n}",
+    "difficulty": 2,
+    "explain": "len() counts bytes, not characters. The degree sign is 2 bytes in UTF-8, so \"25°C\" has 5 bytes and 4 chars. Size a display or UART buffer in bytes. Do not index by char count.",
+    "id": "rs-str-len-utf8",
+    "lang": "rust",
+    "options": [
+      "4 4",
+      "5 4",
+      "5 5",
+      "4 5"
+    ],
+    "tags": [
+      "truncation",
+      "buffer-overflow"
+    ],
+    "title": "What does this print?",
+    "topic": "rust",
+    "type": "quiz",
+    "verify": {
+      "expect": "5 4",
+      "lang": "rust"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "The load is in parallel with the bottom resistor, so the output drops when the MCU takes more current (radio, flash, LEDs). A divider is only stable with a tiny load. Use an LDO for small loads, or a buck converter if the power loss matters.",
+    "id": "el-divider-not-supply",
+    "options": [
+      "The MCU current changes, so the divider output changes with the load",
+      "A divider cannot make a voltage below 5 V",
+      "Resistors are too noisy for digital chips",
+      "The divider output is AC"
+    ],
+    "tags": [
+      "voltage-divider",
+      "ldo-power"
+    ],
+    "title": "A 12 V rail feeds a board. You make 3.3 V for the MCU with two resistors as a divider. Why does this fail?",
+    "topic": "electronics",
+    "type": "quiz"
+  },
+  {
+    "bullets": [
+      "Look first: polarity of diodes, caps and ICs, and no solder bridges on power pins.",
+      "Board off: measure the supply rail to GND with a multimeter. Near 0 Ω means a short. Do not power it.",
+      "Set the bench supply current limit low (50–100 mA). Raise it only if all is fine.",
+      "Power it with the MCU and loads not fitted, if you can. Check each rail (5 V, 3V3) before you add chips.",
+      "Watch the current. A sudden jump or a part that gets hot in seconds: power off and find the cause."
+    ],
+    "difficulty": 1,
+    "id": "concept-first-power-up",
+    "tags": [
+      "review-checklist",
+      "pcb"
+    ],
+    "title": "First power-up of a new board: 5 steps",
+    "topic": "electronics",
+    "type": "concept"
   }
 ]
