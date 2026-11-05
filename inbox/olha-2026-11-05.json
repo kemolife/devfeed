@@ -1,0 +1,178 @@
+[
+ {
+  "id": "fp-isset-vs-key-exists",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "architecture",
+   "null-check"
+  ],
+  "difficulty": 2,
+  "lang": "php",
+  "title": "Senior asks: checkAction() uses isset() on ACTION_METHODS. What does this print if one value is null?",
+  "code": "<?php\n$map = ['list' => 'GET', 'ping' => null];\necho json_encode([\n    isset($map['ping']),\n    array_key_exists('ping', $map),\n]);",
+  "options": [
+   "[true,true]",
+   "[false,true]",
+   "[true,false]",
+   "[false,false]"
+  ],
+  "answer": 1,
+  "explain": "isset() is false when the value is null, even if the key exists. array_key_exists() only checks the key. Today all values are strings, so isset() works. If someone adds a null value later, that action would look unknown. Use array_key_exists() when null is a possible value.",
+  "verify": {
+   "lang": "php",
+   "expect": "[false,true]"
+  }
+ },
+ {
+  "id": "fp-basename-edge",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "filesystem",
+   "validation"
+  ],
+  "difficulty": 2,
+  "lang": "php",
+  "title": "Senior asks: getFileName() uses basename(). What does this print?",
+  "code": "<?php\necho basename('a/b.csv/'), '|',\n     basename('/'), '|',\n     basename('..');",
+  "options": [
+   "b.csv||..",
+   "b.csv|/|..",
+   "a/b.csv|/|..",
+   "b.csv|||"
+  ],
+  "answer": 0,
+  "explain": "basename() only removes the folder part. A trailing slash is ignored, \"/\" gives an empty string, and \"..\" stays \"..\". So basename is not a full check. Your other checks (extension, is_file) must still reject empty and odd names.",
+  "verify": {
+   "lang": "php",
+   "expect": "b.csv||.."
+  }
+ },
+ {
+  "id": "fp-extension-case",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "filesystem",
+   "http"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: storage/ has fruits.csv. On Linux someone calls ?action=read&file=FRUITS.CSV. What happens?",
+  "options": [
+   "200, it reads fruits.csv",
+   "404, file not found",
+   "422, format not supported",
+   "500, server error"
+  ],
+  "answer": 1,
+  "explain": "FileService uses strtolower() on the extension, so CSV passes as a known format. But Linux file names are case-sensitive: FRUITS.CSV does not exist, so you get FileNotFoundException and 404. On a default Mac it would work. That is a classic \"works on my machine\" bug."
+ },
+ {
+  "id": "fp-pr-file-exists-dir",
+  "type": "pr",
+  "topic": "project",
+  "tags": [
+   "filesystem",
+   "validation"
+  ],
+  "difficulty": 2,
+  "lang": "php",
+  "pr": {
+   "title": "Use file_exists in checkFileExists",
+   "author": "olha",
+   "body": "The name file_exists is clearer than is_file, and it is the same check.",
+   "verdict": "changes"
+  },
+  "diff": " protected function checkFileExists(string $path): void\n {\n-    if (!is_file($path)) {\n+    if (!file_exists($path)) {\n         throw new FileNotFoundException(basename($path));\n     }\n }",
+  "explain": "It is not the same check. file_exists() is also true for folders. A folder named old.csv in storage would pass, and the next step fails with a confusing error (usually 500) instead of a clear 404. is_file() is true only for regular files. Keep it.",
+  "fix": "protected function checkFileExists(string $path): void\n{\n    // is_file(): true only for regular files, not folders\n    if (!is_file($path)) {\n        throw new FileNotFoundException(basename($path));\n    }\n}"
+ },
+ {
+  "id": "php-count-null",
+  "type": "quiz",
+  "topic": "php",
+  "tags": [
+   "data-types",
+   "null-check"
+  ],
+  "difficulty": 2,
+  "lang": "php",
+  "title": "PHP 8. A function returns null by mistake. What does this print?",
+  "code": "<?php\nfunction rows(): ?array { return null; }\ntry {\n    echo count(rows());\n} catch (TypeError $e) {\n    echo 'TypeError';\n}",
+  "options": [
+   "0",
+   "1",
+   "TypeError",
+   "A warning, then 0"
+  ],
+  "answer": 2,
+  "explain": "In PHP 7, count(null) gave a warning and 1 or 0. Since PHP 8, count() accepts only arrays and Countable objects, so null throws a TypeError. This is good: the bug shows up at once. Check for null first, or make the function return an empty array.",
+  "verify": {
+   "lang": "php",
+   "expect": "TypeError"
+  }
+ },
+ {
+  "id": "js-shallow-copy",
+  "type": "quiz",
+  "topic": "js",
+  "tags": [
+   "shallow-copy",
+   "objects-vs-arrays"
+  ],
+  "difficulty": 2,
+  "lang": "js",
+  "title": "What does Node print?",
+  "code": "const a = { name: 'x', opts: { v: 1 } };\nconst b = { ...a };\nb.opts.v = 2;\nb.name = 'y';\nconsole.log(a.opts.v, a.name);",
+  "options": [
+   "1 x",
+   "2 x",
+   "2 y",
+   "1 y"
+  ],
+  "answer": 1,
+  "explain": "The spread { ...a } is a shallow copy. Simple values like name are copied. The nested object opts is shared, so b.opts.v = 2 also changes a. Use structuredClone(a) for a deep copy.",
+  "verify": {
+   "lang": "js",
+   "expect": "2 x"
+  }
+ },
+ {
+  "id": "bug-sf-delete-get-csrf",
+  "type": "bug",
+  "topic": "symfony",
+  "tags": [
+   "security",
+   "ai-code-review"
+  ],
+  "difficulty": 2,
+  "lang": "php",
+  "title": "Link previews and search bots delete posts. Tap the bug.",
+  "code": "#[Route('/post/{id}/delete')]\npublic function delete(\n    Post $post,\n    EntityManagerInterface $em,\n): Response {\n    $em->remove($post);\n    $em->flush();\n\n    return $this->redirectToRoute('post_list');\n}",
+  "bugLines": [
+   1,
+   6
+  ],
+  "explain": "The route has no methods, so a simple GET link deletes the post. Bots, prefetch and link previews follow GET links. Another site can also trigger it (CSRF). Allow only POST and check a CSRF token before you remove anything.",
+  "fix": "#[Route('/post/{id}/delete', methods: ['POST'])]\npublic function delete(\n    Post $post,\n    Request $request,\n    EntityManagerInterface $em,\n): Response {\n    $token = $request->request->getString('_token');\n    if (!$this->isCsrfTokenValid('delete' . $post->getId(), $token)) {\n        throw $this->createAccessDeniedException();\n    }\n\n    $em->remove($post);\n    $em->flush();\n\n    return $this->redirectToRoute('post_list');\n}"
+ },
+ {
+  "id": "git-revert-pushed",
+  "type": "quiz",
+  "topic": "git",
+  "tags": [
+   "git-history"
+  ],
+  "difficulty": 2,
+  "title": "A bad commit is on shared main and colleagues already pulled it. How do you undo it safely?",
+  "options": [
+   "git reset --hard HEAD~1, then git push --force",
+   "git revert <commit>, then a normal git push",
+   "git commit --amend, then git push --force",
+   "git stash, then git push"
+  ],
+  "answer": 1,
+  "explain": "git revert adds a new commit that undoes the bad one. History stays the same, so colleagues can just pull. reset or amend plus force-push rewrites shared history and breaks other people's branches. Rewrite history only on your own unpushed work."
+ }
+]

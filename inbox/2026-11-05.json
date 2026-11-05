@@ -1,0 +1,206 @@
+[
+ {
+  "id": "bug-c-use-after-free",
+  "type": "bug",
+  "topic": "c",
+  "tags": [
+   "use-after-free",
+   "memory"
+  ],
+  "difficulty": 2,
+  "lang": "c",
+  "title": "Urgent messages sometimes do not wake the task. Tap the bug.",
+  "code": "void on_msg(msg_t *m) {\n    process(m);\n    pool_free(m);\n    if (m->flags & MSG_URGENT) {\n        wake_task();\n    }\n}",
+  "bugLines": [
+   4
+  ],
+  "explain": "pool_free(m) gives the block back to the pool. Another ISR can reuse it at once, so m->flags is now garbage. This is use after free. It often works in tests and fails only under load. Read what you need before you free, or free as the last step.",
+  "fix": "void on_msg(msg_t *m) {\n    bool urgent = m->flags & MSG_URGENT;\n    process(m);\n    pool_free(m);\n    if (urgent) {\n        wake_task();\n    }\n}"
+ },
+ {
+  "id": "bug-rs-neg-index-as-usize",
+  "type": "bug",
+  "topic": "rust",
+  "tags": [
+   "truncation",
+   "unchecked-index",
+   "panic-in-firmware"
+  ],
+  "difficulty": 2,
+  "lang": "rust",
+  "title": "sample(&buf, 0, -1) resets the MCU. Tap the bug.",
+  "code": "fn sample(buf: &[u8], pos: usize, delta: i16) -> u8 {\n    let idx = pos as i16 + delta;\n    buf[idx as usize]\n}",
+  "bugLines": [
+   2,
+   3
+  ],
+  "explain": "With pos = 0 and delta = -1, idx is -1. Casting -1i16 with `as usize` gives a huge number, so buf[idx] panics. Also `pos as i16` cuts large positions. Do the math in usize with checked_add_signed, and use get() so a bad index gives None, not a panic.",
+  "fix": "fn sample(buf: &[u8], pos: usize, delta: i16) -> Option<u8> {\n    let idx = pos.checked_add_signed(delta as isize)?;\n    buf.get(idx).copied()\n}"
+ },
+ {
+  "id": "bug-cpp-signed-bitfield",
+  "type": "bug",
+  "topic": "cpp",
+  "tags": [
+   "bit-manipulation",
+   "sign-extension"
+  ],
+  "difficulty": 3,
+  "lang": "cpp",
+  "title": "ARM GCC. is_on() is always false. Tap the bug.",
+  "code": "struct Cfg {\n    int enable : 1;\n    int mode   : 3;\n};\n\nvoid init(Cfg &c) {\n    c.enable = 1;\n    c.mode = 5;\n}\n\nbool is_on(const Cfg &c) { return c.enable == 1; }",
+  "bugLines": [
+   2,
+   3,
+   11
+  ],
+  "explain": "A bit-field of type int is signed. A 1-bit signed field holds only 0 and -1, so enable = 1 is stored as -1 and == 1 is false. mode = 5 does not fit in 3 signed bits (-4..3) and reads back as -3. Use unsigned bit-fields for flags and small numbers.",
+  "fix": "struct Cfg {\n    unsigned enable : 1;\n    unsigned mode   : 3;\n};"
+ },
+ {
+  "id": "pr-c-memcpy-unaligned-read",
+  "type": "pr",
+  "topic": "c",
+  "tags": [
+   "alignment",
+   "strict-aliasing"
+  ],
+  "difficulty": 2,
+  "lang": "c",
+  "pr": {
+   "title": "Read u32 from the frame with memcpy",
+   "author": "mia-dev",
+   "body": "The pointer cast can HardFault on Cortex-M0 when off is odd. memcpy is safe. The sensor is little-endian, like our MCU.",
+   "verdict": "approve"
+  },
+  "diff": " #include <string.h>\n \n uint32_t rd_u32(const uint8_t *buf, size_t off) {\n-    return *(const uint32_t *)(buf + off);\n+    uint32_t v;\n+    memcpy(&v, buf + off, sizeof v);\n+    return v;\n }",
+  "explain": "Good change. buf + off can be odd, and an unaligned 32-bit load faults on Cortex-M0. The cast also breaks strict aliasing rules. memcpy is legal for any address, and the compiler turns it into one load where that is safe. Byte order is the same as the MCU here, so no swap is needed."
+ },
+ {
+  "id": "pr-c-log-format-string",
+  "type": "pr",
+  "topic": "embedded",
+  "tags": [
+   "format-string",
+   "buffer-overflow"
+  ],
+  "difficulty": 2,
+  "lang": "c",
+  "pr": {
+   "title": "Do not overflow the UART line buffer",
+   "author": "junior-dev",
+   "body": "Long log texts broke the UART driver. snprintf cuts them at 64 bytes. Texts can contain the BLE device name.",
+   "verdict": "changes"
+  },
+  "diff": "-void log_msg(const char *msg) {\n-    uart_puts(msg);\n-}\n+void log_msg(const char *msg) {\n+    char line[64];\n+    snprintf(line, sizeof line, msg);\n+    uart_puts(line);\n+}",
+  "explain": "msg is used as the format string. If the BLE name contains %s or %n, snprintf reads or writes memory it should not. The size limit does not help. Pattern: never pass outside text as a format. Use \"%s\" and give the text as an argument.",
+  "fix": "void log_msg(const char *msg) {\n    char line[64];\n    snprintf(line, sizeof line, \"%s\", msg);\n    uart_puts(line);\n}"
+ },
+ {
+  "id": "pr-rs-empty-loop-delay",
+  "type": "pr",
+  "topic": "rust",
+  "tags": [
+   "peripheral-timing",
+   "hal-api"
+  ],
+  "difficulty": 2,
+  "lang": "rust",
+  "pr": {
+   "title": "Wait for the sensor after power on",
+   "author": "junior-dev",
+   "body": "The sensor needs 5 ms after power on. 50 000 loops are about 5 ms at 64 MHz.",
+   "verdict": "changes"
+  },
+  "diff": " fn power_on(en: &mut impl OutputPin) {\n     let _ = en.set_high();\n+    // wait for the sensor to start\n+    for _ in 0..50_000 {}\n }",
+  "explain": "An empty loop has no effect, so the optimizer can remove it in release builds. Even when it stays, the time depends on the clock and the opt level. Use a real delay from a timer (embedded-hal DelayNs). Also return the pin error, do not drop it.",
+  "fix": "fn power_on<P: OutputPin, D: DelayNs>(\n    en: &mut P,\n    delay: &mut D,\n) -> Result<(), P::Error> {\n    en.set_high()?;\n    delay.delay_ms(5);\n    Ok(())\n}"
+ },
+ {
+  "id": "c-char-literal-sizeof",
+  "type": "quiz",
+  "topic": "c",
+  "tags": [
+   "integer-promotion",
+   "memory-layout"
+  ],
+  "difficulty": 2,
+  "lang": "c",
+  "title": "32-bit MCU, C (not C++). What does this print?",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    printf(\"%zu\\n\", sizeof('a'));\n}",
+  "options": [
+   "1",
+   "4",
+   "2",
+   "It does not compile"
+  ],
+  "answer": 1,
+  "explain": "In C, a character literal like 'a' has type int, not char. So sizeof('a') is sizeof(int), which is 4 on a 32-bit MCU. In C++ it is char and the answer is 1. This is one more place where C and C++ differ.",
+  "verify": {
+   "lang": "c",
+   "expect": "4"
+  }
+ },
+ {
+  "id": "cpp-vector-brace-init",
+  "type": "quiz",
+  "topic": "cpp",
+  "tags": [
+   "init-order",
+   "array-init"
+  ],
+  "difficulty": 2,
+  "lang": "cpp",
+  "title": "Host test of a sample buffer. What does this print?",
+  "code": "#include <iostream>\n#include <vector>\n\nint main() {\n    std::vector<int> a(3);\n    std::vector<int> b{3};\n    std::cout << a.size() << b.size() << \"\\n\";\n}",
+  "options": [
+   "33",
+   "31",
+   "13",
+   "11"
+  ],
+  "answer": 1,
+  "explain": "Round brackets call the size constructor: a has 3 elements (all 0). Curly brackets prefer the initializer list: b has 1 element with the value 3. So the output is 31. When you want a size, use round brackets or write it clearly.",
+  "verify": {
+   "lang": "cpp",
+   "expect": "31"
+  }
+ },
+ {
+  "id": "el-resistor-power-rating",
+  "type": "quiz",
+  "topic": "electronics",
+  "tags": [
+   "ohms-law",
+   "power-rating"
+  ],
+  "difficulty": 2,
+  "title": "5 V is across a 100 Ω resistor. The part is rated 1/8 W (0.125 W). What happens?",
+  "options": [
+   "Fine, 0.125 W is enough",
+   "It dissipates 0.25 W: too much, it overheats",
+   "It dissipates 0.05 W: very safe",
+   "It dissipates 0.5 W: it burns at once"
+  ],
+  "answer": 1,
+  "explain": "Current is 5 V / 100 Ω = 50 mA. Power is V × I = 5 × 0.05 = 0.25 W. That is twice the 1/8 W rating, so the resistor gets very hot and can fail. Use a 1/2 W part, or keep the load at half the rating or less."
+ },
+ {
+  "id": "concept-button-debounce",
+  "type": "concept",
+  "topic": "embedded",
+  "tags": [
+   "gpio",
+   "peripheral-timing",
+   "review-checklist"
+  ],
+  "difficulty": 1,
+  "title": "Button debounce: 4 rules",
+  "bullets": [
+   "A real button bounces for 1–20 ms. One press can look like many edges.",
+   "Never use delay() in an ISR to wait it out. Start a timer, or only note the time.",
+   "Best way in software: read the pin every 5–10 ms, and accept a new state after 3–4 equal reads.",
+   "In hardware, an RC filter (for example 10 kΩ and 100 nF) plus a Schmitt-trigger input also works."
+  ]
+ }
+]
