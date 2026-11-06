@@ -15,6 +15,7 @@ const FILTER_NAME: Record<FeedFilter, string> = {
   rust: 'Rust',
   electronics: 'electronics',
   pr: 'PR review',
+  mine: 'my learning',
   php: 'PHP',
   symfony: 'Symfony',
   js: 'JavaScript',

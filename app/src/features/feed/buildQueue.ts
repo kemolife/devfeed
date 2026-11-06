@@ -3,7 +3,11 @@ import type { Card, FeedFilter } from '../../types/card';
 
 export function matchesFilters(card: Card, filters: FeedFilter[]): boolean {
   if (filters.length === 0) return true;
-  return filters.includes(card.topic) || (filters.includes('pr') && card.type === 'pr');
+  return (
+    filters.includes(card.topic) ||
+    (filters.includes('pr') && card.type === 'pr') ||
+    (filters.includes('mine') && card.origin === 'mine')
+  );
 }
 
 function shuffle<T>(items: T[], rng: () => number): T[] {
@@ -25,6 +29,8 @@ export const MISSED_DELAY_MS = 12 * 60 * 60 * 1000;
  * 3. cards shown but not answered, e.g. scrolled past (least recently shown first)
  * 4. cards answered wrong less than 12 h ago: they wait for the next day
  * 5. cards already answered right (least recently answered first)
+ *
+ * Personal cards (origin "mine") go through this order first; general cards follow.
  */
 export function buildQueue(
   cards: Card[],
@@ -35,6 +41,21 @@ export function buildQueue(
   rng: () => number = Math.random,
 ): Card[] {
   const pool = cards.filter((c) => matchesFilters(c, filters));
+  const mine = pool.filter((c) => c.origin === 'mine');
+  const general = pool.filter((c) => c.origin !== 'mine');
+  return [
+    ...orderGroup(mine, progress, viewed, now, rng),
+    ...orderGroup(general, progress, viewed, now, rng),
+  ];
+}
+
+function orderGroup(
+  pool: Card[],
+  progress: Record<string, CardProgress>,
+  viewed: Record<string, number>,
+  now: number,
+  rng: () => number,
+): Card[] {
   const answeredAt = (c: Card) => progress[c.id]?.lastTs ?? 0;
   const byAnswered = (a: Card, b: Card) => answeredAt(a) - answeredAt(b);
   const byViewed = (a: Card, b: Card) => (viewed[a.id] ?? 0) - (viewed[b.id] ?? 0);

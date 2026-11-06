@@ -22,6 +22,10 @@ interface CardBase {
   /** Bug patterns this card trains, e.g. "isr", "rmw-race". Used for weak-pattern stats. */
   tags: string[];
   difficulty: 1 | 2 | 3;
+  /** "mine" = made from the owner's own lessons and conversations; shown before general cards. */
+  origin?: 'mine';
+  /** Where a personal card comes from, e.g. "Tinkercad lesson 6 · TMP36". */
+  from?: string;
 }
 
 export interface QuizCard extends CardBase {
@@ -69,5 +73,5 @@ export interface ConceptCard extends CardBase {
 
 export type Card = QuizCard | BugCard | PrCard | ConceptCard;
 
-/** Feed filter: a topic, or "pr" for PR-review cards of any topic. */
-export type FeedFilter = Topic | 'pr';
+/** Feed filter: a topic, "pr" for PR-review cards of any topic, or "mine" for personal cards. */
+export type FeedFilter = Topic | 'pr' | 'mine';

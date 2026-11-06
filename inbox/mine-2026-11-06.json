@@ -1,0 +1,506 @@
+[
+  {
+    "id": "mine-l6-truncation",
+    "type": "quiz",
+    "topic": "c",
+    "tags": [
+      "integer-truncation"
+    ],
+    "difficulty": 1,
+    "origin": "mine",
+    "from": "Tinkercad lesson 6 · TMP36",
+    "title": "Your TMP36 code, value = 153. What does this print?",
+    "lang": "c",
+    "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    int16_t value = 153;   // analogRead()\n    float v1 = value * 5 / 1023;\n    float v2 = value * 5.0 / 1023;\n    printf(\"%.3f %.3f\\n\", v1, v2);\n}",
+    "options": [
+      "0.748 0.748",
+      "0.000 0.748",
+      "0.000 0.000",
+      "765.000 0.748"
+    ],
+    "answer": 1,
+    "explain": "value * 5 / 1023 is all int: 765 / 1023 = 0, and the float comes too late. In value * 5.0 the first step is already double, so the division keeps the fraction. One floating operand in the FIRST operation is enough.",
+    "verify": {
+      "lang": "c",
+      "expect": "0.000 0.748"
+    }
+  },
+  {
+    "id": "mine-l6-l-suffix",
+    "type": "quiz",
+    "topic": "c",
+    "tags": [
+      "integer-overflow",
+      "int-size"
+    ],
+    "difficulty": 2,
+    "origin": "mine",
+    "from": "Tinkercad lesson 6 · TMP36",
+    "title": "Arduino Uno, int is 16-bit (int16_t here). What does this print?",
+    "lang": "c",
+    "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    int16_t on_uno = (int16_t)(1023 * 5000);  // what 16-bit int keeps\n    long ok = 1023 * 5000L;\n    printf(\"%d %ld\\n\", on_uno, ok);\n}",
+    "options": [
+      "5115000 5115000",
+      "3192 5115000",
+      "-1 5115000",
+      "32767 5115000"
+    ],
+    "answer": 1,
+    "explain": "1023 * 5000 = 5 115 000 does not fit in 16 bits (max 32 767). Only the low 16 bits stay: 5 115 000 mod 65 536 = 3 192. No warning, just a wrong number. 5000L makes the multiplication long (32-bit), and it fits.",
+    "verify": {
+      "lang": "c",
+      "expect": "3192 5115000"
+    }
+  },
+  {
+    "id": "mine-l6-millis-wrap",
+    "type": "quiz",
+    "topic": "c",
+    "tags": [
+      "millis",
+      "unsigned-wrap"
+    ],
+    "difficulty": 2,
+    "origin": "mine",
+    "from": "Tinkercad lesson 6 · TMP36",
+    "title": "millis() just wrapped. What does current - previous give?",
+    "lang": "c",
+    "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint32_t previous = 4294967000u;  // just before the wrap\n    uint32_t current = 200;           // just after\n    printf(\"%lu\\n\", (unsigned long)(current - previous));\n}",
+    "options": [
+      "-4294966800",
+      "496",
+      "0",
+      "4294966800"
+    ],
+    "answer": 1,
+    "explain": "unsigned long is 32-bit, arithmetic modulo 2^32. The subtraction 'jumps' over zero correctly: 496 ms passed. That is why current - previous >= interval works after 49.7 days.",
+    "verify": {
+      "lang": "c",
+      "expect": "496"
+    }
+  },
+  {
+    "id": "mine-l6-millis-compare",
+    "type": "bug",
+    "topic": "c",
+    "tags": [
+      "millis",
+      "unsigned-wrap"
+    ],
+    "difficulty": 2,
+    "origin": "mine",
+    "from": "Tinkercad lesson 6 · TMP36",
+    "title": "Works for a month, then the LED stops blinking on day 50. Tap the bug.",
+    "lang": "c",
+    "code": "unsigned long previous = 0;\nconst unsigned long interval = 500;\n\nvoid loop() {\n  if (millis() > previous + interval) {\n    previous = millis();\n    toggleLed();\n  }\n}",
+    "bugLines": [
+      5
+    ],
+    "explain": "Near the wrap, previous + interval overflows to a small number, or millis() wraps to a small number while previous + interval is huge: the comparison is wrong. Compare the elapsed time instead: the subtraction is correct across the wrap.",
+    "fix": "if (millis() - previous >= interval) {\n  previous += interval;   // or = millis()\n  toggleLed();\n}"
+  },
+  {
+    "id": "mine-l6-leading-zeros",
+    "type": "quiz",
+    "topic": "c",
+    "tags": [
+      "fixed-point",
+      "printing"
+    ],
+    "difficulty": 1,
+    "origin": "mine",
+    "from": "Tinkercad lesson 6 · TMP36",
+    "title": "mV = 1045. Printing volts like in your first try. Output?",
+    "lang": "c",
+    "code": "#include <stdio.h>\n\nint main(void) {\n    long mv = 1045;\n    printf(\"%ld.%ld\\n\", mv / 1000, mv % 1000);\n}",
+    "options": [
+      "1.045",
+      "1.45",
+      "1.0045",
+      "1.4"
+    ],
+    "answer": 1,
+    "explain": "1045 % 1000 = 45, and printing 45 gives '45', not '045'. A number does not know it is 'after the point'. Pad it: if (mv < 100) print '0'; if (mv < 10) print '0' — or printf(\"%03ld\").",
+    "verify": {
+      "lang": "c",
+      "expect": "1.45"
+    }
+  },
+  {
+    "id": "mine-l6-minus-zero",
+    "type": "quiz",
+    "topic": "c",
+    "tags": [
+      "fixed-point",
+      "edge-cases"
+    ],
+    "difficulty": 3,
+    "origin": "mine",
+    "from": "Tinkercad lesson 6 · TMP36",
+    "title": "temp_x10 = -5 means -0.5 °C. Printing it this way gives?",
+    "lang": "c",
+    "code": "#include <stdio.h>\n#include <stdlib.h>\n\nint main(void) {\n    long t = -5;   // tenths of °C\n    printf(\"%ld.%ld\\n\", t / 10, labs(t % 10));\n}",
+    "options": [
+      "-0.5",
+      "0.5",
+      "-0.-5",
+      "0.-5"
+    ],
+    "answer": 1,
+    "explain": "-5 / 10 = 0 in C (rounds toward zero), and 0 has no sign: the minus is lost. Your final code printed the sign separately and first, then used the absolute value. Always test edge cases: 0, just below 0, just above.",
+    "verify": {
+      "lang": "c",
+      "expect": "0.5"
+    }
+  },
+  {
+    "id": "mine-l6-resolution",
+    "type": "quiz",
+    "topic": "electronics",
+    "tags": [
+      "adc",
+      "resolution"
+    ],
+    "difficulty": 2,
+    "origin": "mine",
+    "from": "Tinkercad lesson 6 · TMP36",
+    "title": "TMP36 on a 10-bit ADC with 5 V reference. Smallest step you can see?",
+    "options": [
+      "0.1 °C",
+      "about 0.5 °C",
+      "1 °C",
+      "0.01 °C"
+    ],
+    "answer": 1,
+    "explain": "One ADC step = 5 V / 1024 ≈ 4.9 mV, and TMP36 gives 10 mV per °C, so one step ≈ 0.49 °C. Printing 0.1 °C shows more digits (precision) than the sensor can resolve (resolution), and accuracy (±1–2 °C) is worse still."
+  },
+  {
+    "id": "mine-l6-res-prec-acc",
+    "type": "concept",
+    "topic": "electronics",
+    "tags": [
+      "resolution",
+      "accuracy"
+    ],
+    "difficulty": 1,
+    "origin": "mine",
+    "from": "Tinkercad lesson 6 · TMP36",
+    "title": "Resolution, precision, accuracy (your TMP36 lesson)",
+    "bullets": [
+      "Resolution: the smallest change you can see. 10-bit ADC at 5 V ≈ 4.9 mV ≈ 0.49 °C.",
+      "Precision: how many digits you show, or how close repeated readings are. 25.3 °C has 0.1 °C digits.",
+      "Accuracy: how close the reading is to the real temperature. TMP36 is about ±1–2 °C.",
+      "More digits do not make a better measurement. Print what the hardware can really resolve."
+    ]
+  },
+  {
+    "id": "mine-l5-hysteresis",
+    "type": "quiz",
+    "topic": "electronics",
+    "tags": [
+      "hysteresis",
+      "ldr"
+    ],
+    "difficulty": 2,
+    "origin": "mine",
+    "from": "Tinkercad lesson 5 · LDR",
+    "title": "Night light with one threshold (LED on when LDR value < 300). At dusk the LED flickers. Fix?",
+    "options": [
+      "Bigger resistor",
+      "Two thresholds: on below 300, off above 350",
+      "Read the LDR faster",
+      "Use a PWM pin"
+    ],
+    "answer": 1,
+    "explain": "Near the threshold, noise moves the value up and down across 300, so the LED toggles. Hysteresis uses two levels with a gap: once on, it stays on until the value is clearly higher. Same idea as a Schmitt trigger."
+  },
+  {
+    "id": "mine-divider-task",
+    "type": "quiz",
+    "topic": "electronics",
+    "tags": [
+      "voltage-divider"
+    ],
+    "difficulty": 1,
+    "origin": "mine",
+    "from": "Tinkercad · voltage divider practice",
+    "title": "9 V battery, R1 = 10 kΩ on top, R2 = 4.7 kΩ to ground. Vout?",
+    "options": [
+      "about 6.1 V",
+      "about 2.9 V",
+      "about 4.5 V",
+      "about 1.5 V"
+    ],
+    "answer": 1,
+    "explain": "Vout = Vin × R2 / (R1 + R2) = 9 × 4.7 / 14.7 ≈ 2.88 V. Check: R2 is about one third of the total, so Vout is about one third of 9 V. Your open practice tasks 2–10 are the same formula with other values."
+  },
+  {
+    "id": "mine-multimeter-current",
+    "type": "quiz",
+    "topic": "electronics",
+    "tags": [
+      "multimeter"
+    ],
+    "difficulty": 1,
+    "origin": "mine",
+    "from": "Tinkercad · multimeter",
+    "title": "You want to measure the LED current with the multimeter in A mode. How do you connect it?",
+    "options": [
+      "In parallel with the LED",
+      "In series: break the circuit and put the meter in the path",
+      "Between 5 V and GND",
+      "Across the resistor"
+    ],
+    "answer": 1,
+    "explain": "In A mode the meter is almost a wire (very low resistance). In series, all current flows through it. In parallel, or between 5 V and GND, it makes a short circuit: big current, blown fuse."
+  },
+  {
+    "id": "mine-74hc00-gap",
+    "type": "quiz",
+    "topic": "electronics",
+    "tags": [
+      "breadboard"
+    ],
+    "difficulty": 1,
+    "origin": "mine",
+    "from": "Tinkercad · 74HC00",
+    "title": "Your 74HC00 does nothing. The chip sits fully on one side of the breadboard. Why?",
+    "options": [
+      "74HC00 needs 12 V",
+      "Each column of 5 holes is connected: pins on the same column are shorted",
+      "Wrong chip orientation only",
+      "Breadboards do not work with chips"
+    ],
+    "answer": 1,
+    "explain": "The holes in one short column are connected inside. A chip must straddle the center gap, so pin 1 and pin 14 (and every opposite pair) are on different columns. Otherwise opposite pins are shorted."
+  },
+  {
+    "id": "mine-l3-edge",
+    "type": "bug",
+    "topic": "c",
+    "tags": [
+      "edge-detection",
+      "debounce"
+    ],
+    "difficulty": 2,
+    "origin": "mine",
+    "from": "Tinkercad lesson 3 · button",
+    "title": "One press should count once, but the counter jumps by hundreds. Tap the bug.",
+    "lang": "c",
+    "code": "int count = 0;\n\nvoid loop() {\n  int pressed = digitalRead(BUTTON) == LOW;\n  if (pressed) {\n    count++;\n  }\n}",
+    "bugLines": [
+      5
+    ],
+    "explain": "This counts every loop() while the button is held: thousands per second. Count the edge: pressed now AND not pressed last time. Then add debounce, because the contacts bounce for a few ms.",
+    "fix": "static int last = 0;\nint pressed = digitalRead(BUTTON) == LOW;\nif (pressed && !last) {   // rising edge\n  count++;\n}\nlast = pressed;"
+  },
+  {
+    "id": "mine-boot-main-returns",
+    "type": "quiz",
+    "topic": "embedded",
+    "tags": [
+      "boot",
+      "hardfault"
+    ],
+    "difficulty": 2,
+    "origin": "mine",
+    "from": "Bare metal · boot.md",
+    "title": "Your Reset_Handler calls main with bl, and there is no loop after it. main returns. What happens?",
+    "options": [
+      "The CPU runs the next bytes in flash",
+      "Reset_Handler returns to lr = 0xFFFFFFFF → HardFault",
+      "The MCU resets cleanly",
+      "main is called again"
+    ],
+    "answer": 1,
+    "explain": "main returns into Reset_Handler (bl saved the address in lr). Then Reset_Handler itself returns, but nobody called it: at reset lr is 0xFFFFFFFF. Jumping there is invalid → HardFault. Predictable, but still a crash. That is why startup code ends with b . (an endless loop)."
+  },
+  {
+    "id": "mine-boot-lr",
+    "type": "quiz",
+    "topic": "embedded",
+    "tags": [
+      "registers",
+      "calls"
+    ],
+    "difficulty": 1,
+    "origin": "mine",
+    "from": "Bare metal · boot.md",
+    "title": "What does bl main write into lr (R14)?",
+    "options": [
+      "The address of main",
+      "The address of the next instruction after bl (the return address)",
+      "The stack pointer",
+      "0xFFFFFFFF"
+    ],
+    "answer": 1,
+    "explain": "bl = branch with link: lr = return address, then jump. bx lr or pop {…, pc} returns. A function that calls others saves lr on the stack first, because each bl overwrites it."
+  },
+  {
+    "id": "mine-boot-data-copy",
+    "type": "quiz",
+    "topic": "embedded",
+    "tags": [
+      "boot",
+      "data-section"
+    ],
+    "difficulty": 2,
+    "origin": "mine",
+    "from": "Bare metal · boot.md",
+    "title": "You forgot the .data copy. int counter = 5; still reads 5 after pressing reset. Why is this dangerous?",
+    "options": [
+      "It is not: the bug is impossible",
+      "RAM keeps the last value across a reset: it fails only after a real power cycle",
+      "The compiler copies .data for you",
+      "Flash and RAM are the same memory"
+    ],
+    "answer": 1,
+    "explain": "Reset does not clear SRAM. The 5 from your last run is still there, so the bug hides. After power-off, RAM holds random bits and counter is garbage. Test startup code with a real power cycle."
+  },
+  {
+    "id": "mine-boot-sections",
+    "type": "quiz",
+    "topic": "embedded",
+    "tags": [
+      "memory-map",
+      "linker"
+    ],
+    "difficulty": 2,
+    "origin": "mine",
+    "from": "Bare metal · boot.md",
+    "title": "Where do these live at run time? const int table[4] = {…}; int counter = 5; static int hits;",
+    "options": [
+      "All in SRAM",
+      "table: flash (.rodata) · counter: SRAM, start value copied from flash (.data) · hits: SRAM, zeroed (.bss)",
+      "All in flash",
+      "table: SRAM · counter: flash · hits: flash"
+    ],
+    "answer": 1,
+    "explain": ".rodata stays in flash. .data needs a start value, so the value is stored in flash and the startup code copies it to RAM. .bss has no stored value: startup code fills it with zeros."
+  },
+  {
+    "id": "mine-linker-keep",
+    "type": "quiz",
+    "topic": "embedded",
+    "tags": [
+      "linker",
+      "vector-table"
+    ],
+    "difficulty": 3,
+    "origin": "mine",
+    "from": "Bare metal · linker script",
+    "title": "You build with --gc-sections. Why does the vector table section need KEEP(*(.isr_vector))?",
+    "options": [
+      "To make it faster",
+      "No code references it, so the linker would remove it as 'unused' → no reset vector",
+      "KEEP aligns it to 4 bytes",
+      "Only for debug builds"
+    ],
+    "answer": 1,
+    "explain": "--gc-sections removes sections that nothing references. The CPU reads the vector table by address at reset; no C code uses it. KEEP tells the linker it must stay."
+  },
+  {
+    "id": "mine-stm32-pin-check",
+    "type": "bug",
+    "topic": "embedded",
+    "tags": [
+      "argument-checks",
+      "undefined-behavior"
+    ],
+    "difficulty": 2,
+    "origin": "mine",
+    "from": "STM32 driver · GPIO_Init",
+    "title": "Your first GPIO_Init. Someone passes PinNumber = 16. Tap the first line that goes wrong.",
+    "lang": "c",
+    "code": "void GPIO_Init(GPIO_Handle_t *h) {\n  uint32_t pin = h->PinNumber;\n  h->Instance->MODER &= ~(0x3U << (2 * pin));\n  h->Instance->MODER |= (h->Mode << (2 * pin));\n}",
+    "bugLines": [
+      3
+    ],
+    "explain": "With pin 16, 2 * pin = 32: shifting a 32-bit value by 32 is undefined behavior, and each 2-bit field lands outside the register. Check arguments first and return an error, like your fixed version does.",
+    "fix": "DRV_Status_t GPIO_Init(GPIO_Handle_t *h) {\n  if (h == NULL || h->PinNumber > 15 || h->Mode > GPIO_MODE_IT_RFT) {\n    return DRV_ERROR;   // touch no register\n  }\n  /* … */\n  return DRV_OK;\n}"
+  },
+  {
+    "id": "mine-stm32-clock-errata",
+    "type": "quiz",
+    "topic": "embedded",
+    "tags": [
+      "errata",
+      "rcc"
+    ],
+    "difficulty": 3,
+    "origin": "mine",
+    "from": "STM32 driver · RCC errata",
+    "title": "SYSCFG_PCLK_EN() and on the very next line you read SYSCFG->EXTICR. What can go wrong on STM32F4?",
+    "options": [
+      "Nothing",
+      "The clock is not active yet for a few cycles: the access can be lost (errata). Read the enable register back first",
+      "EXTICR is write-only",
+      "SYSCFG needs no clock"
+    ],
+    "answer": 1,
+    "explain": "The errata sheet says a peripheral access right after enabling its clock can fail. ST's HAL does a dummy read-back of the RCC enable register, which waits until the write is done. Your *_PCLK_EN() macros do that now."
+  },
+  {
+    "id": "mine-rp2350-init-order",
+    "type": "quiz",
+    "topic": "embedded",
+    "tags": [
+      "gpio",
+      "init-order"
+    ],
+    "difficulty": 3,
+    "origin": "mine",
+    "from": "RP2350 bare metal · GPIO init",
+    "title": "In gpio::init, why clear gpio_oe and gpio_out BEFORE switching FUNCSEL to SIO?",
+    "options": [
+      "It is faster",
+      "So the pin cannot drive an old, random level for a moment when SIO takes it over",
+      "FUNCSEL needs OE = 0 to accept the write",
+      "To save power"
+    ],
+    "answer": 1,
+    "explain": "When the pin switches to SIO, SIO's output enable and output value apply at once. Clearing them first means the pin starts as an input with a known level. Clearing ISO last connects the pad only when all is set."
+  },
+  {
+    "id": "mine-rp2350-at-regs",
+    "type": "quiz",
+    "topic": "cpp",
+    "tags": [
+      "reinterpret-cast",
+      "registers"
+    ],
+    "difficulty": 2,
+    "origin": "mine",
+    "from": "RP2350 bare metal · at<Regs>()",
+    "title": "auto& sio = at<SioRegs>(addr::kSio); What does this do?",
+    "options": [
+      "Allocates a new SioRegs object",
+      "Treats the memory at 0xd0000000 as a SioRegs struct and returns a reference to it",
+      "Copies the registers into RAM",
+      "Calls a SioRegs constructor"
+    ],
+    "answer": 1,
+    "explain": "reinterpret_cast turns the number into a pointer; *p gives a reference. Nothing is allocated: the registers already live there. static_assert(offsetof(...)) checks that each struct field sits at the real register offset."
+  },
+  {
+    "id": "mine-clangd-headers",
+    "type": "quiz",
+    "topic": "cpp",
+    "tags": [
+      "tooling",
+      "clangd"
+    ],
+    "difficulty": 1,
+    "origin": "mine",
+    "from": "Tooling · Zed + clangd",
+    "title": "make builds fine, but in Zed 'go to definition' on cfg->OutputLevel does nothing. Most likely cause?",
+    "options": [
+      "The code has a bug",
+      "clangd does not know the include paths: no compile_commands.json / compile_flags.txt",
+      "Zed cannot open C files",
+      "The header is too big"
+    ],
+    "answer": 1,
+    "explain": "The Makefile passes -Idrivers/Inc to the compiler, but clangd reads its own config. Give it compile_commands.json (CMake/bear) or compile_flags.txt, and --query-driver for the ARM toolchain headers."
+  }
+]

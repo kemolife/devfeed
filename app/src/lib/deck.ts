@@ -22,6 +22,7 @@ const DECKS: Record<string, Deck> = {
     learner: 'an embedded developer',
     field: 'Embedded',
     filters: [
+      { key: 'mine', label: 'My learning' },
       { key: 'embedded', label: 'Embedded' },
       { key: 'c', label: 'C' },
       { key: 'cpp', label: 'C++' },

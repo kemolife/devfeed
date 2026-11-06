@@ -60,6 +60,9 @@ export function CardShell({ card, index, children }: CardShellProps) {
             ))}
           </span>
         </div>
+        {card.from && (
+          <p className="-mt-1 mb-2.5 text-xs font-medium text-accent/90">From: {card.from}</p>
+        )}
         {children}
         <div className="mt-4 flex flex-wrap gap-1.5">
           {card.tags.map((t) => (

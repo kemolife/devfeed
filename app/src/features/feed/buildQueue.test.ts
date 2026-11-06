@@ -86,3 +86,12 @@ test('weak patterns are sorted by misses', () => {
     ['spi', 2],
   ]);
 });
+
+test('personal cards come before general ones, even a known personal card before a fresh general one', () => {
+  const mine = (id: string): Card => ({ ...concept(id, 'embedded'), origin: 'mine' });
+  const cards = [concept('generalFresh', 'c'), mine('mineKnown'), mine('mineFresh')];
+  const progress = { mineKnown: seen(true, NOW - 1000) };
+
+  expect(ids(buildQueue(cards, progress, [], {}, NOW))).toEqual(['mineFresh', 'mineKnown', 'generalFresh']);
+  expect(ids(buildQueue(cards, progress, ['mine'], {}, NOW))).toEqual(['mineFresh', 'mineKnown']);
+});
