@@ -1,0 +1,238 @@
+[
+ {
+  "id": "mine-pwm-compare-ticks",
+  "type": "quiz",
+  "topic": "embedded",
+  "title": "analogWrite(9, 64): the timer counts 0…255. How many ticks is the pin HIGH, and what is the duty?",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    int ocr = 64, high = 0;\n    for (int cnt = 0; cnt < 256; cnt++) {\n        if (cnt < ocr) high++;\n    }\n    printf(\"%d %d\\n\", high, high * 100 / 256);\n}",
+  "options": [
+   "64 ticks, 25%",
+   "64 ticks, 64%",
+   "192 ticks, 75%",
+   "255 ticks, 100%"
+  ],
+  "answer": 0,
+  "explain": "The timer counter runs 0…255 by itself. The pin is HIGH while counter < OCR, so 64 of 256 ticks: 25% duty. The CPU does nothing after analogWrite(). Average voltage = 5 V × 0.25 = 1.25 V.",
+  "tags": [
+   "pwm",
+   "registers"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 4 · PWM",
+  "verify": {
+   "lang": "c",
+   "expect": "64 25"
+  }
+ },
+ {
+  "id": "mine-adc-shift-2",
+  "type": "quiz",
+  "topic": "embedded",
+  "title": "Pot on A0, LED on PWM pin. You use analogWrite(9, value >> 2). What does this print?",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    int a = 1019, b = 1020, c = 1023;\n    printf(\"%d %d %d\\n\",\n           a >> 2, b >> 2, c >> 2);\n}",
+  "options": [
+   "254 255 255",
+   "255 255 255",
+   "254 254 255",
+   "1019 1020 1023"
+  ],
+  "answer": 0,
+  "explain": "x >> 2 is x / 4, and the 2 low bits are dropped. 1020 to 1023 all give 255. You turn a 10-bit ADC value (0…1023) into the 8-bit PWM range (0…255) and lose 2 bits of detail.",
+  "tags": [
+   "adc",
+   "bit-manipulation",
+   "resolution"
+  ],
+  "difficulty": 1,
+  "origin": "mine",
+  "from": "Tinkercad lesson 4 · PWM",
+  "verify": {
+   "lang": "c",
+   "expect": "254 255 255"
+  }
+ },
+ {
+  "id": "mine-divider-upside-down",
+  "type": "quiz",
+  "topic": "electronics",
+  "title": "Where is the output? GND ── 2k ──●── 6k ── 8V. What is the voltage at ●?",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    double vin = 8.0;\n    double r_low = 2.0;   // between ● and GND\n    double r_up  = 6.0;   // between ● and 8 V\n    printf(\"%.1f\\n\", vin * r_low / (r_up + r_low));\n}",
+  "options": [
+   "6.0 V",
+   "2.0 V",
+   "4.0 V",
+   "1.5 V"
+  ],
+  "answer": 1,
+  "explain": "Do not trust the drawing. Walk from the output: the part towards GND is R_low (2k), the part towards the supply is R_up (6k). Vout = 8 × 2 / (6 + 2) = 2 V. The small resistor next to GND gives the small voltage.",
+  "tags": [
+   "voltage-divider",
+   "ohms-law"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Voltage divider practice task 2",
+  "verify": {
+   "lang": "c",
+   "expect": "2.0"
+  }
+ },
+ {
+  "id": "mine-divider-loaded",
+  "type": "quiz",
+  "topic": "electronics",
+  "title": "10 V, 10k on top, 10k at the bottom: 5 V. Now you connect another 10k from the output to GND. New voltage?",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    double r_up = 10.0;\n    double r_low = 10.0 * 10.0 / (10.0 + 10.0);\n    double v = 10.0 * r_low / (r_up + r_low);\n    printf(\"%.2f\\n\", v);\n}",
+  "options": [
+   "5.00 V",
+   "3.33 V",
+   "2.50 V",
+   "6.67 V"
+  ],
+  "answer": 1,
+  "explain": "The new 10k is in parallel with the bottom 10k, so the bottom becomes 5k. Vout = 10 × 5 / (10 + 5) = 3.33 V. A load changes a voltage divider. Keep the load much bigger than R_low, or buffer the output.",
+  "tags": [
+   "voltage-divider",
+   "source-impedance"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Voltage divider practice task 7",
+  "verify": {
+   "lang": "c",
+   "expect": "3.33"
+  }
+ },
+ {
+  "id": "mine-edge-count",
+  "type": "quiz",
+  "topic": "embedded",
+  "title": "Falling edge = last was HIGH and now LOW. The pin samples are below. How many presses are counted?",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    int s[] = {1, 1, 0, 0, 0, 1, 0, 1};\n    int last = 1, n = 0;\n    for (int i = 0; i < 8; i++) {\n        if (last == 1 && s[i] == 0) n++;\n        last = s[i];\n    }\n    printf(\"%d\\n\", n);\n}",
+  "options": [
+   "5",
+   "3",
+   "2",
+   "1"
+  ],
+  "answer": 2,
+  "explain": "An edge is a change, not a level. HIGH to LOW happens at index 2 and at index 6: two presses. Checking only s[i] == 0 would count 4. Real buttons bounce, so you also need a debounce of about 50 ms.",
+  "tags": [
+   "edge-detection",
+   "debounce"
+  ],
+  "difficulty": 1,
+  "origin": "mine",
+  "from": "Tinkercad lesson 3 · edge detection",
+  "verify": {
+   "lang": "c",
+   "expect": "2"
+  }
+ },
+ {
+  "id": "mine-servo-pulse-duty",
+  "type": "quiz",
+  "topic": "embedded",
+  "title": "Next lesson, the servo: 50 Hz signal, 1.5 ms HIGH pulse for the centre position. What duty cycle is that?",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    double period_ms = 1000.0 / 50.0;\n    double pulse_ms = 1.5;\n    printf(\"%.1f\\n\", pulse_ms / period_ms * 100.0);\n}",
+  "options": [
+   "1.5%",
+   "7.5%",
+   "15%",
+   "50%"
+  ],
+  "answer": 1,
+  "explain": "50 Hz gives a 20 ms period. 1.5 / 20 = 7.5% duty. A servo reads the pulse width (about 1 to 2 ms), not the average voltage. That is why analogWrite(127) is wrong for a servo: use the Servo library.",
+  "tags": [
+   "pwm",
+   "timers"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Next step · servo (lesson 7)",
+  "verify": {
+   "lang": "c",
+   "expect": "7.5"
+  }
+ },
+ {
+  "id": "mine-bug-millis-eq",
+  "type": "bug",
+  "topic": "c",
+  "title": "Serial prints nothing after some minutes. Tap the bug.",
+  "code": "unsigned long previous = 0;\n\nvoid loop() {\n  unsigned long now = millis();\n  if (now - previous == 200) {\n    previous = now;\n    Serial.println(analogRead(A0) >> 2);\n  }\n}",
+  "bugLines": [
+   5
+  ],
+  "explain": "millis() on Uno can jump by 2 ms (the timer ticks every 1.024 ms). If now - previous goes 199 → 201, == 200 is never true again and the difference only grows. With time, use >=, never ==.",
+  "fix": "if (now - previous >= 200) {\n  previous = now;\n  Serial.println(analogRead(A0) >> 2);\n}",
+  "tags": [
+   "millis",
+   "off-by-one"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 4 · PWM"
+ },
+ {
+  "id": "mine-bug-begin-not-called",
+  "type": "bug",
+  "topic": "embedded",
+  "title": "Button input jumps randomly, LED toggles alone. Tap the bug.",
+  "code": "struct Button {\n  int pin;\n  void begin() { pinMode(pin, INPUT_PULLUP); }\n  bool pressed() { return digitalRead(pin) == LOW; }\n} button = {2};\n\nvoid setup() {\n  button.pressed();\n}",
+  "bugLines": [
+   8
+  ],
+  "explain": "setup() calls pressed() instead of begin(), so pinMode(INPUT_PULLUP) never runs. The pin floats and reads random values. When something is random and unstable, first suspect a floating pin: not connected or not initialised.",
+  "fix": "void setup() {\n  button.begin();\n}",
+  "tags": [
+   "gpio",
+   "pull-up",
+   "init-order"
+  ],
+  "difficulty": 1,
+  "origin": "mine",
+  "from": "Tinkercad lesson 3 · button"
+ },
+ {
+  "id": "mine-concept-multimeter-modes",
+  "type": "concept",
+  "topic": "electronics",
+  "title": "Multimeter: how V, A and R really work",
+  "bullets": [
+   "V: huge resistance inside (about 10 MΩ). Put it in parallel. It does not change the circuit.",
+   "A: tiny shunt resistor inside (about 0.1 Ω), like a wire. Put it in series: break the circuit and insert it. In parallel it is a short circuit.",
+   "R: the meter sends its own small current and measures the voltage. Use it only with power off and the part alone.",
+   "Wrong mode = wrong or zero reading: A across a resistor pulls the node to GND."
+  ],
+  "tags": [
+   "multimeter",
+   "ohms-law"
+  ],
+  "difficulty": 1,
+  "origin": "mine",
+  "from": "Tinkercad · multimeter modes"
+ },
+ {
+  "id": "mine-boot-bss-zero",
+  "type": "quiz",
+  "topic": "embedded",
+  "title": "You skip the .bss clear in your Reset_Handler. What does static int count; hold at main()?",
+  "options": [
+   "0, the compiler makes it 0",
+   "Random RAM garbage",
+   "0xFFFFFFFF",
+   "The value from flash"
+  ],
+  "answer": 1,
+  "explain": "The C standard says static variables start at 0. But on a microcontroller your startup code makes that true: it zeroes .bss. RAM holds random bits after power-up. .data needs a copy from flash, .bss needs a clear.",
+  "tags": [
+   "boot",
+   "memory-layout"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Boot to main() · .bss"
+ }
+]

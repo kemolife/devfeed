@@ -3595,5 +3595,175 @@
     "title": "A bad commit is on shared main and colleagues already pulled it. How do you undo it safely?",
     "topic": "git",
     "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 1,
+    "explain": "A commit message is for the future reader, you in 3 months included. Say what changed and why, in one short line (imperative: Add, Fix, Replace). \"v-1\" cannot be searched or reverted with understanding. Small, focused commits make git log and git revert useful.",
+    "id": "fp-git-commit-messages",
+    "options": [
+      "Nothing. Short messages are fine in a small project.",
+      "Messages say nothing about why. Write what changed and why, for example: Map exceptions to HTTP status codes.",
+      "Messages must be long, at least 3 paragraphs.",
+      "Messages must be in the past tense and all in capital letters."
+    ],
+    "tags": [
+      "git-history",
+      "review-checklist"
+    ],
+    "title": "Senior asks: your history is \"v-1\", \"+debuger\", \"fix of test messages\". What is wrong, and what do you write instead?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "The user gets a safe, generic message. The log is for you, so put the details there: exception class, message, trace, action and file name. Never log secrets or full file contents. The log is private, the response is public.",
+    "id": "fp-error-log-context",
+    "options": [
+      "Only the word \"error\", to keep the log small.",
+      "The exception class, message and stack trace, plus the action and file name. No passwords or file contents.",
+      "The full request body, including all uploaded data.",
+      "Nothing. The generic 500 text is enough."
+    ],
+    "tags": [
+      "error-handling",
+      "security"
+    ],
+    "title": "Senior asks: index.php does error_log() and returns a generic 500. A user says \"it broke\". What should the log line contain so you can find the bug?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "A PHP array has overhead for each element, and each row repeats the header keys. Memory use can be many times the file size. That is one reason for MAX_UPLOAD_SIZE: with 1 MB it is safe, with 500 MB it would hit memory_limit. For big files, read and process line by line.",
+    "id": "fp-read-memory-array",
+    "options": [
+      "Exactly 1 MB, the same as the file.",
+      "Much more than 1 MB: every row is an array with keys, and every value is a separate string.",
+      "Less than 1 MB, because PHP compresses arrays.",
+      "No memory, because SplFileObject reads from disk."
+    ],
+    "tags": [
+      "performance",
+      "csv"
+    ],
+    "title": "Senior asks: read() turns a 1 MB CSV into an array of rows with array_combine(). How much memory does the PHP array need compared to the file?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "diff": "+    private ?array $files = null;\n+\n     public function listFiles(): array\n     {\n+        if ($this->files !== null) {\n+            return $this->files;\n+        }\n-        return $this->scanStorage();\n+        return $this->files = $this->scanStorage();\n     }",
+    "difficulty": 2,
+    "explain": "index.php builds a new FileService for every request, so the property is empty at the start of each request. The cache never helps. If the same object lists files after an upload or delete, it returns an old list. Do not add a cache without a measured problem and a plan to clear it.",
+    "fix": "// No cache. One request reads the folder once.\npublic function listFiles(): array\n{\n    $files = [];\n    foreach (scandir($this->storagePath) as $name) {\n        $path = $this->storagePath . '/' . $name;\n        if (is_file($path) && $this->isSupported($name)) {\n            $files[] = $name;\n        }\n    }\n    return $files;\n}",
+    "id": "fp-pr-cache-list",
+    "lang": "php",
+    "pr": {
+      "author": "junior-dev",
+      "body": "listFiles() reads the folder every time. Now it is cached in a property, so it is faster.",
+      "title": "Cache the file list in FileService",
+      "verdict": "changes"
+    },
+    "tags": [
+      "performance",
+      "architecture"
+    ],
+    "topic": "project",
+    "type": "pr"
+  },
+  {
+    "answer": 2,
+    "code": "$a = [5 => 'x'];\n$a[] = 'y';\necho array_key_last($a);",
+    "difficulty": 2,
+    "explain": "[] adds the element with the next free integer key: the highest used integer key + 1. The highest key is 5, so the new key is 6. It does not fill gaps and does not restart at 0.",
+    "id": "php-array-next-index",
+    "lang": "php",
+    "options": [
+      "1",
+      "5",
+      "6",
+      "7"
+    ],
+    "tags": [
+      "arrays",
+      "data-types"
+    ],
+    "title": "PHP 8. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "6",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "const s = 0.1 + 0.2;\nconsole.log(s === 0.3, s.toFixed(2));",
+    "difficulty": 2,
+    "explain": "0.1 + 0.2 is 0.30000000000000004 in binary floating point, so === 0.3 is false. toFixed(2) rounds to the string \"0.30\". Never compare floats with ===. Compare with a small tolerance, or use integers (cents).",
+    "id": "js-float-tofixed",
+    "lang": "js",
+    "options": [
+      "true 0.30",
+      "false 0.30",
+      "false 0.3",
+      "true 0.3"
+    ],
+    "tags": [
+      "float-precision",
+      "type-coercion"
+    ],
+    "title": "What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "false 0.30",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "class Name {\n    public function __construct(private string $v) {}\n    public function __toString(): string { return $this->v; }\n}\n$n = new Name('Ann');\necho $n, ' ', var_export($n instanceof Stringable, true);",
+    "difficulty": 2,
+    "explain": "Since PHP 8, a class with __toString() automatically implements the Stringable interface, even if you do not write it. So echo works and instanceof Stringable is true. You can use Stringable as a type for any value that can be a string.",
+    "id": "oop-stringable-auto",
+    "lang": "php",
+    "options": [
+      "Ann false",
+      "Ann true",
+      "Error: Name is not Stringable",
+      "Object of class Name could not be converted to string"
+    ],
+    "tags": [
+      "oop-basics",
+      "interfaces"
+    ],
+    "title": "PHP 8. What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "Ann true",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "git diff compares your working folder with the staging area, so it shows the new edit. git diff --staged compares the staging area with the last commit, so it shows what the next commit will contain. Check both before you commit.",
+    "id": "git-diff-staged",
+    "options": [
+      "git diff",
+      "git diff --staged",
+      "git status -v --all",
+      "git log -p"
+    ],
+    "tags": [
+      "git-basics"
+    ],
+    "title": "You ran git add app.php, then edited app.php again. Which command shows only the edit you did NOT stage yet?",
+    "topic": "git",
+    "type": "quiz"
   }
 ]
