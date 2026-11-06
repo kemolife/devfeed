@@ -3595,5 +3595,192 @@
     "title": "A bad commit is on shared main and colleagues already pulled it. How do you undo it safely?",
     "topic": "git",
     "type": "quiz"
+  },
+  {
+    "answer": 2,
+    "code": "<?php\n$list = [['Csv', 'csv'], ['Csv2', 'csv']];\n$by = [];\nforeach ($list as [$class, $format]) {\n    $by[$format] = $class;\n}\necho count($by), ' ', $by['csv'];",
+    "difficulty": 2,
+    "explain": "An array key is unique. The second 'csv' replaces the first value, and there is no warning. The old class is silently unused. A safe constructor checks array_key_exists and throws an error for a duplicate format. Silent overwrite is a bad surprise.",
+    "id": "fp-format-map-duplicate",
+    "lang": "php",
+    "options": [
+      "2 Csv",
+      "1 Csv",
+      "1 Csv2",
+      "It throws an error"
+    ],
+    "tags": [
+      "architecture",
+      "data-loss"
+    ],
+    "title": "Senior asks: FileService builds a map format => actions. Someone adds a second class that also returns 'csv'. What does this print?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "1 Csv2",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "<?php\necho json_encode([\n    pathinfo('.csv', PATHINFO_EXTENSION),\n    pathinfo('data', PATHINFO_EXTENSION),\n    strtolower(pathinfo('A.CSV', PATHINFO_EXTENSION)),\n]);",
+    "difficulty": 2,
+    "explain": "PHP takes everything after the last dot as the extension. So a file named .csv has the extension csv, even if it has no real name. A file with no dot gives an empty string. strtolower makes A.CSV count as csv. If this matters, also check that the name before the dot is not empty.",
+    "id": "fp-pathinfo-hidden-ext",
+    "lang": "php",
+    "options": [
+      "[\"csv\",\"\",\"csv\"]",
+      "[\"\",\"\",\"csv\"]",
+      "[\"csv\",\"data\",\"csv\"]",
+      "[\"csv\",\"\",\"CSV\"]"
+    ],
+    "tags": [
+      "filesystem",
+      "validation"
+    ],
+    "title": "Senior asks: isSupported() uses pathinfo() for the extension. What does this print?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "[\"csv\",\"\",\"csv\"]",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "<?php\ntry {\n    try {\n        throw new InvalidArgumentException('Bad header');\n    } catch (InvalidArgumentException $e) {\n        throw new RuntimeException('a.csv is invalid', 0, $e);\n    }\n} catch (RuntimeException $e) {\n    echo get_class($e->getPrevious()), ' | ';\n    echo $e->getPrevious()->getMessage();\n}",
+    "difficulty": 2,
+    "explain": "The third argument saves the first exception as 'previous'. The new message can add context (the file name), and the original error is not lost. Logs and debuggers can follow the chain with getPrevious(). Without $e, you lose the real cause.",
+    "id": "fp-exception-previous",
+    "lang": "php",
+    "options": [
+      "InvalidArgumentException | Bad header",
+      "RuntimeException | a.csv is invalid",
+      "Error: getPrevious() returns null",
+      "InvalidArgumentException | a.csv is invalid"
+    ],
+    "tags": [
+      "exceptions",
+      "error-handling"
+    ],
+    "title": "Senior asks: readFile() catches an exception and throws a new one with $e as the third argument. What does this print?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "InvalidArgumentException | Bad header",
+      "lang": "php"
+    }
+  },
+  {
+    "diff": " public function write(string $path, array $data): void\n {\n-    $json = json_encode($data, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);\n+    $json = json_encode(\n+        $data,\n+        JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE,\n+    );\n     $this->saveContent($path, $json);\n }",
+    "difficulty": 2,
+    "explain": "Good change. JSON_UNESCAPED_UNICODE writes UTF-8 letters as they are, so people can read and edit the file. It is still valid JSON, and json_decode reads it back the same. JSON_THROW_ON_ERROR stays, so broken UTF-8 still fails loudly. The change is small and safe.",
+    "id": "fp-pr-json-unicode-flag",
+    "lang": "php",
+    "pr": {
+      "author": "olha",
+      "body": "Names like Äpfel were saved as \\u00c4pfel. Now the file shows real letters. Errors still throw.",
+      "title": "Write readable text in JSON files",
+      "verdict": "approve"
+    },
+    "tags": [
+      "json",
+      "data-types"
+    ],
+    "topic": "project",
+    "type": "pr"
+  },
+  {
+    "answer": 0,
+    "code": "<?php\necho implode(',', [\n    round(2.5),\n    round(3.5),\n    round(-2.5),\n]);",
+    "difficulty": 2,
+    "explain": "PHP round() rounds .5 away from zero: 2.5 becomes 3 and -2.5 becomes -3. Some other languages round .5 to the nearest even number (Python gives 2 for round(2.5)). Do not assume the rule from another language. For money, use integer cents.",
+    "id": "php-round-half-away",
+    "lang": "php",
+    "options": [
+      "3,4,-3",
+      "2,4,-2",
+      "3,4,-2",
+      "2,3,-3"
+    ],
+    "tags": [
+      "data-types"
+    ],
+    "title": "PHP 8. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "3,4,-3",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "const qty = 0;\nconsole.log(JSON.stringify([\n  qty || 10,\n  qty ?? 10,\n  null ?? 10,\n]));",
+    "difficulty": 1,
+    "explain": "|| uses the right side for every falsy value: 0, '', false, null, undefined. ?? uses it only for null and undefined. So qty || 10 gives 10 (wrong for a real 0) and qty ?? 10 gives 0. Use ?? for default values when 0 or '' can be valid.",
+    "id": "js-nullish-vs-or",
+    "lang": "js",
+    "options": [
+      "[10,0,10]",
+      "[0,0,10]",
+      "[10,10,10]",
+      "[10,0,null]"
+    ],
+    "tags": [
+      "falsy-zero",
+      "null-coalescing"
+    ],
+    "title": "Quantity 0 is valid. What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "[10,0,10]",
+      "lang": "js"
+    }
+  },
+  {
+    "bugLines": [
+      7,
+      8
+    ],
+    "code": "#[Route('/products', methods: ['POST'])]\npublic function create(\n    Request $r,\n    EntityManagerInterface $em,\n): JsonResponse {\n    $p = new Product($r->request->getString('name'));\n    $em->persist($p);\n    return $this->json(['id' => $p->getId()], 201);\n}",
+    "difficulty": 2,
+    "explain": "persist() only tells Doctrine to track the object. The INSERT runs at flush(). Without it, nothing is saved and getId() is still null. AI code often forgets this. Call flush() once, after persist, and before you read the id.",
+    "fix": "#[Route('/products', methods: ['POST'])]\npublic function create(\n    Request $r,\n    EntityManagerInterface $em,\n): JsonResponse {\n    $p = new Product($r->request->getString('name'));\n    $em->persist($p);\n    $em->flush(); // runs the INSERT\n    return $this->json(['id' => $p->getId()], 201);\n}",
+    "id": "bug-sf-persist-no-flush",
+    "lang": "php",
+    "tags": [
+      "doctrine",
+      "ai-code-review"
+    ],
+    "title": "POST /products answers 201, but the product is not in the database. Tap the bug.",
+    "topic": "symfony",
+    "type": "bug"
+  },
+  {
+    "answer": 0,
+    "code": "<?php\nabstract class Shape {}\n\ntry {\n    new Shape();\n} catch (Error $e) {\n    echo $e->getMessage();\n}",
+    "difficulty": 1,
+    "explain": "An abstract class is a base for other classes. You cannot make an object from it with new. PHP throws an Error. Create a child class that fills in the missing parts and instantiate that. Interfaces behave the same: you cannot use new on them.",
+    "id": "oop-abstract-new",
+    "lang": "php",
+    "options": [
+      "Cannot instantiate abstract class Shape",
+      "Nothing, the object is created",
+      "Class Shape not found",
+      "Cannot call abstract method Shape::__construct()"
+    ],
+    "tags": [
+      "inheritance",
+      "oop-basics"
+    ],
+    "title": "PHP 8. What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "Cannot instantiate abstract class Shape",
+      "lang": "php"
+    }
   }
 ]
