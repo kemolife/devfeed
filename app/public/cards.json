@@ -4669,5 +4669,239 @@
     "title": "You skip the .bss clear in your Reset_Handler. What does static int count; hold at main()?",
     "topic": "embedded",
     "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint32_t f = 16000000u / 8u;\n    uint32_t us = 1500;\n    printf(\"%lu\\n\",\n        (unsigned long)(f / 1000000u * us));\n}",
+    "difficulty": 2,
+    "explain": "Timer clock = 16 MHz / 8 = 2 MHz, so 2 ticks per microsecond. 1500 us * 2 = 3000 ticks. The 20 ms period is 40000 ticks (ICR1). Check the prescaler first: the same pulse is 24000 ticks with prescaler 1.",
+    "from": "Tinkercad lesson 7 · servo (next step)",
+    "id": "mine-servo-timer1-ticks",
+    "lang": "c",
+    "options": [
+      "3000",
+      "1500",
+      "24000",
+      "30000"
+    ],
+    "origin": "mine",
+    "tags": [
+      "pwm",
+      "timers"
+    ],
+    "title": "Servo on Timer1: 16 MHz clock, prescaler 8. How many ticks is the 1.5 ms pulse (the OCR1A value)?",
+    "topic": "embedded",
+    "type": "quiz",
+    "verify": {
+      "expect": "3000",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "#include <stdio.h>\n\nlong map(long x, long a, long b,\n         long c, long d) {\n    return (x - a) * (d - c) / (b - a) + c;\n}\n\nint main(void) {\n    printf(\"%ld\\n\", map(100, 0, 180, 1000, 2000));\n}",
+    "difficulty": 2,
+    "explain": "Integer division truncates. (100 - 0) * (2000 - 1000) = 100000. 100000 / 180 = 555 (the .55 is lost). Then + 1000 gives 1555. map() never rounds. For a servo this error is tiny, but remember it for sensor values.",
+    "from": "Tinkercad lesson 7 · servo (next step)",
+    "id": "mine-servo-map-angle",
+    "lang": "c",
+    "options": [
+      "1556",
+      "1555",
+      "1500",
+      "1550"
+    ],
+    "origin": "mine",
+    "tags": [
+      "integer-division",
+      "fixed-point"
+    ],
+    "title": "Servo angle to pulse width with Arduino map(), integer math. What does this print?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "1555",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n\nint main(void) {\n    double vout = 9.0 * 4700 / (10000 + 4700);\n    int adc = (int)(vout / 5.0 * 1023);\n    printf(\"%d\\n\", adc);\n}",
+    "difficulty": 2,
+    "explain": "Vout = 9 V * 4.7k / 14.7k = 2.88 V. ADC = 2.88 / 5 * 1023 = 588.7, and the cast to int cuts it to 588. The divider keeps the pin below 5 V. Without it, 9 V on the pin would destroy the input.",
+    "from": "Tinkercad · voltage divider tasks + ADC",
+    "id": "mine-divider-adc-9v",
+    "lang": "c",
+    "options": [
+      "588",
+      "1023",
+      "512",
+      "340"
+    ],
+    "origin": "mine",
+    "tags": [
+      "voltage-divider",
+      "adc"
+    ],
+    "title": "9 V battery, R1 = 10 kΩ on top, R2 = 4.7 kΩ to GND. The divider output goes to a 10-bit ADC with a 5 V reference. What does this print?",
+    "topic": "electronics",
+    "type": "quiz",
+    "verify": {
+      "expect": "588",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n\nint main(void) {\n    long value = 160;\n    long mv = value * 5000 / 1023;\n    long t_x10 = mv - 500;\n    printf(\"%ld.%ld\\n\", t_x10 / 10,\n           t_x10 % 10);\n}",
+    "difficulty": 1,
+    "explain": "mv = 160 * 5000 / 1023 = 782 (782.01 cut). TMP36 gives 500 mV at 0 C and 10 mV per C. t_x10 = 782 - 500 = 282, so 28.2 C. Keep the value times 10 as an integer, and split it only when you print. Beware of negative values: see the -0.5 case.",
+    "from": "Tinkercad lesson 6 · TMP36",
+    "id": "mine-tmp36-t-x10",
+    "lang": "c",
+    "options": [
+      "28.2",
+      "78.2",
+      "29.0",
+      "27.8"
+    ],
+    "origin": "mine",
+    "tags": [
+      "fixed-point",
+      "truncation"
+    ],
+    "title": "TMP36 reading, 10-bit ADC at 5 V. Integer math with long. What does this print?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "28.2",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "Two equal resistors in parallel give half: 330 / 2 = 165 Ω. Add the series resistor: 330 + 165 = 495 Ω. Parallel always gives less than the smallest part. Series always adds.",
+    "from": "Tinkercad · series and parallel resistors",
+    "id": "mine-series-parallel-330",
+    "options": [
+      "495 Ω",
+      "660 Ω",
+      "330 Ω",
+      "110 Ω"
+    ],
+    "origin": "mine",
+    "tags": [
+      "ohms-law"
+    ],
+    "title": "One 330 Ω resistor in series with two 330 Ω resistors in parallel. What is the total resistance?",
+    "topic": "electronics",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "On reset the hardware loads MSP from word 0 and PC from word 1. That is why your linker script must put .isr_vector first, and why _estack is the first entry. The Reset_Handler address has bit 0 set (Thumb), so the value is odd.",
+    "from": "Boot from reset to main()",
+    "id": "mine-boot-vector-first-words",
+    "options": [
+      "Word 0 = initial stack pointer (MSP), word 1 = address of Reset_Handler",
+      "Word 0 = address of Reset_Handler, word 1 = initial stack pointer",
+      "Word 0 = address of main, word 1 = address of HardFault_Handler",
+      "Both words are reserved and must be zero"
+    ],
+    "origin": "mine",
+    "tags": [
+      "boot",
+      "vector-table"
+    ],
+    "title": "Cortex-M reset. What does the CPU read from the first two words of the vector table?",
+    "topic": "embedded",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": ".data has two addresses. LMA: where the initial values sit in flash. VMA: where the variable lives in RAM. The startup code copies LMA to VMA. If you skip the copy, counter holds random RAM content after reset.",
+    "from": "Boot from reset to main() · .data copy",
+    "id": "mine-data-load-address",
+    "options": [
+      "In flash (load address of .data). Reset_Handler copies it to RAM before main()",
+      "In RAM. The programmer writes it there with the flash",
+      "Nowhere. The compiler sets it when counter is first used",
+      "In flash only. The CPU reads counter directly from flash"
+    ],
+    "origin": "mine",
+    "tags": [
+      "boot",
+      "data-section"
+    ],
+    "title": "int counter = 5; is a global. Where is the value 5 stored in the firmware image, and who puts it in RAM?",
+    "topic": "embedded",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "uint32_t *src = &_sidata;\nuint32_t *dst = &_sdata;\nwhile (dst < &_edata) {\n    *dst++ = *src++;\n}",
+    "difficulty": 3,
+    "explain": "The loop runs while (dst < &_edata). At 0x20000004 it is still true, so it writes 4 bytes up to 0x20000007. The 2 bytes after _edata belong to the next variable. ALIGN(4) before _edata makes the section size a multiple of 4, so the word copy ends exactly.",
+    "from": "Boot · ALIGN(4) in the linker script",
+    "id": "mine-linker-align-copy-loop",
+    "lang": "c",
+    "options": [
+      "The last word is written fully: 2 bytes after _edata are overwritten",
+      "The last 2 bytes are not copied",
+      "The loop never ends",
+      "Nothing, a Cortex-M handles it"
+    ],
+    "origin": "mine",
+    "tags": [
+      "alignment",
+      "memory-layout"
+    ],
+    "title": "The .data copy loop works with uint32_t pointers. _edata is 0x20000006 (not aligned to 4). What goes wrong?",
+    "topic": "embedded",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "The Uno (ATmega328P) has two external interrupt pins: INT0 on pin 2 and INT1 on pin 3. Use digitalPinToInterrupt(pin) in the call. Other pins need pin change interrupts, which are a different mechanism with shared handlers.",
+    "from": "Tinkercad lesson 8 · interrupts (next step)",
+    "id": "mine-uno-external-int-pins",
+    "options": [
+      "Pins 2 and 3",
+      "Pins 0 and 1",
+      "Pins 8 and 9",
+      "Any digital pin"
+    ],
+    "origin": "mine",
+    "tags": [
+      "isr",
+      "gpio"
+    ],
+    "title": "Arduino Uno, lesson on interrupts. Which pins can you use with attachInterrupt()?",
+    "topic": "embedded",
+    "type": "quiz"
+  },
+  {
+    "bugLines": [
+      1
+    ],
+    "code": "bool pressed = false;\n\nvoid onPress() {\n  pressed = true;\n}\n\nvoid waitForPress() {\n  while (!pressed) { }\n  pressed = false;\n}",
+    "difficulty": 1,
+    "explain": "The compiler does not know the ISR changes pressed. In the wait loop it reads the flag once and makes an endless loop. Declare it volatile. Remember: volatile fixes the re-read only. It does not make wider types atomic.",
+    "fix": "volatile bool pressed = false;",
+    "from": "Tinkercad lesson 8 · interrupts (next step)",
+    "id": "mine-bug-wait-flag-volatile",
+    "lang": "c",
+    "origin": "mine",
+    "tags": [
+      "volatile",
+      "isr"
+    ],
+    "title": "Button ISR sets a flag. With optimization on, waitForPress() never returns. Tap the bug.",
+    "topic": "embedded",
+    "type": "bug"
   }
 ]
