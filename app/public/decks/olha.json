@@ -3932,5 +3932,186 @@
     "title": "git pull stops with a conflict. In the file you see <<<<<<< HEAD, =======, >>>>>>>. What do you do?",
     "topic": "git",
     "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "$header = ['id', 'fruit'];\n$row = ['1'];\ntry {\n    array_combine($header, $row);\n} catch (ValueError $e) {\n    echo 'ValueError';\n}",
+    "difficulty": 2,
+    "explain": "Since PHP 8, array_combine() throws ValueError when the two arrays differ in size. That would be an uncaught 500 for the user. The column count check turns bad CSV data into a clear InvalidFileContent error and a 422 answer. Always validate input before a function that throws.",
+    "id": "fp-csv-column-count",
+    "lang": "php",
+    "options": [
+      "ValueError",
+      "['id' => '1', 'fruit' => null]",
+      "['id' => '1']",
+      "Warning and false"
+    ],
+    "tags": [
+      "validation",
+      "exceptions"
+    ],
+    "title": "Senior asks: CsvFileActions::read() checks the column count of each row before array_combine(). What happens in PHP 8 if a row has fewer values than the header? What does this print?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "ValueError",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "The php entry is a platform requirement. Composer checks the real PHP version and refuses to install when it does not fit. The right fix is to upgrade PHP (or use Docker). --ignore-platform-reqs hides the problem, and the code may fail later, for example on PHP 8.4 syntax.",
+    "id": "fp-composer-php-platform",
+    "options": [
+      "Composer stops with an error: your PHP version does not satisfy the requirement. The fix is to use PHP 8.4.",
+      "Composer installs everything. It only warns at runtime.",
+      "Composer installs an older PHP version.",
+      "Composer ignores the php line. It is only a hint."
+    ],
+    "tags": [
+      "composer",
+      "versions"
+    ],
+    "title": "Senior asks: composer.json has \"php\": \">=8.4\". A colleague has PHP 8.2 and runs composer install. What happens?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "^8.1 means >=8.1.0 and <9.0.0. Composer takes new minor and patch versions, but not a new major version, which can break your code (BC break). To move to 9.0 you change the constraint on purpose, read the upgrade notes and run the tests.",
+    "id": "fp-caret-http-foundation",
+    "options": [
+      "It stays on 8.x (8.1.0 or newer, but below 9.0.0). A new major version needs a change in composer.json.",
+      "It installs 9.0.0, because ^ means the newest.",
+      "It installs only 8.1.0 and never 8.2.",
+      "It asks you before every update."
+    ],
+    "tags": [
+      "composer",
+      "versions"
+    ],
+    "title": "Your composer.json has \"symfony/http-foundation\": \"^8.1\". Version 9.0.0 comes out. What does composer update do?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "function decode(string $json): array {\n    return json_decode($json);\n}\n\ntry {\n    decode('{\"a\": 1}');\n} catch (TypeError $e) {\n    echo 'TypeError';\n}",
+    "difficulty": 2,
+    "explain": "Without true, json_decode() returns a stdClass object for a JSON object. The return type says array, so PHP throws TypeError. The whole code (array_combine, count, foreach with keys) also expects arrays. A small change in a helper can break the contract. Reject this PR.",
+    "id": "fp-json-decode-assoc",
+    "lang": "php",
+    "options": [
+      "TypeError",
+      "Nothing: the object is cast to an array",
+      "A Warning",
+      "['a' => 1]"
+    ],
+    "tags": [
+      "types",
+      "review-checklist"
+    ],
+    "title": "Senior asks: JsonDecodeTrait::decodeJson() uses json_decode($json, true). A PR removes the true. The function return type is array. What does this print?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "TypeError",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "$roles = ['admin', 'editor'];\n\nif (array_search('admin', $roles)) {\n    echo 'found';\n} else {\n    echo 'missing';\n}",
+    "difficulty": 1,
+    "explain": "array_search() returns the key. The key of 'admin' is 0, and 0 is falsy in an if. So the check says missing. Same trap as strpos() returning 0. Use !== false, or better in_array('admin', $roles, true) when you only need yes/no.",
+    "id": "php-array-search-zero",
+    "lang": "php",
+    "options": [
+      "missing",
+      "found",
+      "Error",
+      "Nothing"
+    ],
+    "tags": [
+      "type-juggling",
+      "strict-compare"
+    ],
+    "title": "A role check. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "missing",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "class A {\n    public function hi() { return 'A'; }\n    public function run() { return $this->hi(); }\n}\nclass B extends A {\n    public function hi() { return 'B' . parent::hi(); }\n}\necho (new B)->run();",
+    "difficulty": 2,
+    "explain": "run() is defined in A, but $this is a B object. So $this->hi() calls B::hi() (dynamic dispatch). B::hi() returns 'B' and adds parent::hi(), which is 'A'. The result is BA. Use parent:: when you want to extend the parent method and not replace it.",
+    "id": "oop-parent-method-call",
+    "lang": "php",
+    "options": [
+      "BA",
+      "A",
+      "B",
+      "BAB"
+    ],
+    "tags": [
+      "inheritance",
+      "this"
+    ],
+    "title": "Class B overrides hi() and calls parent::hi(). What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "BA",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "const user = {};\n\nconsole.log(\n  user.profile?.name ?? 'none',\n  user.profile?.name?.length\n);",
+    "difficulty": 1,
+    "explain": "user.profile is undefined, so ?. stops the chain and gives undefined without an error. ?? replaces undefined or null with 'none'. The second line has no ??, so it prints undefined. Do not use || for defaults when 0 or an empty string are valid values.",
+    "id": "js-optional-chaining",
+    "lang": "js",
+    "options": [
+      "none undefined",
+      "none 0",
+      "TypeError",
+      "undefined undefined"
+    ],
+    "tags": [
+      "undefined",
+      "optional-chaining"
+    ],
+    "title": "Optional chaining and ??. What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "none undefined",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "-d is the safe delete: Git refuses if the commits are not in another branch. -D forces it. The commits are not removed at once, and git reflog can find them, but they can be lost after a time. Before -D, check git log main..feature to see what you would lose.",
+    "id": "git-branch-delete-unmerged",
+    "options": [
+      "It deletes the branch even if it is not merged. The commits are then only reachable by reflog for some time.",
+      "It deletes the branch and merges it first.",
+      "It deletes only the remote branch.",
+      "It renames the branch."
+    ],
+    "tags": [
+      "git-safety"
+    ],
+    "title": "git branch -d feature fails: the branch is not fully merged. What does git branch -D feature do?",
+    "topic": "git",
+    "type": "quiz"
   }
 ]

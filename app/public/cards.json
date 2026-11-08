@@ -4903,5 +4903,250 @@
     "title": "Button ISR sets a flag. With optimization on, waitForPress() never returns. Tap the bug.",
     "topic": "embedded",
     "type": "bug"
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n\nint main(void) {\n    unsigned long f = 16000000UL;\n    unsigned long tick_hz = f / 1024;\n    printf(\"%lu\\n\", tick_hz / 256);\n}",
+    "difficulty": 2,
+    "explain": "The timer tick is 16 MHz / 1024 = 15625 Hz. An 8-bit timer counts 256 steps (0 to 255) before overflow. 15625 / 256 = 61 Hz. 8-bit means 2^8 = 256 values. It does not mean divide by 8.",
+    "from": "Tinkercad lesson 7 · timer math",
+    "id": "mine-timer-overflow-hz",
+    "lang": "c",
+    "options": [
+      "61",
+      "195",
+      "15625",
+      "1953"
+    ],
+    "origin": "mine",
+    "tags": [
+      "timers",
+      "integer-division"
+    ],
+    "title": "Uno, 8-bit timer, prescaler 1024. How often does it overflow (Hz, integer)? What does this print?",
+    "topic": "embedded",
+    "type": "quiz",
+    "verify": {
+      "expect": "61",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n\nint main(void) {\n    long tick_hz = 16000000L / 64;\n    long steps = tick_hz * 20 / 1000;\n    printf(\"%ld\\n\", steps - 1);\n}",
+    "difficulty": 2,
+    "explain": "One tick is 4 µs (64 / 16 MHz). 20 ms / 4 µs = 5000 steps. The counter starts at 0, so it counts 0 to 4999. TOP is steps - 1 = 4999. Check by multiplying back: 5000 x 4 µs = 20 ms.",
+    "from": "Tinkercad lesson 7 · Timer1",
+    "id": "mine-timer-top-20ms",
+    "lang": "c",
+    "options": [
+      "4999",
+      "5000",
+      "20000",
+      "499"
+    ],
+    "origin": "mine",
+    "tags": [
+      "timers",
+      "off-by-one"
+    ],
+    "title": "Uno, Timer1, prescaler 64, you want a 20 ms period (servo). What value goes into OCR1A (TOP)? What does this print?",
+    "topic": "embedded",
+    "type": "quiz",
+    "verify": {
+      "expect": "4999",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n\nint main(void) {\n    long tick_us = 64 * 1000000L / 16000000L;\n    printf(\"%ld\\n\", 1000 / tick_us);\n}",
+    "difficulty": 1,
+    "explain": "Tick = 64 / 16 MHz = 4 µs. 1 ms = 1000 µs, so 1000 / 4 = 250 steps. A common slip: 1 ms is 1000 µs, not 10000 µs, so 2500 is wrong. Always check by multiplying back: 250 x 4 µs = 1 ms.",
+    "from": "Tinkercad lesson 7 · prescaler math",
+    "id": "mine-timer-1ms-steps-64",
+    "lang": "c",
+    "options": [
+      "250",
+      "2500",
+      "1000",
+      "16000"
+    ],
+    "origin": "mine",
+    "tags": [
+      "timers",
+      "review-checklist"
+    ],
+    "title": "16 MHz clock, prescaler 64. How many steps are 1 ms? What does this print?",
+    "topic": "embedded",
+    "type": "quiz",
+    "verify": {
+      "expect": "250",
+      "lang": "c"
+    }
+  },
+  {
+    "bugLines": [
+      2,
+      6
+    ],
+    "code": "uint16_t angle = 90;\nuint16_t step = 1;\n\nvoid update(void) {\n    angle += step;\n    if (angle >= 180) step = -1;\n    if (angle <= 0)   step = 1;\n}",
+    "difficulty": 2,
+    "explain": "step is unsigned, so -1 becomes 65535. angle += 65535 wraps and acts like -1, but only by luck. With step -2 and angle 1, the result is 65535, which is >= 180, so the servo jumps. Also angle <= 0 can only mean angle == 0. Use a signed type (int16_t).",
+    "fix": "int16_t angle = 90;\nint16_t step = 1;",
+    "from": "Tinkercad lesson 7 · Sweeper",
+    "id": "mine-bug-unsigned-step",
+    "lang": "c",
+    "origin": "mine",
+    "tags": [
+      "signed-unsigned",
+      "integer-overflow"
+    ],
+    "title": "Uno sweeper works by luck. Set the step to 2 and the servo jumps. Tap the bug.",
+    "topic": "c",
+    "type": "bug"
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "servo.write() only saves a number in the library. A Timer1 interrupt makes the pulse every 20 ms with the newest number. So calling write more often is safe: extra values are overwritten. No sync is needed. Some steps are just never sent as a pulse.",
+    "from": "Tinkercad lesson 7 · servo.write()",
+    "id": "mine-servo-write-stores",
+    "options": [
+      "It only stores the new pulse width. Timer1 interrupts send the pulse every 20 ms, using the last stored value.",
+      "It sends one pulse at once and waits 20 ms.",
+      "It starts a new 20 ms timer each time it is called.",
+      "It blocks until the next 20 ms slot, so calling it every 15 ms is a bug."
+    ],
+    "origin": "mine",
+    "tags": [
+      "timers",
+      "isr"
+    ],
+    "title": "Servo on Uno. Your code calls servo.write(90) every 15 ms. The servo needs a pulse every 20 ms. What does servo.write() do?",
+    "topic": "embedded",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n\nint main(void) {\n    double v_src = 5.0;\n    double r_int = 0.5;\n    double i = 2.0;\n    printf(\"%.1f\\n\", v_src - i * r_int);\n}",
+    "difficulty": 2,
+    "explain": "Every source has internal resistance. It works like a small resistor in series. U = I x R: 2 A x 0.5 Ω = 1 V is lost inside the source. The pin gets 5 - 1 = 4 V. Big current spikes (a servo starting) can reset the MCU. Use a separate supply for the servo.",
+    "from": "Tinkercad lesson 7 · servo power",
+    "id": "mine-usb-voltage-drop",
+    "lang": "c",
+    "options": [
+      "4.0",
+      "5.0",
+      "3.0",
+      "4.5"
+    ],
+    "origin": "mine",
+    "tags": [
+      "ohms-law",
+      "low-power"
+    ],
+    "title": "Your USB source has about 0.5 Ω internal resistance. The servo draws 2 A. What is the voltage at the Arduino 5V pin? What does this print?",
+    "topic": "electronics",
+    "type": "quiz",
+    "verify": {
+      "expect": "4.0",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint16_t u = 0xFFFF;\n    int16_t s = (int16_t)u;\n    printf(\"%u %d\\n\", u, s);\n}",
+    "difficulty": 1,
+    "explain": "The bits are the same: 1111 1111 1111 1111. Unsigned reads all 16 bits as a size: 65535. Signed uses the top bit as the sign (two's complement): -1. Timer registers like TCNT1 are unsigned 16-bit: 0 to 65535, not 32767.",
+    "from": "Tinkercad lesson 7 · 16-bit registers",
+    "id": "mine-signed-unsigned-same-bits",
+    "lang": "c",
+    "options": [
+      "65535 -1",
+      "65535 65535",
+      "-1 -1",
+      "65535 0"
+    ],
+    "origin": "mine",
+    "tags": [
+      "signed-unsigned",
+      "integer-overflow"
+    ],
+    "title": "Same 16 bits, two readings (GCC, two's complement). What does this print?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "65535 -1",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n\nint main(void) {\n    unsigned clk = 36000000u;\n    unsigned want = 1000000u;\n    printf(\"%u\\n\", clk / want - 1);\n}",
+    "difficulty": 2,
+    "explain": "The hardware divides by PSC + 1. For divide by 36, write 35. Writing 36 gives 37 and a 0.973 MHz tick, so all timings are about 3% off. Same family as TOP = steps - 1: a counter that starts at 0 needs a minus one.",
+    "from": "Timer review · STM32 PSC",
+    "id": "mine-stm32-psc-plus-one",
+    "lang": "c",
+    "options": [
+      "35",
+      "36",
+      "1",
+      "34"
+    ],
+    "origin": "mine",
+    "tags": [
+      "timers",
+      "off-by-one"
+    ],
+    "title": "STM32 timer clock is 36 MHz. You want a 1 MHz tick (1 µs). Which value goes into PSC? What does this print?",
+    "topic": "embedded",
+    "type": "quiz",
+    "verify": {
+      "expect": "35",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "Timer0 is a normal timer, not a CPU timer. The CPU runs straight from the 16 MHz clock. But the Arduino core owns Timer0 for millis(), delay() and micros(). A Servo change would make time wrong. Timer2 is only 8-bit (256 steps), too small for 5000 steps. Timer1 is 16-bit, so Servo uses it.",
+    "from": "Tinkercad lesson 7 · Timer0 vs Timer1",
+    "id": "mine-timer0-millis",
+    "options": [
+      "The Arduino core already uses Timer0 for millis(), delay() and micros(). Changing it would break them, and your millis() Sweeper.",
+      "Timer0 is the CPU timer. The CPU cannot share it.",
+      "Timer0 has no interrupt.",
+      "Timer0 is faster than 16 MHz."
+    ],
+    "origin": "mine",
+    "tags": [
+      "timers",
+      "millis"
+    ],
+    "title": "Why does the Servo library on Uno not use Timer0, although it is a normal 8-bit timer?",
+    "topic": "embedded",
+    "type": "quiz"
+  },
+  {
+    "bullets": [
+      "Write the inputs first: f_clk, prescaler, time wanted. Many slips are a wrong input (64 MHz vs 16 MHz).",
+      "tick = prescaler / f_clk. Example: 64 / 16 MHz = 4 µs.",
+      "steps = time / tick. Example: 20 ms / 4 µs = 5000.",
+      "TOP = steps - 1 (the counter starts at 0). STM32 PSC works the same: write divider - 1.",
+      "Check by multiplying back: 5000 x 4 µs = 20 ms. 8-bit = 256 steps, 16-bit = 65536. Big steps need a 16-bit timer."
+    ],
+    "difficulty": 1,
+    "from": "Tinkercad lesson 7 · timer math",
+    "id": "concept-timer-math-steps",
+    "origin": "mine",
+    "tags": [
+      "timers",
+      "review-checklist"
+    ],
+    "title": "Timer math: 5 steps, no slips",
+    "topic": "embedded",
+    "type": "concept"
   }
 ]
