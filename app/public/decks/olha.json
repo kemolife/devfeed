@@ -4113,5 +4113,178 @@
     "title": "git branch -d feature fails: the branch is not fully merged. What does git branch -D feature do?",
     "topic": "git",
     "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "code": "$read = ['id' => '1'];\n$expected = ['id' => 1];\nvar_dump($read == $expected);\nvar_dump($read === $expected);",
+    "difficulty": 2,
+    "explain": "CSV values are always strings. assertEquals uses loose compare, so '1' equals 1 and the test passes. assertSame is strict and fails. Use assertSame so the test shows the real type your API returns.",
+    "id": "fp-test-assertsame-strings",
+    "lang": "php",
+    "options": [
+      "true true",
+      "true false",
+      "false true",
+      "false false"
+    ],
+    "tags": [
+      "testing",
+      "type-juggling"
+    ],
+    "title": "Senior asks: read() gives ['id' => '1'] from a CSV. Your test expects ['id' => 1]. assertEquals acts like ==, assertSame like ===. What does this print?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "bool(true)\nbool(false)",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "FileService finds the right class by getFormat(). A new class that implements the interface, plus one new item in the list in index.php, is enough. FileService and FileController stay untouched. This is the point of the interface: add code, do not edit working code.",
+    "id": "fp-add-xml-format",
+    "options": [
+      "Add XmlFileActions with getFormat() 'xml', read(), write(), and add it to the list in index.php",
+      "Add an if ($ext === 'xml') branch inside FileService::read()",
+      "Copy CsvFileActions and rename it, then change FileController",
+      "Make FileController parse XML itself"
+    ],
+    "tags": [
+      "interface",
+      "open-closed"
+    ],
+    "title": "Senior asks: your boss wants XML files too. FileService gets a list of FileActionsInterface objects. What is the smallest change?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "$d = ['a' => 1, 'b' => [1, 2]];\necho strlen(json_encode($d)), ' ';\necho strlen(json_encode($d, JSON_PRETTY_PRINT));",
+    "difficulty": 2,
+    "explain": "Pretty print adds newlines and spaces: here 17 becomes 53 bytes. For files that people open and compare in git, it is a good trade. For a big file or an API answer it costs size and time. It is fine here: files are small and human-read.",
+    "id": "fp-json-pretty-print-size",
+    "lang": "php",
+    "options": [
+      "17 53",
+      "17 17",
+      "53 17",
+      "17 25"
+    ],
+    "tags": [
+      "json",
+      "trade-offs"
+    ],
+    "title": "Senior asks: write() saves JSON with JSON_PRETTY_PRINT. What does this print (bytes: compact, pretty)? Is pretty a good choice here?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "17 53",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "$a = [];\n$a['1'] = 'a';\n$a[true] = 'b';\n$a['01'] = 'c';\necho count($a), ' ', $a[1];",
+    "difficulty": 2,
+    "explain": "The string '1' becomes the integer key 1. true also becomes key 1, so 'b' overwrites 'a'. '01' is not a clean integer string, so it stays a string key. Result: 2 keys, and $a[1] is 'b'.",
+    "id": "php-array-key-cast",
+    "lang": "php",
+    "options": [
+      "2 b",
+      "3 a",
+      "2 a",
+      "3 b"
+    ],
+    "tags": [
+      "array-keys"
+    ],
+    "title": "PHP 8. Array keys are cast. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "2 b",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 2,
+    "code": "class Btn {\n  label = 'Save';\n  show() { return this.label; }\n}\nconst { show } = new Btn();\ntry { console.log(show()); }\ncatch (e) { console.log(e.name); }",
+    "difficulty": 2,
+    "explain": "show() lost its object. Class code is strict, so this is undefined, and undefined.label throws a TypeError. Same problem as a callback with this. Fix: call obj.show(), use an arrow function, or bind(obj).",
+    "id": "js-class-method-extract",
+    "lang": "js",
+    "options": [
+      "Save",
+      "undefined",
+      "TypeError",
+      "ReferenceError"
+    ],
+    "tags": [
+      "this-binding"
+    ],
+    "title": "A class method is taken out of its object, like a jQuery callback. What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "TypeError",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "git add -p shows each change (hunk) and lets you stage only the ones you want. The feature stays in your working folder for the next commit. Small, single-purpose commits are easier to review on Bitbucket.",
+    "id": "git-add-patch",
+    "options": [
+      "git add -p, choose only the typo hunk, then commit",
+      "git add . and commit with a long message",
+      "git commit -a and fix it later",
+      "git stash and delete the stash"
+    ],
+    "tags": [
+      "small-commits"
+    ],
+    "title": "You fixed a typo and also started a new feature in the same file. You want a small PR with only the typo. What do you run?",
+    "topic": "git",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "PSR-4 is a rule: namespace prefix + folder path = file path. The autoloader builds the path at run time, so a new file works at once if the name and the case match. You need dump-autoload for classmap rules or an optimized classmap (-o).",
+    "id": "composer-psr4-new-class",
+    "options": [
+      "No: PSR-4 finds the file from the class name when it is first used",
+      "Yes, always, or the class is not found",
+      "Yes, but only on production",
+      "No, but only with composer update"
+    ],
+    "tags": [
+      "autoload"
+    ],
+    "title": "composer.json has PSR-4 \"App\\\\\" => \"src/\". You add src/Service/Mailer.php (class App\\Service\\Mailer). Do you need composer dump-autoload?",
+    "topic": "composer",
+    "type": "quiz"
+  },
+  {
+    "diff": " public function listFiles(): array\n {\n     $files = [];\n     foreach (scandir($this->storageDir) as $name) {\n         if ($this->isSupported($name)) {\n             $files[] = $name;\n         }\n     }\n+    natcasesort($files);\n \n     return $files;\n }",
+    "difficulty": 3,
+    "explain": "natcasesort() sorts, but it keeps the old keys. After sorting, the keys are like 1, 0, 2. json_encode() then makes an object {\"1\":\"a.csv\",...} and the jQuery list breaks. Call array_values() to renumber the keys.",
+    "fix": "    natcasesort($files);\n\n    return array_values($files);",
+    "id": "fp-pr-natcasesort-list",
+    "lang": "php",
+    "pr": {
+      "author": "copilot-helper",
+      "body": "b.csv sorted before A.json. Now the list is sorted without case.",
+      "title": "Sort the file list A-Z, ignore case",
+      "verdict": "changes"
+    },
+    "tags": [
+      "json",
+      "array-keys"
+    ],
+    "topic": "project",
+    "type": "pr"
   }
 ]

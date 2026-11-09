@@ -1,0 +1,253 @@
+[
+ {
+  "id": "mine-ctc-pick-prescaler",
+  "type": "quiz",
+  "topic": "embedded",
+  "title": "Uno, 16 MHz, Timer1 (16-bit, max 65535 steps). Toggle every 500 ms. Smallest prescaler that fits? What does this print?",
+  "lang": "c",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    int p[] = {8, 64, 256, 1024};\n    for (int i = 0; i < 4; i++) {\n        long steps = 16000000L / p[i] / 2;\n        if (steps <= 65536) {\n            printf(\"%d\\n\", p[i]);\n            break;\n        }\n    }\n}",
+  "options": [
+   "8",
+   "64",
+   "256",
+   "1024"
+  ],
+  "answer": 2,
+  "explain": "Steps = 16 MHz / prescaler / 2 (500 ms is half a second). With 64: 125000 steps, too big for 16 bits. With 256: 31250 steps, it fits. Start with the smallest prescaler that fits: it gives the best resolution.",
+  "tags": [
+   "timers",
+   "registers"
+  ],
+  "difficulty": 2,
+  "verify": {
+   "lang": "c",
+   "expect": "256"
+  },
+  "from": "Tinkercad lesson 7 · Timer1 CTC",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-ctc-ocr1a-minus-1",
+  "type": "quiz",
+  "topic": "embedded",
+  "title": "Prescaler 256, toggle every 500 ms. Which OCR1A value in CTC mode? What does this print?",
+  "lang": "c",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    long steps = 16000000L / 256 / 2;\n    printf(\"%ld\\n\", steps - 1);\n}",
+  "options": [
+   "31250",
+   "31249",
+   "31251",
+   "33332"
+  ],
+  "answer": 1,
+  "explain": "The counter runs 0, 1, ..., OCR1A and then resets. That is OCR1A + 1 steps. For 31250 steps you need OCR1A = 31249. Writing 31250 gives a period that is one tick too long (16 us).",
+  "tags": [
+   "timers",
+   "off-by-one"
+  ],
+  "difficulty": 2,
+  "verify": {
+   "lang": "c",
+   "expect": "31249"
+  },
+  "from": "Tinkercad lesson 7 · Timer1 CTC",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-tick-256-us",
+  "type": "quiz",
+  "topic": "embedded",
+  "title": "Your check came out 499.9 ms, not 500. Prescaler 256 on 16 MHz: one tick in us? What does this print?",
+  "lang": "c",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    long us = 256L * 1000000L / 16000000L;\n    printf(\"%ld\\n\", us);\n}",
+  "options": [
+   "15",
+   "16",
+   "15.6",
+   "4"
+  ],
+  "answer": 1,
+  "explain": "One tick = prescaler / clock = 256 / 16 MHz = 16 us. Not 15. Then 31250 x 16 us = 500 ms exactly. When a check gives 499.9 and not 500, look for an error above. Do not accept almost.",
+  "tags": [
+   "timers",
+   "accuracy"
+  ],
+  "difficulty": 1,
+  "verify": {
+   "lang": "c",
+   "expect": "16"
+  },
+  "from": "Tinkercad lesson 7 · Timer1 CTC",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-bug-tccr1a-or",
+  "type": "bug",
+  "topic": "embedded",
+  "lang": "c",
+  "title": "Timer1 toggles pin 9 in hardware, but the LED does not blink on time. Tap the bug.",
+  "code": "void setup() {\n  DDRB |= (1 << DDB1);\n  TCCR1A |= (1 << COM1A0);\n  TCCR1B |= (1 << WGM12) | (1 << CS12);\n  OCR1A = 31249;\n}",
+  "bugLines": [
+   3,
+   4
+  ],
+  "explain": "Arduino init() runs before setup(). It already sets WGM10 in TCCR1A and CS11, CS10 in TCCR1B. |= keeps these bits, so the mode is not CTC and the prescaler is wrong. Write the control registers with = so every other bit is 0.",
+  "fix": "TCCR1A = (1 << COM1A0);\nTCCR1B = (1 << WGM12) | (1 << CS12);",
+  "tags": [
+   "registers",
+   "init-order"
+  ],
+  "difficulty": 3,
+  "from": "Tinkercad lesson 7 · OC1A on pin 9",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-pin9-is-pb1",
+  "type": "quiz",
+  "topic": "embedded",
+  "title": "Your code does PORTB ^= (1 << PB5), but the red wire is on pin 9. Which PORTB bit is pin 9, and what does the LED do?",
+  "options": [
+   "PB1: the LED stays dark",
+   "PB5: the LED blinks",
+   "PB9: the LED blinks",
+   "PD1: the LED stays dark"
+  ],
+  "answer": 0,
+  "explain": "Uno pin 13 is PB5, pin 9 is PB1 (also OC1A, the Timer1 compare output). The code toggles PB5, so only the built-in L LED blinks. Count the labels on the header before you debug the code. The wire was on the wrong pin.",
+  "tags": [
+   "gpio",
+   "registers"
+  ],
+  "difficulty": 1,
+  "from": "Tinkercad lesson 7 · LED not blinking",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-duty-same-units",
+  "type": "quiz",
+  "topic": "embedded",
+  "title": "analogWrite(9, 64) at 490 Hz (period 2000 us). Divide only equal units. What does this print: duty %, HIGH time in us?",
+  "lang": "c",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    int duty = 64 * 100 / 255;\n    int high_us = duty * 2000 / 100;\n    printf(\"%d %d\\n\", duty, high_us);\n}",
+  "options": [
+   "25 500",
+   "25 0.5",
+   "64 500",
+   "25 500000"
+  ],
+  "answer": 0,
+  "explain": "duty = HIGH steps / all steps = 64 / 255 = 25 %. HIGH time = 25 % of 2000 us = 500 us. Steps divide by steps, us by us. Never steps by ms. Write the unit next to every number.",
+  "tags": [
+   "pwm",
+   "integer-division"
+  ],
+  "difficulty": 2,
+  "verify": {
+   "lang": "c",
+   "expect": "25 500"
+  },
+  "from": "Tinkercad lesson 7 · PWM duty",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-seg-resistor-220",
+  "type": "quiz",
+  "topic": "electronics",
+  "title": "7-segment, 5 V, LED Vf = 2 V. You round 200 Ω up to 220 Ω. Current in mA (integer part)? What does this print?",
+  "lang": "c",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    int ma = (5000 - 2000) / 220;\n    printf(\"%d\\n\", ma);\n}",
+  "options": [
+   "13",
+   "15",
+   "23",
+   "14"
+  ],
+  "answer": 0,
+  "explain": "I = (U - Vf) / R = 3 V / 220 Ω = 13.6 mA. Integer division cuts it to 13. 200 Ω is not a standard value. Round the resistor up: the current gets a bit smaller and the pin stays safe.",
+  "tags": [
+   "ohms-law",
+   "gpio"
+  ],
+  "difficulty": 1,
+  "verify": {
+   "lang": "c",
+   "expect": "13"
+  },
+  "from": "Tinkercad lesson 8 · 7-segment",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-seg-shared-resistor",
+  "type": "quiz",
+  "topic": "electronics",
+  "title": "One 200 Ω resistor on COM, not one per segment. Total about 15 mA. Current per segment, in tenths of mA, for digit 1 (2 segments) and 8 (7 segments)?",
+  "lang": "c",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    int total = 150;\n    printf(\"%d %d\\n\", total / 2, total / 7);\n}",
+  "options": [
+   "75 21",
+   "150 150",
+   "75 75",
+   "21 75"
+  ],
+  "answer": 0,
+  "explain": "Segments are in parallel, so the voltage is the same and the current is shared. The total stays near 15 mA. Digit 1 gets 7.5 mA per segment (bright), digit 8 only 2.1 mA (dim). Use one resistor per segment.",
+  "tags": [
+   "ohms-law",
+   "gpio"
+  ],
+  "difficulty": 2,
+  "verify": {
+   "lang": "c",
+   "expect": "75 21"
+  },
+  "from": "Tinkercad lesson 8 · 7-segment",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-seg-220k-typo",
+  "type": "quiz",
+  "topic": "electronics",
+  "title": "Segment A is dark, the other six are fine. Its resistor is 220 kΩ, not 220 Ω. Current in µA (integer)? What does this print?",
+  "lang": "c",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    long ua = 3000000L / 220000L;\n    printf(\"%ld\\n\", ua);\n}",
+  "options": [
+   "13",
+   "13000",
+   "1.3",
+   "0"
+  ],
+  "answer": 0,
+  "explain": "I = 3 V / 220 kΩ = 13.6 µA, a thousand times less than 13.6 mA. The LED has power but is far too dim to see. Read the colour bands: a dark segment with correct wires often means a wrong resistor value.",
+  "tags": [
+   "ohms-law",
+   "debugging"
+  ],
+  "difficulty": 2,
+  "verify": {
+   "lang": "c",
+   "expect": "13"
+  },
+  "from": "Tinkercad lesson 8 · dark segment A",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-concept-period-duty",
+  "type": "concept",
+  "topic": "electronics",
+  "title": "Period and duty: toggle vs hardware PWM",
+  "bullets": [
+   "Period = HIGH time + LOW time. Frequency = 1 / period.",
+   "Toggle in an ISR: HIGH = LOW = interval, so duty is always 50 % and the period is 2 x interval.",
+   "Hardware PWM: TOP sets the period, OCR sets where the pin switches, so duty changes and the period stays.",
+   "Duty = HIGH steps / all steps. Divide steps by steps, time by time.",
+   "A motor or LED sees the average: 5 V x 25 % = 1.25 V, but the pin is always 0 V or 5 V."
+  ],
+  "tags": [
+   "pwm",
+   "timers"
+  ],
+  "difficulty": 2,
+  "from": "Tinkercad lesson 7 · period vs duty",
+  "origin": "mine"
+ }
+]
