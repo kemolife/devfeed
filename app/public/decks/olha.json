@@ -4286,5 +4286,186 @@
     ],
     "topic": "project",
     "type": "pr"
+  },
+  {
+    "answer": 1,
+    "code": "$a = json_decode('{\"id\":12345678901234567890}', true);\nvar_dump(is_float($a['id']));\necho json_encode($a);",
+    "difficulty": 3,
+    "explain": "The number is too big for a PHP int, so json_decode makes a float and precision is lost. The file now holds 1.2345678901234567e+19. Fix: pass JSON_BIGINT_AS_STRING to json_decode, or reject such input.",
+    "id": "fp-json-bigint",
+    "lang": "php",
+    "options": [
+      "{\"id\":12345678901234567890}",
+      "{\"id\":1.2345678901234567e+19}",
+      "An exception",
+      "{\"id\":0}"
+    ],
+    "tags": [
+      "json",
+      "data-types"
+    ],
+    "title": "Senior asks: a client saves {\"id\": 12345678901234567890}. Your API reads it with json_decode($s, true) and writes it back. What does this print?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "bool(true)\n{\"id\":1.2345678901234567e+19}",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "$h = \"\\xEF\\xBB\\xBFid\";\nvar_dump($h === 'id');\necho strlen($h);",
+    "difficulty": 3,
+    "explain": "The BOM is 3 invisible bytes (EF BB BF) at the start of the file. The first header is not 'id' but BOM + 'id', 5 bytes long. Lookups like $row['id'] return null. Fix: strip the BOM after reading the first line.",
+    "id": "fp-csv-bom-header",
+    "lang": "php",
+    "options": [
+      "true and 2",
+      "false and 5",
+      "true and 5",
+      "false and 2"
+    ],
+    "tags": [
+      "csv",
+      "data-types"
+    ],
+    "title": "Senior asks: a CSV saved by Excel starts with a UTF-8 BOM. Your read() takes the first header. What does this print?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "bool(false)\n5",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "The client MIME type comes from the browser request. Anyone can send any value with curl. Your real check is better: you parse the file content with readFile() before moving it. Always validate what you receive, not what the client says it is.",
+    "id": "fp-client-mime-fake",
+    "options": [
+      "It is slow",
+      "The client controls it, it can be faked",
+      "PHP removes it",
+      "It only works for JSON"
+    ],
+    "tags": [
+      "upload",
+      "security"
+    ],
+    "title": "Senior asks: in upload() you could check $file->getClientMimeType() === 'text/csv'. Why is that not safe as the only check?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "No. 404 is correct: the file is gone. DELETE is idempotent about the state: after one or ten calls the result on the server is the same (no file). Some APIs return 204 both times. Both are fine if you document it and the front end shows a clear message.",
+    "id": "fp-delete-twice",
+    "options": [
+      "Yes, it must return 200 again",
+      "No, the state is the same, 404 is fine",
+      "Yes, it must return 500",
+      "No, but only with a lock"
+    ],
+    "tags": [
+      "http",
+      "api-design"
+    ],
+    "title": "Senior asks: the user clicks Delete twice. The second DELETE returns 404. Is that a bug?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "code": "$a = ['a' => 1, 'b' => 2];\n$b = ['a' => 9, 'c' => 3];\necho json_encode([...$a, ...$b]);",
+    "difficulty": 2,
+    "explain": "Since PHP 8.1 you can spread arrays with string keys. Later keys overwrite earlier ones: a becomes 9. b stays 2 and c is added. It works like array_merge for string keys. Before 8.1 this was an error.",
+    "id": "php-spread-string-keys",
+    "lang": "php",
+    "options": [
+      "{\"a\":1,\"b\":2,\"c\":3}",
+      "{\"a\":9,\"b\":2,\"c\":3}",
+      "{\"a\":9,\"c\":3}",
+      "An error"
+    ],
+    "tags": [
+      "array-union",
+      "arrays"
+    ],
+    "title": "PHP 8.1. Array spread with string keys. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "{\"a\":9,\"b\":2,\"c\":3}",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "const ok = new Promise(r => setTimeout(() => r('A'), 50));\nconst bad = Promise.reject(new Error('B'));\nPromise.all([ok, bad])\n  .then(v => console.log('ok', v))\n  .catch(e => console.log('fail', e.message));",
+    "difficulty": 2,
+    "explain": "Promise.all rejects as soon as one promise rejects, so catch runs with 'B'. The other promise (A) is not cancelled, but its result is lost. Use Promise.allSettled when you want all results, good or bad.",
+    "id": "js-promise-all-reject",
+    "lang": "js",
+    "options": [
+      "ok [A, ...]",
+      "fail B",
+      "ok then fail",
+      "Nothing"
+    ],
+    "tags": [
+      "async",
+      "promises"
+    ],
+    "title": "Node. Promise.all with one rejected promise. What does this print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "fail B",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "By default git stash saves only tracked changes. New untracked files stay in the working folder and come with you to the other branch. Use git stash -u to stash them too. Check with git status before you stash.",
+    "id": "git-stash-untracked",
+    "options": [
+      "Saved in the stash",
+      "Still in the folder, not stashed",
+      "Deleted",
+      "Committed"
+    ],
+    "tags": [
+      "git-basics"
+    ],
+    "title": "You ran git stash to switch branch. A new file notes.txt was never added. Where is it after the stash?",
+    "topic": "git",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "code": "enum Status: string {\n    case Open = 'open';\n    case Done = 'done';\n}\nvar_dump(Status::tryFrom('open')?->name);\nvar_dump(Status::tryFrom('OPEN')?->name);",
+    "difficulty": 2,
+    "explain": "tryFrom returns null when no case has that value, from() would throw ValueError. Matching is exact, so 'OPEN' is not 'open'. Use tryFrom for user input and check for null. The ?-> (null-safe) turns the null into null instead of an error.",
+    "id": "oop-enum-tryfrom-null",
+    "lang": "php",
+    "options": [
+      "Open and Open",
+      "Open and NULL",
+      "NULL and NULL",
+      "An error"
+    ],
+    "tags": [
+      "enums",
+      "null-safe"
+    ],
+    "title": "PHP 8.1 backed enum. What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "string(4) \"Open\"\nNULL",
+      "lang": "php"
+    }
   }
 ]

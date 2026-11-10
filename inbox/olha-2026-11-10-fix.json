@@ -1,0 +1,27 @@
+[
+  {
+    "id": "oop-enum-tryfrom-null",
+    "type": "quiz",
+    "topic": "oop",
+    "difficulty": 2,
+    "tags": [
+      "enums",
+      "null-safe"
+    ],
+    "title": "PHP 8.1 backed enum. What does this print?",
+    "lang": "php",
+    "code": "enum Status: string {\n    case Open = 'open';\n    case Done = 'done';\n}\nvar_dump(Status::tryFrom('open')?->name);\nvar_dump(Status::tryFrom('OPEN')?->name);",
+    "options": [
+      "Open and Open",
+      "Open and NULL",
+      "NULL and NULL",
+      "An error"
+    ],
+    "answer": 1,
+    "explain": "tryFrom returns null when no case has that value, from() would throw ValueError. Matching is exact, so 'OPEN' is not 'open'. Use tryFrom for user input and check for null. The ?-> (null-safe) turns the null into null instead of an error.",
+    "verify": {
+      "lang": "php",
+      "expect": "string(4) \"Open\"\nNULL"
+    }
+  }
+]

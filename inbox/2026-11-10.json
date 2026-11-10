@@ -1,0 +1,250 @@
+[
+  {
+    "id": "mine-state-fallthrough",
+    "type": "quiz",
+    "topic": "c",
+    "title": "State machine, next lesson. What does this print?",
+    "lang": "c",
+    "code": "#include <stdio.h>\nenum State { IDLE, PRESSED, HELD };\n\nint main(void) {\n    enum State s = PRESSED;\n    int n = 0;\n    switch (s) {\n    case IDLE:    n += 1;\n    case PRESSED: n += 10;\n    case HELD:    n += 100;\n    }\n    printf(\"%d\\n\", n);\n}",
+    "options": [
+      "10",
+      "110",
+      "100",
+      "111"
+    ],
+    "answer": 1,
+    "explain": "There is no break. The switch jumps to case PRESSED and then falls through to HELD: 10 + 100 = 110. In a state machine, each case must end with break or return. Compile with -Wimplicit-fallthrough to catch this.",
+    "tags": [
+      "switch-fallthrough"
+    ],
+    "difficulty": 2,
+    "verify": {
+      "lang": "c",
+      "expect": "110"
+    },
+    "from": "Tinkercad · next step: state machines",
+    "origin": "mine"
+  },
+  {
+    "id": "mine-bug-torn-ticks",
+    "type": "bug",
+    "topic": "embedded",
+    "lang": "c",
+    "title": "Uno: ticks is volatile, but report() sometimes gets a wrong value. Tap the bug.",
+    "code": "volatile uint16_t ticks;\n\nISR(TIMER1_COMPA_vect) {\n  ticks++;\n}\n\nvoid loop() {\n  uint16_t t = ticks;\n  if (t >= 1000) report(t);\n}",
+    "bugLines": [
+      8
+    ],
+    "explain": "The Uno is 8-bit, so a uint16_t read is two byte reads. If the ISR fires between them, you mix old and new bytes (0x00FF to 0x0100 can read as 0x01FF). volatile does not fix this. Read it with interrupts off.",
+    "fix": "noInterrupts();\nuint16_t t = ticks;\ninterrupts();",
+    "tags": [
+      "torn-read",
+      "atomicity",
+      "isr"
+    ],
+    "difficulty": 3,
+    "from": "Tinkercad · next step: interrupts",
+    "origin": "mine"
+  },
+  {
+    "id": "mine-moder-or-no-clear",
+    "type": "quiz",
+    "topic": "embedded",
+    "title": "STM32 GPIO_Init review. MODER pin 0 starts as 11 (analog). You want output = 01. What does this print?",
+    "lang": "c",
+    "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint32_t moder = 0x3;  // pin 0: 11\n    moder |= (1u << 0);    // want 01\n    printf(\"%u\\n\", moder & 3u);\n}",
+    "options": [
+      "0",
+      "1",
+      "2",
+      "3"
+    ],
+    "answer": 3,
+    "explain": "|= can only set bits. Bit 0 was already 1 and bit 1 stays 1, so the mode is still 11 (analog). Clear the 2-bit field first with &= ~(3u << (2 * pin)), then set the new value. Same rule as in your GPIO_Init.",
+    "tags": [
+      "registers",
+      "bit-manipulation"
+    ],
+    "difficulty": 2,
+    "verify": {
+      "lang": "c",
+      "expect": "3"
+    },
+    "from": "STM32 driver · GPIO_Init",
+    "origin": "mine"
+  },
+  {
+    "id": "mine-thumb-bit-reset",
+    "type": "quiz",
+    "topic": "embedded",
+    "title": "Cortex-M review. The reset vector word is 0x08000199. What does this print?",
+    "lang": "c",
+    "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint32_t vec = 0x08000199;\n    printf(\"%u\\n\", vec & 1u);\n    printf(\"0x%08X\\n\", vec & ~1u);\n}",
+    "options": [
+      "0 and 0x08000199",
+      "1 and 0x08000198",
+      "1 and 0x0800019A",
+      "0 and 0x08000198"
+    ],
+    "answer": 1,
+    "explain": "Bit 0 of a vector is the Thumb bit. It must be 1 on Cortex-M, or the CPU faults. The real code address is vec with bit 0 cleared: 0x08000198. This is why every address in your vector table looks odd.",
+    "tags": [
+      "boot",
+      "vector-table"
+    ],
+    "difficulty": 2,
+    "verify": {
+      "lang": "c",
+      "expect": "1\n0x08000198"
+    },
+    "from": "Boot from reset to main()",
+    "origin": "mine"
+  },
+  {
+    "id": "mine-pot-servo-overflow",
+    "type": "quiz",
+    "topic": "c",
+    "title": "Uno servo from a pot. 16-bit int simulated with uint16_t. raw = 512. What does this print?",
+    "lang": "c",
+    "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint16_t raw = 512;\n    uint16_t x = raw * 180;  // 16-bit int\n    printf(\"%u\\n\", x / 1023);\n}",
+    "options": [
+      "90",
+      "26",
+      "0",
+      "180"
+    ],
+    "answer": 1,
+    "explain": "512 * 180 = 92160, more than 65535, so it wraps to 26624. Then 26624 / 1023 = 26, not 90. On the Uno, use 180L or the map() function, which works in long.",
+    "tags": [
+      "integer-overflow",
+      "int-size"
+    ],
+    "difficulty": 3,
+    "verify": {
+      "lang": "c",
+      "expect": "26"
+    },
+    "from": "Tinkercad lesson 7 · servo angle",
+    "origin": "mine"
+  },
+  {
+    "id": "mine-resistor-power-100",
+    "type": "quiz",
+    "topic": "electronics",
+    "title": "9 V battery directly over a 100 Ω resistor (1/4 W type). P = V² / R. What happens?",
+    "options": [
+      "0.09 W, fine",
+      "0.81 W, resistor gets too hot",
+      "8.1 W",
+      "0.9 W"
+    ],
+    "answer": 1,
+    "explain": "P = 9 × 9 / 100 = 0.81 W. A 1/4 W (0.25 W) resistor gets about 3 times too much power. It gets very hot or burns. Check power as well as current: choose R so that V² / R stays well under the rating.",
+    "tags": [
+      "power-rating",
+      "ohms-law"
+    ],
+    "difficulty": 2,
+    "from": "Tinkercad · Ohm's law",
+    "origin": "mine"
+  },
+  {
+    "id": "mine-not-uint8-promotion",
+    "type": "quiz",
+    "topic": "c",
+    "title": "Register mask review. What does this print?",
+    "lang": "c",
+    "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint8_t m = 0x0F;\n    printf(\"%d\\n\", ~m == 0xF0);\n    printf(\"%d\\n\", (uint8_t)~m == 0xF0);\n}",
+    "options": [
+      "1 and 1",
+      "0 and 1",
+      "0 and 0",
+      "1 and 0"
+    ],
+    "answer": 1,
+    "explain": "m is promoted to int before ~. So ~m is 0xFFFFFFF0, not 0xF0, and the first test is false. Cast the result back to uint8_t, as in the second line. Watch this when you clear bits in 8-bit registers.",
+    "tags": [
+      "integer-promotion",
+      "bit-manipulation"
+    ],
+    "difficulty": 2,
+    "verify": {
+      "lang": "c",
+      "expect": "0\n1"
+    },
+    "from": "RP2350 bare metal · register masks",
+    "origin": "mine"
+  },
+  {
+    "id": "mine-debounce-last-on-accept",
+    "type": "quiz",
+    "topic": "c",
+    "title": "Debounce 50 ms. Noisy edges at 1000, 1030, 1060, 1090 ms. What does this print?",
+    "lang": "c",
+    "code": "#include <stdio.h>\n\nint main(void) {\n    unsigned long t[] = {1000, 1030, 1060, 1090};\n    unsigned long last = 0;\n    int ok = 0;\n    for (int i = 0; i < 4; i++) {\n        if (t[i] - last > 50) { ok++; last = t[i]; }\n    }\n    printf(\"%d\\n\", ok);\n}",
+    "options": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "answer": 1,
+    "explain": "1000 is accepted (last = 1000). 1030 is only 30 ms later: ignored. 1060 is 60 ms after 1000: accepted. 1090 is 30 ms after 1060: ignored. Total 2. If you set last on every edge, the result would be 1: noise would keep the button blocked.",
+    "tags": [
+      "debounce",
+      "millis"
+    ],
+    "difficulty": 2,
+    "verify": {
+      "lang": "c",
+      "expect": "2"
+    },
+    "from": "Tinkercad lesson 3 · debounce",
+    "origin": "mine"
+  },
+  {
+    "id": "concept-uno-isr-rules",
+    "type": "concept",
+    "topic": "embedded",
+    "title": "Uno ISR: 5 rules before lesson on interrupts",
+    "bullets": [
+      "Keep it short: set a flag or count, do the work in loop().",
+      "Shared variables are volatile. Multi-byte ones (uint16_t, long) need noInterrupts() when loop() reads them.",
+      "No delay(), no Serial.print() in an ISR. They need interrupts, which are off inside.",
+      "millis() does not grow inside an ISR, because Timer0 cannot interrupt. micros() is only roughly right.",
+      "Only pins 2 and 3 have external interrupts (INT0, INT1). Others need pin-change interrupts."
+    ],
+    "tags": [
+      "isr",
+      "volatile",
+      "atomicity"
+    ],
+    "difficulty": 2,
+    "from": "Tinkercad · next step: interrupts",
+    "origin": "mine"
+  },
+  {
+    "id": "mine-millis-frozen-in-isr",
+    "type": "quiz",
+    "topic": "embedded",
+    "title": "Uno. Inside an ISR you read millis(), wait 2000 µs with delayMicroseconds, and read millis() again. What is b - a?",
+    "lang": "c",
+    "code": "void isr() {\n  unsigned long a = millis();\n  delayMicroseconds(2000);\n  unsigned long b = millis();\n  // b - a ?\n}",
+    "options": [
+      "2",
+      "0",
+      "1",
+      "Random"
+    ],
+    "answer": 1,
+    "explain": "millis() is updated by the Timer0 overflow interrupt. Inside your ISR, interrupts are disabled, so that interrupt waits. The value stays frozen: b - a is 0. Never wait for millis() to change inside an ISR, it hangs forever.",
+    "tags": [
+      "millis",
+      "isr",
+      "blocking-in-isr"
+    ],
+    "difficulty": 3,
+    "from": "Tinkercad · next step: interrupts",
+    "origin": "mine"
+  }
+]
