@@ -5647,5 +5647,226 @@
     "title": "Uno. Inside an ISR you read millis(), wait 2000 µs with delayMicroseconds, and read millis() again. What is b - a?",
     "topic": "embedded",
     "type": "quiz"
+  },
+  {
+    "bugLines": [
+      2
+    ],
+    "code": "struct SioRegs {\n    uint32_t gpio_out;\n};\n\nvoid pulse(SioRegs& sio) {\n    sio.gpio_out = 1u << 5;  // LED on\n    sio.gpio_out = 0;        // LED off\n}",
+    "difficulty": 2,
+    "explain": "The member is not volatile. The compiler sees two stores to the same address and removes the first one. The pin never goes high. A register struct needs volatile members, so every access is real. This is why at<Regs>() should return a reference to a volatile struct.",
+    "fix": "struct SioRegs {\n    volatile uint32_t gpio_out;\n};",
+    "from": "RP2350 bare metal · register structs",
+    "id": "mine-rp2350-regs-not-volatile",
+    "lang": "cpp",
+    "origin": "mine",
+    "tags": [
+      "volatile",
+      "registers"
+    ],
+    "title": "LED pin pulse never appears on the scope with -O2. Tap the bug.",
+    "topic": "cpp",
+    "type": "bug"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "EXTI has one line per pin NUMBER (0 to 15), not per port. SYSCFG_EXTICR picks which port feeds line 3. The last write wins, so PB3 replaces PA3. Plan pins so each number is used once for external interrupts.",
+    "from": "STM32 driver · EXTI/SYSCFG",
+    "id": "mine-exti-same-pin-number",
+    "lang": "c",
+    "options": [
+      "Both work: each port has its own EXTI line",
+      "Only one works: line 3 can take one port at a time",
+      "The second call is ignored by the hardware lock",
+      "Both fire the same handler on all ports"
+    ],
+    "origin": "mine",
+    "tags": [
+      "registers",
+      "gpio"
+    ],
+    "title": "STM32F4. You set up EXTI interrupts on PA3 and on PB3. What happens?",
+    "topic": "embedded",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "code": "#include <stdio.h>\n\nint main(void) {\n    long value = 154;\n    long a = value * 5000 / 1023;\n    long b = (value * 5000 + 1023 / 2) / 1023;\n    printf(\"%ld %ld\\n\", a, b);\n}",
+    "difficulty": 2,
+    "explain": "154 * 5000 = 770000. Divided by 1023 it is 752.69. Integer division cuts the fraction: 752. Adding half of the divisor first rounds to the nearest value: 753. Without it every result is biased low by 0.5 mV on average.",
+    "from": "Tinkercad lesson 6 · TMP36",
+    "id": "mine-adc-mv-rounding",
+    "lang": "c",
+    "options": [
+      "752 752",
+      "752 753",
+      "753 753",
+      "753 752"
+    ],
+    "origin": "mine",
+    "tags": [
+      "integer-division",
+      "truncation"
+    ],
+    "title": "10-bit ADC, 5 V. value = 154. Truncating vs rounding. What does this print?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "752 753",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "Led status(25);  // ctor calls gpio_init(25)\n\nint main() {\n    status.on();\n}",
+    "difficulty": 3,
+    "explain": "A constructor that runs code is dynamic initialization. The compiler puts function pointers for it in .init_array. Someone must call them before main(). Your startup code does not, so the object stays zero in .bss. Fix: call the .init_array entries (or __libc_init_array) in Reset_Handler.",
+    "from": "RP2350 bare metal · startup code",
+    "id": "mine-cpp-global-ctor-not-run",
+    "lang": "cpp",
+    "options": [
+      "The constructor never runs, the object stays zeroed",
+      "main() runs before the .data copy",
+      "Globals cannot have constructors in C++",
+      "The linker removes unused globals"
+    ],
+    "origin": "mine",
+    "tags": [
+      "init-order",
+      "boot"
+    ],
+    "title": "Bare-metal C++. Your Reset_Handler only copies .data and clears .bss. Why does this global not work?",
+    "topic": "cpp",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "code": "#include <stdio.h>\n\nint main(void) {\n    double r1 = 100, r2 = 300;\n    printf(\"%.0f\\n\", 1 / (1 / r1 + 1 / r2));\n}",
+    "difficulty": 1,
+    "explain": "Parallel: 1/R = 1/100 + 1/300 = 4/300, so R = 75 Ω. The result is always smaller than the smallest resistor. If your answer is bigger than 100 Ω, you used the series formula by mistake.",
+    "from": "Tinkercad · series and parallel resistors",
+    "id": "mine-parallel-100-300",
+    "lang": "c",
+    "options": [
+      "400 Ω",
+      "75 Ω",
+      "200 Ω",
+      "133 Ω"
+    ],
+    "origin": "mine",
+    "tags": [
+      "ohms-law"
+    ],
+    "title": "100 Ω and 300 Ω in parallel. What is the total?",
+    "topic": "electronics",
+    "type": "quiz",
+    "verify": {
+      "expect": "75",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "The output is the voltage over the bottom resistor. Light: 5 * 10 / (1 + 10) = 4.5 V. Dark: 5 * 10 / (100 + 10) = 0.45 V. The LDR is on top, so more light gives a HIGHER value. Swap the two parts and the direction flips.",
+    "from": "Tinkercad lesson 5 · LDR",
+    "id": "mine-ldr-divider-direction",
+    "lang": "c",
+    "options": [
+      "Light ≈ 0.45 V, dark ≈ 4.5 V",
+      "Light ≈ 4.5 V, dark ≈ 0.45 V",
+      "Light ≈ 2.5 V, dark ≈ 2.5 V",
+      "Light ≈ 5 V, dark ≈ 0 V"
+    ],
+    "origin": "mine",
+    "tags": [
+      "ldr",
+      "ohms-law"
+    ],
+    "title": "5 V → LDR → A0 → 10 kΩ → GND. LDR is 1 kΩ in light, 100 kΩ in dark. What does A0 see?",
+    "topic": "electronics",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "The servo reads the signal as a voltage against ITS ground. If the pack GND and the Uno GND are not connected, the signal has no shared reference. The servo sees random pulses. Use an external supply for the motor current, but always tie the grounds together.",
+    "from": "Tinkercad lesson 7 · servo (next step)",
+    "id": "mine-servo-common-ground",
+    "lang": "c",
+    "options": [
+      "A bigger resistor on the signal wire",
+      "A common GND between the battery pack and the Uno",
+      "A 5 V wire from the Uno to the servo",
+      "A pull-up on pin 9"
+    ],
+    "origin": "mine",
+    "tags": [
+      "power",
+      "pwm"
+    ],
+    "title": "Servo powered from a 4×AA pack. Signal comes from Uno pin 9. The servo jitters. What is missing?",
+    "topic": "electronics",
+    "type": "quiz"
+  },
+  {
+    "bugLines": [
+      8
+    ],
+    "code": "volatile bool pressed = false;\n\nvoid isr() { pressed = true; }\n\nvoid loop() {\n  if (pressed) {\n    handle_press();  // takes 20 ms\n    pressed = false;\n  }\n}",
+    "difficulty": 2,
+    "explain": "A press that arrives during handle_press() sets the flag. Then line 8 clears it, and the new press is lost. Clear the flag BEFORE you do the work. For counting events use a counter, not a flag.",
+    "fix": "if (pressed) {\n  pressed = false;  // clear first\n  handle_press();\n}",
+    "from": "Tinkercad · interrupts (next step)",
+    "id": "mine-bug-flag-clear-late",
+    "lang": "c",
+    "origin": "mine",
+    "tags": [
+      "isr",
+      "lost-wakeup"
+    ],
+    "title": "Uno. Fast double presses are sometimes counted once. Tap the bug.",
+    "topic": "c",
+    "type": "bug"
+  },
+  {
+    "bullets": [
+      "One variable holds the state. Use an enum, not magic numbers.",
+      "One switch in loop(). Each case checks an event and may set a new state.",
+      "Never use delay(). Store a start time and compare with millis().",
+      "Do the 'enter state' work once, when you change the state, not on every loop."
+    ],
+    "difficulty": 2,
+    "from": "Tinkercad · state machines (next step)",
+    "id": "mine-concept-state-machine",
+    "origin": "mine",
+    "tags": [
+      "review-checklist"
+    ],
+    "title": "State machine in loop(): 4 rules",
+    "topic": "c",
+    "type": "concept"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "NAND with inputs A = B gives NOT (A AND A) = NOT A. So one gate is an inverter. The 74HC00 has four gates, so you get up to four inverters. This is a classic way to make NOT when the chip has no spare inverter.",
+    "from": "Tinkercad · 74HC00 NAND",
+    "id": "mine-74hc00-not-gate",
+    "lang": "c",
+    "options": [
+      "An AND gate",
+      "An inverter (NOT)",
+      "An OR gate",
+      "Always HIGH"
+    ],
+    "origin": "mine",
+    "tags": [
+      "logic-levels"
+    ],
+    "title": "You tie both inputs of one 74HC00 NAND gate together. What is the gate now?",
+    "topic": "electronics",
+    "type": "quiz"
   }
 ]

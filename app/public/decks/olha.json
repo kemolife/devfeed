@@ -4467,5 +4467,184 @@
       "expect": "string(4) \"Open\"\nNULL",
       "lang": "php"
     }
+  },
+  {
+    "answer": 1,
+    "difficulty": 3,
+    "explain": "A cell that starts with =, +, - or @ can be run as a formula by Excel or Google Sheets. This is called CSV injection. Your API writes the value as it is, so the risk is real when files are downloaded. Fix: add a ' in front of such cells when writing, or reject them.",
+    "id": "fp-csv-formula-injection",
+    "lang": "php",
+    "options": [
+      "None: CSV is plain text, Excel shows it as it is",
+      "Excel treats the cell as a formula and runs it",
+      "json_encode blocks values that start with =",
+      "PHP refuses to write such a cell"
+    ],
+    "tags": [
+      "security",
+      "csv"
+    ],
+    "title": "Senior asks: a user saves the row {\"name\": \"=HYPERLINK(\\\"http://evil.test\\\")\"} to a CSV file. Later someone opens that file in Excel. What is the risk?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "code": "$s = str_repeat('[', 600) . str_repeat(']', 600);\nvar_dump(json_decode($s, true));",
+    "difficulty": 3,
+    "explain": "json_decode has a default depth limit of 512. Deeper data is an error and the function returns null, without an exception. Your code then answers 'Invalid JSON.', which is a fair message. It is also a small protection against very deep input.",
+    "id": "fp-json-depth-null",
+    "lang": "php",
+    "options": [
+      "An array with 600 levels",
+      "NULL",
+      "A JsonException",
+      "An empty array"
+    ],
+    "tags": [
+      "json",
+      "error-messages"
+    ],
+    "title": "Senior asks: a client sends 600 nested lists [[[...]]] to write. decodeJson() uses json_decode($s, true). What does this print?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "NULL",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "macOS (APFS) is case-insensitive by default, so Fruits.csv and fruits.csv are the same file and fopen with 'x' fails. Linux is case-sensitive, so they are two files. Same code, different result. Test on the system you deploy to, and decide if you want to compare names in lower case.",
+    "id": "fp-name-case-mac-linux",
+    "lang": "php",
+    "options": [
+      "PHP is different on Linux",
+      "The Mac file system ignores case, so fopen('x') sees the same file",
+      "Linux changes names to lower case",
+      "The Mac adds _1 for every upload"
+    ],
+    "tags": [
+      "filesystem",
+      "upload"
+    ],
+    "title": "Senior asks: storage/ has fruits.csv. A user uploads Fruits.csv. On your Mac it gets the name Fruits_1.csv. On the Linux server it stays Fruits.csv. Why?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "diff": " $request = Request::createFromGlobals();\n+error_log('REQUEST ' . $request->getContent());\n \n $controller = new FileController($service);",
+    "difficulty": 2,
+    "explain": "The body is the content of the user's file. It can hold private data, and big uploads fill the log. Log the method, the action and the file name. Never log whole bodies, passwords or tokens. Also remember that user text in a log can fake extra log lines.",
+    "fix": "$request = Request::createFromGlobals();\n// Log only what you need to debug: no file content.\nerror_log(sprintf(\n    'REQUEST %s action=%s file=%s',\n    $request->getMethod(),\n    $request->query->getString('action'),\n    $request->query->getString('file')\n));\n\n$controller = new FileController($service);",
+    "id": "fp-pr-log-request-body",
+    "lang": "php",
+    "pr": {
+      "author": "junior-dev",
+      "body": "I want to see what clients send. Now index.php logs every request body to the error log.",
+      "title": "Log requests for debugging",
+      "verdict": "changes"
+    },
+    "tags": [
+      "security",
+      "error-handling"
+    ],
+    "title": "Log requests for debugging",
+    "topic": "project",
+    "type": "pr"
+  },
+  {
+    "answer": 1,
+    "code": "$a = ['x' => 0];\n$a['x'] ??= 5;\n$a['y'] ??= 7;\necho json_encode($a);",
+    "difficulty": 2,
+    "explain": "??= assigns only when the left side is missing or null. 0 is a real value, so x stays 0. y does not exist, so it gets 7. Do not confuse it with ?:, which also replaces 0, '' and false.",
+    "id": "php-null-coalesce-assign",
+    "lang": "php",
+    "options": [
+      "{\"x\":5,\"y\":7}",
+      "{\"x\":0,\"y\":7}",
+      "{\"x\":0}",
+      "{\"x\":5}"
+    ],
+    "tags": [
+      "null-coalescing"
+    ],
+    "title": "PHP 8. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "{\"x\":0,\"y\":7}",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "console.log(null == undefined, null == 0, null >= 0);",
+    "difficulty": 3,
+    "explain": "== treats null and undefined as equal, and as equal to nothing else, so null == 0 is false. But >= converts null to the number 0, so null >= 0 is true. Use === and check null with ?? or === null.",
+    "id": "js-null-loose-compare",
+    "lang": "js",
+    "options": [
+      "true true true",
+      "true false true",
+      "false false false",
+      "true false false"
+    ],
+    "tags": [
+      "type-coercion",
+      "loose-compare"
+    ],
+    "title": "What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "true false true",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "trait Counter {\n    public static int $n = 0;\n    public static function inc(): int { return ++self::$n; }\n}\nclass A { use Counter; }\nclass B { use Counter; }\n\nA::inc();\nA::inc();\necho B::inc();",
+    "difficulty": 3,
+    "explain": "Every class that uses a trait gets its OWN copy of the static property. A and B do not share $n. B::inc() starts at 0 and gives 1. If you want one shared counter, keep it in a normal class and use that class from both.",
+    "id": "oop-trait-static-copy",
+    "lang": "php",
+    "options": [
+      "3",
+      "1",
+      "0",
+      "Error"
+    ],
+    "tags": [
+      "traits",
+      "static"
+    ],
+    "title": "A trait with a static counter, used in two classes. What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "1",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "git bisect does a binary search. You mark one bad and one good commit. Git checks out the middle, you test and say good or bad, and repeat. 100 commits need only about 7 steps. Finish with git bisect reset.",
+    "id": "git-bisect-find-bug",
+    "lang": "bash",
+    "options": [
+      "git blame on every file",
+      "git bisect: mark good and bad, git checks the middle each time",
+      "git revert the last 100 commits one by one",
+      "git log -p and read all of it"
+    ],
+    "tags": [
+      "git-basics"
+    ],
+    "title": "A bug is in main now, but it was not there 100 commits ago. What is the fastest way to find the commit?",
+    "topic": "git",
+    "type": "quiz"
   }
 ]
