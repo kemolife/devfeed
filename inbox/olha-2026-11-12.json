@@ -1,0 +1,187 @@
+[
+ {
+  "id": "fp-json-slash-escape",
+  "type": "quiz",
+  "topic": "project",
+  "lang": "php",
+  "difficulty": 2,
+  "tags": [
+   "json",
+   "encoding"
+  ],
+  "title": "Senior asks: a user writes {\"site\": \"a/b\"} to a JSON file. The saved file shows a\\/b. Is the data broken?",
+  "code": "echo json_encode(['site' => 'a/b']), ' ', json_decode('\"a\\/b\"');",
+  "options": [
+   "Yes: the file is corrupted",
+   "No: \\/ is a valid JSON escape and reads back as a/b",
+   "Yes: json_decode will fail on it",
+   "No, but only on Linux"
+  ],
+  "answer": 1,
+  "explain": "json_encode escapes the slash as \\/ by default. It is valid JSON, and json_decode gives a/b again. The file is only less readable. Add JSON_UNESCAPED_SLASHES to the flags if you want clean URLs in the file.",
+  "verify": {
+   "lang": "php",
+   "expect": "{\"site\":\"a\\/b\"} a/b"
+  }
+ },
+ {
+  "id": "fp-put-contents-false",
+  "type": "quiz",
+  "topic": "project",
+  "lang": "php",
+  "difficulty": 2,
+  "tags": [
+   "error-handling",
+   "filesystem"
+  ],
+  "title": "Senior asks: saveContent() calls file_put_contents(). The folder is missing (a full disk gives the same). What does this print?",
+  "code": "var_dump(@file_put_contents('/no/such/dir/a.csv', 'x'));",
+  "options": [
+   "bool(false)",
+   "int(0)",
+   "A RuntimeException",
+   "NULL"
+  ],
+  "answer": 0,
+  "explain": "file_put_contents does not throw. It raises a warning and returns false. If you ignore the result, the API says \"saved\" but nothing was written. Check for === false and throw your StorageException, so the controller answers with an error.",
+  "verify": {
+   "lang": "php",
+   "expect": "bool(false)"
+  }
+ },
+ {
+  "id": "fp-pr-client-original-name",
+  "type": "pr",
+  "topic": "project",
+  "lang": "php",
+  "difficulty": 2,
+  "tags": [
+   "security",
+   "upload"
+  ],
+  "title": "Keep the original name on upload",
+  "pr": {
+   "author": "junior-dev",
+   "title": "Keep the original name on upload",
+   "body": "The resolver adds _1 to names. I removed it, so users get the name they chose.",
+   "verdict": "changes"
+  },
+  "diff": " public function upload(UploadedFile $file): string\n {\n-    $name = $this->resolver->reserveFreeName(\n-        $this->storage, $file->getClientOriginalName());\n-    $file->move($this->storage, $name);\n-    return $name;\n+    $name = $file->getClientOriginalName();\n+    $file->move($this->storage, $name);\n+    return $name;\n }",
+  "fix": "public function upload(UploadedFile $file): string\n{\n    // Never trust the client name: basename + free-name reservation.\n    $wanted = basename($file->getClientOriginalName());\n    $name = $this->resolver->reserveFreeName(\n        $this->storage, $wanted);\n    $file->move($this->storage, $name);\n    return $name;\n}",
+  "explain": "The client controls this name. It can hold ../ parts, and the same name silently overwrites an older file. The resolver reserves a free name with fopen x, which makes the create atomic. Keep it, and apply basename to the client name first."
+ },
+ {
+  "id": "fp-php84-new-chain",
+  "type": "quiz",
+  "topic": "project",
+  "lang": "php",
+  "difficulty": 2,
+  "tags": [
+   "php84",
+   "syntax"
+  ],
+  "title": "Senior asks: composer.json needs php >=8.4. In index.php you could write new A()->hi() with no extra brackets. What does this print?",
+  "code": "class A {\n    public function hi(): string {\n        return 'hi';\n    }\n}\necho new A()->hi();",
+  "options": [
+   "hi",
+   "Parse error in every PHP version",
+   "Fatal error: cannot call a method on new",
+   "Object of class A"
+  ],
+  "answer": 0,
+  "explain": "Before PHP 8.4 you had to write (new A())->hi(). Since PHP 8.4 the extra brackets are not needed. Your project requires 8.4, so both forms work. A team with older PHP servers should keep the old form.",
+  "verify": {
+   "lang": "php",
+   "expect": "hi"
+  }
+ },
+ {
+  "id": "php-usort-float-diff",
+  "type": "quiz",
+  "topic": "php",
+  "lang": "php",
+  "difficulty": 3,
+  "tags": [
+   "sorting",
+   "type-cast"
+  ],
+  "title": "Sort prices with usort and a minus. What does this print?",
+  "code": "$a = [0.5, 0.2, 0.9];\nusort($a, fn($x, $y) => $x - $y);\necho implode(',', $a);",
+  "options": [
+   "0.2,0.5,0.9",
+   "0.5,0.2,0.9",
+   "0.9,0.5,0.2",
+   "A deprecation warning, then sorted"
+  ],
+  "answer": 1,
+  "explain": "usort casts the return value of the callback to int. 0.5 - 0.2 is 0.3, which becomes 0, so every pair looks equal and the order stays. Use the spaceship operator: fn($x, $y) => $x <=> $y.",
+  "verify": {
+   "lang": "php",
+   "expect": "0.5,0.2,0.9"
+  }
+ },
+ {
+  "id": "js-for-in-array",
+  "type": "quiz",
+  "topic": "js",
+  "lang": "js",
+  "difficulty": 2,
+  "tags": [
+   "loops",
+   "coercion"
+  ],
+  "title": "What does Node print?",
+  "code": "const out = [];\nfor (const i in ['a', 'b']) {\n  out.push(i + 1);\n}\nconsole.log(out.join(' '));",
+  "options": [
+   "1 2",
+   "01 11",
+   "a1 b1",
+   "0 1"
+  ],
+  "answer": 1,
+  "explain": "for...in loops over keys, not values. Array keys are strings: \"0\" and \"1\". So i + 1 joins strings: \"01\" and \"11\". Use for...of to get values, or a normal for loop for indexes.",
+  "verify": {
+   "lang": "js",
+   "expect": "01 11"
+  }
+ },
+ {
+  "id": "composer-why",
+  "type": "quiz",
+  "topic": "composer",
+  "difficulty": 1,
+  "tags": [
+   "dependencies",
+   "cli"
+  ],
+  "title": "vendor/ has symfony/polyfill-php83, but you never required it. How do you find out who needs it?",
+  "options": [
+   "composer why symfony/polyfill-php83",
+   "composer show --outdated",
+   "composer audit",
+   "composer dump-autoload"
+  ],
+  "answer": 0,
+  "explain": "composer why (alias: depends) lists which installed packages require the given package. outdated shows old versions, audit shows known security issues, and dump-autoload rebuilds the class map. Use why before you try to remove something."
+ },
+ {
+  "id": "jq-stop-vs-prevent",
+  "type": "quiz",
+  "topic": "jquery",
+  "lang": "js",
+  "difficulty": 2,
+  "tags": [
+   "events",
+   "bubbling"
+  ],
+  "title": "A link is inside a div. Both have a click handler. The link handler only calls e.preventDefault(). After a click, what happens?",
+  "options": [
+   "The page does not open the link, but the div handler still runs",
+   "The page does not open the link and the div handler does not run",
+   "The page opens the link, and the div handler runs",
+   "The page opens the link, but the div handler does not run"
+  ],
+  "answer": 0,
+  "explain": "preventDefault stops the browser action, here the navigation. It does not stop bubbling. The click still goes up to the div. Use e.stopPropagation() to stop the bubbling. Use both only if you really need both."
+ }
+]

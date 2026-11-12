@@ -1,0 +1,230 @@
+[
+ {
+  "id": "mine-adc-3v3-ref",
+  "type": "quiz",
+  "topic": "c",
+  "lang": "c",
+  "difficulty": 2,
+  "tags": [
+   "integer-division",
+   "adc"
+  ],
+  "from": "Tinkercad lesson 6 · TMP36",
+  "title": "Same TMP36, but the ADC reference is 3.3 V. value = 200. What does this print?",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    long value = 200;\n    long mv = value * 3300 / 1023;\n    long t10 = mv - 500;\n    printf(\"%ld %ld\\n\", mv, t10);\n}",
+  "options": [
+   "645 145",
+   "660 160",
+   "645 14",
+   "2 -498"
+  ],
+  "answer": 0,
+  "explain": "200 * 3300 = 660000. Divided by 1023 it is 645 mV (cut). The TMP36 gives 10 mV per degree and 500 mV at 0 °C. So mV - 500 = 145 means 14.5 °C in tenths. With a 3.3 V reference, use 3300, not 5000.",
+  "verify": {
+   "lang": "c",
+   "expect": "645 145"
+  },
+  "origin": "mine"
+ },
+ {
+  "id": "mine-leds-in-series",
+  "type": "quiz",
+  "topic": "electronics",
+  "difficulty": 2,
+  "tags": [
+   "ohms-law",
+   "led"
+  ],
+  "from": "Tinkercad · LED + resistor",
+  "title": "5 V, two red LEDs in series (Vf = 2 V each), one 220 Ω resistor. Current?",
+  "options": [
+   "About 4.5 mA",
+   "About 13.6 mA",
+   "About 9.1 mA",
+   "0 mA: the LEDs do not light"
+  ],
+  "answer": 0,
+  "explain": "The same current flows through every part in series. The resistor gets 5 - 2 - 2 = 1 V. I = 1 V / 220 Ω = 4.5 mA. With a 3.3 V supply, two red LEDs would need 4 V, so they would stay dark.",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-input-pullup-press",
+  "type": "quiz",
+  "topic": "embedded",
+  "difficulty": 1,
+  "tags": [
+   "gpio",
+   "pull-up"
+  ],
+  "from": "Tinkercad lesson 3 · button",
+  "title": "Button between the pin and GND, pinMode(INPUT_PULLUP). What do you read when pressed?",
+  "options": [
+   "LOW. A press is a falling edge (HIGH to LOW)",
+   "HIGH. A press is a rising edge",
+   "LOW. A press is a rising edge",
+   "Floating. You also need an external resistor"
+  ],
+  "answer": 0,
+  "explain": "The internal pull-up holds the pin HIGH when the button is open. Pressing connects the pin to GND, so it reads LOW. This is why your edge detector looks for HIGH then LOW. No external resistor is needed.",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-bug-clock-after-moder",
+  "type": "bug",
+  "topic": "embedded",
+  "lang": "c",
+  "difficulty": 2,
+  "tags": [
+   "peripheral-timing",
+   "registers"
+  ],
+  "from": "STM32 driver · GPIO_Init",
+  "title": "GPIO_Init is called once. The pin never becomes an output. Tap the bug.",
+  "code": "void GPIO_Init(GPIO_Handle_t *h) {\n    h->pGPIOx->MODER &= ~(3u << (2 * h->Pin));\n    h->pGPIOx->MODER |= (h->Mode << (2 * h->Pin));\n    GPIO_PCLK_EN(h->pGPIOx);\n}",
+  "bugLines": [
+   2,
+   3,
+   4
+  ],
+  "fix": "void GPIO_Init(GPIO_Handle_t *h) {\n    GPIO_PCLK_EN(h->pGPIOx);   // clock first\n    h->pGPIOx->MODER &= ~(3u << (2 * h->Pin));\n    h->pGPIOx->MODER |= (h->Mode << (2 * h->Pin));\n}",
+  "explain": "A peripheral without a clock ignores writes. The MODER writes happen before the clock is on, so they are lost. Enable the clock first. On some STM32 parts, read a register back after the enable.",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-timer-psc-arr-freq",
+  "type": "quiz",
+  "topic": "embedded",
+  "lang": "c",
+  "difficulty": 2,
+  "tags": [
+   "timer",
+   "off-by-one"
+  ],
+  "from": "STM32 driver · timer",
+  "title": "Timer clock 36 MHz, PSC = 35, ARR = 999. What update frequency (Hz) is printed?",
+  "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint32_t clk = 36000000, psc = 35, arr = 999;\n    printf(\"%u\\n\", clk / ((psc + 1) * (arr + 1)));\n}",
+  "options": [
+   "1000",
+   "1029",
+   "36000",
+   "28"
+  ],
+  "answer": 0,
+  "explain": "The timer divides by PSC + 1 and counts ARR + 1 steps. So 36 MHz / 36 = 1 MHz tick, then / 1000 steps = 1000 Hz. Without the +1 on both you would get about 1029 Hz, the classic off-by-one.",
+  "verify": {
+   "lang": "c",
+   "expect": "1000"
+  },
+  "origin": "mine"
+ },
+ {
+  "id": "mine-resistor-in-circuit",
+  "type": "quiz",
+  "topic": "electronics",
+  "difficulty": 2,
+  "tags": [
+   "multimeter",
+   "parallel"
+  ],
+  "from": "Tinkercad · multimeter R mode",
+  "title": "Power is off. You measure one 330 Ω resistor in R mode, but it is wired in parallel with another 330 Ω. What do you read?",
+  "options": [
+   "330 Ω",
+   "165 Ω",
+   "660 Ω",
+   "0 Ω"
+  ],
+  "answer": 1,
+  "explain": "R mode sends a small current and sees the whole network between the probes, not only your part. Two 330 Ω in parallel read 165 Ω. Take one leg out of the board to measure one part. Never measure R with the power on.",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-batteries-parallel",
+  "type": "quiz",
+  "topic": "electronics",
+  "difficulty": 1,
+  "tags": [
+   "battery",
+   "parallel"
+  ],
+  "from": "Tinkercad · series batteries",
+  "title": "Two 1.5 V AA cells in parallel. What do you get?",
+  "options": [
+   "3 V, same capacity as one cell",
+   "1.5 V, double capacity",
+   "3 V, double capacity",
+   "0 V: they cancel"
+  ],
+  "answer": 1,
+  "explain": "Series adds voltage: 1.5 V + 1.5 V = 3 V. Parallel keeps the voltage at 1.5 V and adds capacity, so it runs longer. Use cells of the same type and charge, or one cell pushes current into the other.",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-bug-blinker-by-value",
+  "type": "bug",
+  "topic": "cpp",
+  "lang": "cpp",
+  "difficulty": 1,
+  "tags": [
+   "pass-by-value",
+   "lifetime"
+  ],
+  "from": "Tinkercad lesson 2 · struct Blinker",
+  "title": "tick() runs every loop, but the Blinker state never changes. Tap the bug.",
+  "code": "struct Blinker {\n    uint8_t pin;\n    uint32_t last;\n    bool on;\n    void tick(uint32_t now);\n};\n\nvoid update(Blinker b, uint32_t now) {\n    b.tick(now);\n}",
+  "bugLines": [
+   8,
+   9
+  ],
+  "fix": "void update(Blinker& b, uint32_t now) {\n    b.tick(now);\n}",
+  "explain": "Blinker b is a copy. tick() changes the copy, and it is gone when update() returns. The original keeps its old last and on. Pass by reference (Blinker&) so the call changes the real object.",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-concept-servo-checks",
+  "type": "concept",
+  "topic": "electronics",
+  "difficulty": 1,
+  "tags": [
+   "servo",
+   "power"
+  ],
+  "from": "Tinkercad lesson 7 · servo (next step)",
+  "title": "Servo setup: 5 checks before you blame the code",
+  "bullets": [
+   "Signal: 50 Hz, so a 20 ms period. A pulse of 1 ms to 2 ms sets the angle, 1.5 ms is the centre.",
+   "Common ground: servo supply GND and Uno GND must be connected, or the signal has no reference.",
+   "Power: a servo under load pulls hundreds of mA. Use a separate 5 V supply, not the Uno pin, for more than a tiny servo.",
+   "Add a 100 µF to 470 µF capacitor across the servo supply. It stops brown-out resets when the motor starts.",
+   "Check the real pulse range of your servo in the datasheet. Many go from 0.5 ms to 2.5 ms."
+  ],
+  "origin": "mine"
+ },
+ {
+  "id": "mine-vector-irq-offset",
+  "type": "quiz",
+  "topic": "embedded",
+  "lang": "c",
+  "difficulty": 2,
+  "tags": [
+   "boot",
+   "vector-table"
+  ],
+  "from": "Boot · vector table",
+  "title": "Cortex-M4 vector table at 0x0. At what offset is the handler address of IRQ 5? (16 core entries first)",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    int irq = 5;\n    printf(\"0x%02X\\n\", 4 * (16 + irq));\n}",
+  "options": [
+   "0x14",
+   "0x54",
+   "0x50",
+   "0x58"
+  ],
+  "answer": 1,
+  "explain": "Word 0 is the initial stack pointer, word 1 is Reset. The core exceptions fill words 0 to 15. External IRQ n is word 16 + n, and each word is 4 bytes. IRQ 5 is word 21, so offset 0x54.",
+  "verify": {
+   "lang": "c",
+   "expect": "0x54"
+  },
+  "origin": "mine"
+ }
+]
