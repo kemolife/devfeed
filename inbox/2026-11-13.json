@@ -1,0 +1,224 @@
+[
+ {
+  "id": "mine-r-led-resistor",
+  "type": "quiz",
+  "topic": "electronics",
+  "difficulty": 1,
+  "tags": [
+   "ohms-law",
+   "led"
+  ],
+  "from": "Tinkercad · LED + resistor",
+  "title": "5 V supply, red LED drops about 2 V, you want 20 mA. Which resistor do you pick?",
+  "options": [
+   "150 Ω",
+   "100 Ω",
+   "330 Ω",
+   "1 kΩ"
+  ],
+  "answer": 0,
+  "explain": "The resistor takes the rest of the voltage: 5 V - 2 V = 3 V. R = V / I = 3 / 0.02 = 150 Ω. 330 Ω also works but gives only about 9 mA, so the LED is dim. 100 Ω gives 30 mA, which is too much for most small LEDs.",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-r-series-batteries",
+  "type": "quiz",
+  "topic": "electronics",
+  "difficulty": 1,
+  "tags": [
+   "ohms-law",
+   "power"
+  ],
+  "from": "Tinkercad · series batteries",
+  "title": "Three 1.5 V batteries in series, then one 150 Ω resistor to the other end. What current flows?",
+  "options": [
+   "30 mA",
+   "10 mA",
+   "45 mA",
+   "3 mA"
+  ],
+  "answer": 0,
+  "explain": "Voltages add in series: 3 x 1.5 V = 4.5 V. I = V / R = 4.5 / 150 = 0.03 A = 30 mA. Putting batteries in parallel would keep 1.5 V and only add capacity.",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-servo-16bit-overflow",
+  "type": "quiz",
+  "topic": "c",
+  "lang": "c",
+  "difficulty": 2,
+  "tags": [
+   "integer-overflow",
+   "int-size",
+   "servo"
+  ],
+  "from": "Tinkercad lesson 7 · servo (next step)",
+  "title": "Servo angle to ticks. On the Uno unsigned int is 16-bit (uint16_t here). angle = 45. What does this print?",
+  "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint16_t angle = 45;\n    uint16_t scaled = angle * 2000;\n    uint16_t ticks = 2000 + scaled / 180;\n    printf(\"%u\\n\", ticks);\n}",
+  "options": [
+   "2500",
+   "2135",
+   "2000",
+   "4500"
+  ],
+  "answer": 1,
+  "explain": "45 * 2000 = 90000 does not fit in 16 bits. It wraps to 90000 - 65536 = 24464. Then 24464 / 180 = 135, so you get 2135, not 2500. Use unsigned long (32-bit) for the multiplication.",
+  "verify": {
+   "lang": "c",
+   "expect": "2135"
+  },
+  "origin": "mine"
+ },
+ {
+  "id": "mine-servo-icr1-top",
+  "type": "quiz",
+  "topic": "embedded",
+  "difficulty": 2,
+  "tags": [
+   "pwm",
+   "timers",
+   "servo"
+  ],
+  "from": "Tinkercad lesson 7 · servo (next step)",
+  "title": "Servo on Timer1, Fast PWM mode 14 (TOP = ICR1). 16 MHz clock, prescaler 8, signal 50 Hz. Which ICR1 value do you write?",
+  "options": [
+   "39999",
+   "40000",
+   "20000",
+   "19999"
+  ],
+  "answer": 0,
+  "explain": "Timer clock = 16 MHz / 8 = 2 MHz. One period of 20 ms is 2,000,000 / 50 = 40000 ticks. The timer counts from 0 to TOP, which is TOP + 1 steps. So TOP = 39999.",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-r-moder-mask",
+  "type": "quiz",
+  "topic": "embedded",
+  "lang": "c",
+  "difficulty": 2,
+  "tags": [
+   "registers",
+   "bit-manipulation"
+  ],
+  "from": "STM32 driver · GPIO_Init",
+  "title": "MODER starts as 0xFFFFFFFF. GPIO_Init clears the 2 bits of pin 5, then sets mode 1 (output). What is MODER now?",
+  "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint32_t moder = 0xFFFFFFFF;\n    uint32_t pin = 5;\n    moder &= ~(3u << (2 * pin));\n    moder |= (1u << (2 * pin));\n    printf(\"%08X\\n\", (unsigned)moder);\n}",
+  "options": [
+   "0xFFFFF7FF",
+   "0xFFFFF3FF",
+   "0xFFFFFBFF",
+   "0x00000400"
+  ],
+  "answer": 0,
+  "explain": "Pin 5 uses bits 11:10, so the shift is 2 * 5 = 10. The clear mask 3 << 10 = 0xC00 gives 0xFFFFF3FF. Then OR with 1 << 10 = 0x400 gives 0xFFFFF7FF. Without the clear step, old bits stay set.",
+  "verify": {
+   "lang": "c",
+   "expect": "FFFFF7FF"
+  },
+  "origin": "mine"
+ },
+ {
+  "id": "mine-bug-bss-clear-size",
+  "type": "bug",
+  "topic": "embedded",
+  "lang": "c",
+  "difficulty": 3,
+  "tags": [
+   "boot",
+   "pointer-arithmetic"
+  ],
+  "from": "Boot · Reset_Handler",
+  "title": "After reset, some static variables are not zero. Tap the bug.",
+  "code": "extern uint32_t _sidata, _sdata, _edata;\nextern uint32_t _sbss, _ebss;\n\nvoid Reset_Handler(void) {\n    uint32_t *src = &_sidata;\n    uint32_t *dst = &_sdata;\n    while (dst < &_edata)\n        *dst++ = *src++;\n    memset(&_sbss, 0, &_ebss - &_sbss);\n    main();\n    for (;;) {}\n}",
+  "bugLines": [
+   9
+  ],
+  "fix": "void Reset_Handler(void) {\n    uint32_t *src = &_sidata;\n    uint32_t *dst = &_sdata;\n    while (dst < &_edata)\n        *dst++ = *src++;\n    // memset wants bytes, not words\n    memset(&_sbss, 0,\n           (uint8_t *)&_ebss - (uint8_t *)&_sbss);\n    main();\n    for (;;) {}\n}",
+  "explain": "Pointer subtraction on uint32_t * gives a count of words, not bytes. memset gets a size four times too small, so only the first quarter of .bss is cleared. Cast both pointers to uint8_t * (or multiply by 4).",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-concept-isr-prep",
+  "type": "concept",
+  "topic": "embedded",
+  "difficulty": 1,
+  "tags": [
+   "isr",
+   "volatile"
+  ],
+  "from": "Next step · interrupts",
+  "title": "Interrupts on the Uno: 5 rules before lesson 8",
+  "bullets": [
+   "Keep the ISR short. Set a flag or save a value, then return. Do the real work in loop().",
+   "A variable shared with an ISR must be volatile, or the compiler may keep an old copy in a register.",
+   "A 16-bit value is read in two steps on an 8-bit AVR. Turn interrupts off for a moment while you copy it, or you can read half old and half new data.",
+   "delay() does not work inside an ISR, and millis() does not move there. Serial.print can block when its buffer is full.",
+   "Buttons bounce. An interrupt on every edge fires many times, so you still need debounce."
+  ],
+  "origin": "mine"
+ },
+ {
+  "id": "mine-next-isr-flag",
+  "type": "quiz",
+  "topic": "embedded",
+  "difficulty": 2,
+  "tags": [
+   "isr",
+   "volatile"
+  ],
+  "from": "Next step · interrupts",
+  "title": "An ISR sets bool pressed = true; and loop() runs while (!pressed) {}. With -O2 the program hangs forever. Why, and what fixes it?",
+  "options": [
+   "The compiler assumes nothing else changes pressed. Declare it volatile.",
+   "The ISR is too long. Make it shorter.",
+   "pressed needs a pull-up resistor.",
+   "bool is 16-bit on AVR, so the write is lost."
+  ],
+  "answer": 0,
+  "explain": "The loop never writes pressed, so the optimizer reads it once and loops on a register copy. volatile forces a real read each time. For a one-byte flag this is enough. For a multi-byte value you also need atomic access.",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-r-7805-heat",
+  "type": "quiz",
+  "topic": "electronics",
+  "difficulty": 2,
+  "tags": [
+   "ldo-power",
+   "power"
+  ],
+  "from": "Tinkercad · 7805 regulator",
+  "title": "A 7805 gets 9 V from a battery and feeds a 100 mA load at 5 V. How much power turns into heat in the regulator?",
+  "options": [
+   "0.4 W",
+   "0.5 W",
+   "0.9 W",
+   "4 W"
+  ],
+  "answer": 0,
+  "explain": "A linear regulator drops the extra voltage and burns it. P = (Vin - Vout) x I = (9 - 5) x 0.1 = 0.4 W. The load gets 0.5 W. The regulator wastes almost as much as it delivers, so a battery runs out fast.",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-r-input-pullup",
+  "type": "quiz",
+  "topic": "embedded",
+  "difficulty": 1,
+  "tags": [
+   "pull-up",
+   "logic-inversion"
+  ],
+  "from": "Tinkercad lesson 3 · button",
+  "title": "pinMode(2, INPUT_PULLUP). The button connects pin 2 to GND. What does digitalRead(2) return while the button is pressed?",
+  "options": [
+   "LOW",
+   "HIGH",
+   "It floats, so it is random",
+   "LOW only after a debounce delay"
+  ],
+  "answer": 0,
+  "explain": "The internal pull-up (about 20 to 50 kΩ) holds the pin HIGH when the button is open. Pressing it connects the pin to GND, so it reads LOW. The logic is inverted: pressed = LOW.",
+  "origin": "mine"
+ }
+]

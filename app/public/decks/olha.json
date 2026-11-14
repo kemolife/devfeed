@@ -4831,5 +4831,338 @@
     "title": "A link is inside a div. Both have a click handler. The link handler only calls e.preventDefault(). After a click, what happens?",
     "topic": "jquery",
     "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "The first line becomes $headers and is skipped with continue. No other line exists, so $rows stays []. The caller gets an empty list and cannot tell that the file had columns. If the page then writes [] back, the header is lost too.",
+    "id": "fp-csv-header-only",
+    "options": [
+      "An empty list, with no error",
+      "An error: file has no rows",
+      "A list with one row: id => fruit",
+      "An error: column names must be unique"
+    ],
+    "tags": [
+      "csv",
+      "edge-cases"
+    ],
+    "title": "Senior asks: fruits.csv has only the line id,fruit (no data rows). What does read() return?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "decodeJson turns the JSON object into an associative array. write() uses array_values($data), so the keys x and y are thrown away and every value is checked as a row. Each row is an array with the same key id, so it passes. The senior may ask: should an object be rejected with 422?",
+    "id": "fp-csv-write-object-keys",
+    "options": [
+      "It saves a header id and two rows (1 and 2). The keys x and y are dropped",
+      "422: data must be a list",
+      "It saves a header x,y",
+      "500: array_keys fails"
+    ],
+    "tags": [
+      "csv",
+      "validation"
+    ],
+    "title": "Senior asks: POST write for fruits.csv with the body {\"x\": {\"id\": 1}, \"y\": {\"id\": 2}}. What happens?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "The first line is the header, and it is not counted. Line 2 is data row 1, so $rows has 1 item when line 3 comes. The message uses count($rows) + 1 = 2: \"Row 2 has 1 columns, expected 2.\" The user sees a different number than the line in the editor. A line number would be clearer.",
+    "id": "fp-csv-row-number",
+    "options": [
+      "Row 2: it counts data rows, not the header",
+      "Row 3: it is the third line",
+      "Row 1: it is the first bad row",
+      "No error: missing values become null"
+    ],
+    "tags": [
+      "csv",
+      "error-messages"
+    ],
+    "title": "Senior asks: line 1 of a.csv is id,fruit. Line 2 is 1,apple. Line 3 is just 2. Which row number does the error message show?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 3,
+    "explain": "findFileActions uses strtolower, so the extension .CSV is accepted. But the path keeps the original case. Linux file names are case-sensitive, so FRUITS.CSV is a new file (201). The default macOS disk is case-insensitive, so it is the same file (200). This is the same trap as a PSR-4 class path.",
+    "id": "fp-upper-extension",
+    "options": [
+      "Linux: new file, 201. Mac: same file overwritten, 200",
+      "Both: the same file is overwritten, 200",
+      "Both: 415, the extension is not supported",
+      "Linux: 415. Mac: 200"
+    ],
+    "tags": [
+      "filesystem",
+      "composer"
+    ],
+    "title": "Senior asks: storage/ has fruits.csv. A client writes FRUITS.CSV. Linux server: what happens? And on a Mac with the default disk?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "const a = { x: { n: 1 } };\nconst b = { ...a };\nb.x.n = 2;\nconsole.log(a.x.n);",
+    "difficulty": 2,
+    "explain": "The spread copies only the top level. b.x points to the same inner object as a.x, so changing b.x.n changes a.x.n too. For a deep copy use structuredClone(a).",
+    "id": "js-spread-shallow",
+    "lang": "js",
+    "options": [
+      "2",
+      "1",
+      "undefined",
+      "An error"
+    ],
+    "tags": [
+      "objects",
+      "copy-not-ref"
+    ],
+    "title": "What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "2",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "abstract class Shape {\n    abstract public function area(): float;\n}\ntry {\n    new Shape();\n} catch (Error $e) {\n    echo $e->getMessage();\n}",
+    "difficulty": 1,
+    "explain": "An abstract class is only a base. You cannot create an object from it, and PHP throws an Error right at new. You must create a child class that implements area().",
+    "id": "oop-abstract-new",
+    "lang": "php",
+    "options": [
+      "Cannot instantiate abstract class Shape",
+      "Area: 0",
+      "Nothing: the object is created",
+      "Cannot call abstract method area()"
+    ],
+    "tags": [
+      "abstract",
+      "oop-basics"
+    ],
+    "title": "What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "Cannot instantiate abstract class Shape",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "$f = strtoupper(...);\n$names = ['ann', 'bob'];\necho implode(',', array_map($f, $names));",
+    "difficulty": 2,
+    "explain": "strtoupper(...) is the first-class callable syntax from PHP 8.1. It makes a Closure from the function, without a string name. array_map calls it for every item, so you get ANN,BOB.",
+    "id": "php-first-class-callable",
+    "lang": "php",
+    "options": [
+      "ANN,BOB",
+      "ann,bob",
+      "An error: strtoupper(...) is not valid",
+      "ann,bob,strtoupper"
+    ],
+    "tags": [
+      "callables",
+      "php8"
+    ],
+    "title": "PHP 8.1. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "ANN,BOB",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "$list = [\n    ['csv', 'CsvActions'],\n    ['json', 'JsonActions'],\n    ['csv', 'FastCsvActions'],\n];\n$map = [];\nforeach ($list as [$format, $class]) {\n    $map[$format] = $class;\n}\necho count($map), ' ', $map['csv'];",
+    "difficulty": 2,
+    "explain": "Assigning to an existing array key replaces the old value without any warning. The map has 2 entries and the last csv class wins. The first one is silently ignored. Fix: check isset in the loop and throw an exception for a duplicate format.",
+    "id": "fp-duplicate-format",
+    "lang": "php",
+    "options": [
+      "2 FastCsvActions",
+      "2 CsvActions",
+      "3 FastCsvActions",
+      "An error about a duplicate key"
+    ],
+    "tags": [
+      "architecture",
+      "arrays"
+    ],
+    "title": "Senior asks: FileService builds its map in a loop like this. Someone registers a second csv class. What happens? (simplified)",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "2 FastCsvActions",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 3,
+    "explain": "scandir() returns false and gives a warning. In PHP 8, foreach over false is only another warning, not an exception. So the API answers 200 with an empty list, and the real problem is hidden in the logs. Check the folder first and throw a StorageException.",
+    "id": "fp-scandir-missing-folder",
+    "options": [
+      "200 with an empty list, only warnings in the log",
+      "500 with a TypeError",
+      "404 Not Found",
+      "400 with the message from FileServiceException"
+    ],
+    "tags": [
+      "filesystem",
+      "error-handling"
+    ],
+    "title": "Senior asks: someone deletes the storage/ folder on the server. What does action=list return?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "The loop calls getFormat() on the string 'json'. That gives a confusing Error on every request. Check each item in the loop with instanceof FileActionsInterface and throw an InvalidArgumentException that names the wrong item. A PHPDoc @param FileActionsInterface[] helps the IDE too.",
+    "id": "fp-constructor-untyped-array",
+    "options": [
+      "Check instanceof FileActionsInterface in the loop and throw a clear exception",
+      "Put @ before getFormat() to hide the error",
+      "Wrap the constructor in try/catch and ignore the item",
+      "Change the type to array|string"
+    ],
+    "tags": [
+      "architecture",
+      "type-safety"
+    ],
+    "title": "Senior asks: FileService gets array $fileActionsList. Someone passes [new CsvFileActions(), 'json']. How do you make the failure clear?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "$value = trim('0');\necho $value === '' ? 'missing' : 'ok', ' ';\necho empty($value) ? 'missing' : 'ok';",
+    "difficulty": 2,
+    "explain": "empty('0') is true in PHP, so the value '0' would count as missing. With === '' only a really empty string is rejected. Use strict checks when 0 can be a valid input. The same trap exists with if ($value).",
+    "id": "fp-empty-vs-strict-empty-string",
+    "lang": "php",
+    "options": [
+      "The value '0' is treated as missing",
+      "Nothing, it is the same check",
+      "Empty strings are accepted",
+      "It throws a TypeError for strings"
+    ],
+    "tags": [
+      "validation",
+      "request-input"
+    ],
+    "title": "Senior asks: getRequired() checks $value === ''. A PR changes it to empty($value). What breaks?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "ok missing",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "$s = 'Az';\n$s++;\necho $s;",
+    "difficulty": 2,
+    "explain": "PHP can increment a string like a counter. 'Az'++ goes to 'Ba', like 9 to 10 with a carry. This is rare, but it explains odd results when you do ++ on a variable that is a string by mistake.",
+    "id": "php-string-increment",
+    "lang": "php",
+    "options": [
+      "Ba",
+      "Ab",
+      "Az1",
+      "An error"
+    ],
+    "tags": [
+      "type-juggling",
+      "strings"
+    ],
+    "title": "PHP 8. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "Ba",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "class T {\n    public function __construct(private string $n) {}\n    public function __destruct() { echo \"bye {$this->n} \"; }\n}\n$a = new T('a');\n$b = $a;\nunset($a);\necho 'x ';\n$b = null;\necho 'y';",
+    "difficulty": 3,
+    "explain": "$b = $a copies the handle, not the object. unset($a) removes only one handle. The object lives on until the last handle is gone. After $b = null, __destruct runs. So you see x first, then bye a, then y.",
+    "id": "oop-destruct-handle",
+    "lang": "php",
+    "options": [
+      "x bye a y",
+      "bye a x y",
+      "x y bye a",
+      "bye a x"
+    ],
+    "tags": [
+      "objects-vs-arrays",
+      "lifecycle"
+    ],
+    "title": "PHP 8. What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "x bye a y",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "async function f() {\n  return 1;\n}\nconsole.log(f());",
+    "difficulty": 2,
+    "explain": "An async function always returns a Promise, even when it returns a plain value. console.log shows the Promise, not 1. To get the number, use await or .then().",
+    "id": "js-async-returns-promise",
+    "lang": "js",
+    "options": [
+      "Promise { 1 }",
+      "1",
+      "undefined",
+      "Promise { <pending> }"
+    ],
+    "tags": [
+      "async",
+      "promises"
+    ],
+    "title": "What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "Promise { 1 }",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "git rebase --abort stops the rebase and puts the branch back to how it was before you started. Nothing is lost. Do not run reset --hard or delete the branch. You can start the rebase again later.",
+    "id": "git-rebase-abort",
+    "options": [
+      "git rebase --abort",
+      "git reset --hard origin/main",
+      "git commit -am fix and push",
+      "git branch -D my-branch"
+    ],
+    "tags": [
+      "git-history",
+      "rebase"
+    ],
+    "title": "You ran git rebase main and got conflicts in three files. You are lost and want your branch back as before. What do you run?",
+    "topic": "git",
+    "type": "quiz"
   }
 ]

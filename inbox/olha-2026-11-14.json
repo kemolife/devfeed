@@ -1,0 +1,184 @@
+[
+ {
+  "id": "fp-duplicate-format",
+  "type": "quiz",
+  "topic": "project",
+  "lang": "php",
+  "difficulty": 2,
+  "tags": [
+   "architecture",
+   "arrays"
+  ],
+  "title": "Senior asks: FileService builds its map in a loop like this. Someone registers a second csv class. What happens? (simplified)",
+  "code": "$list = [\n    ['csv', 'CsvActions'],\n    ['json', 'JsonActions'],\n    ['csv', 'FastCsvActions'],\n];\n$map = [];\nforeach ($list as [$format, $class]) {\n    $map[$format] = $class;\n}\necho count($map), ' ', $map['csv'];",
+  "options": [
+   "2 FastCsvActions",
+   "2 CsvActions",
+   "3 FastCsvActions",
+   "An error about a duplicate key"
+  ],
+  "answer": 0,
+  "explain": "Assigning to an existing array key replaces the old value without any warning. The map has 2 entries and the last csv class wins. The first one is silently ignored. Fix: check isset in the loop and throw an exception for a duplicate format.",
+  "verify": {
+   "lang": "php",
+   "expect": "2 FastCsvActions"
+  }
+ },
+ {
+  "id": "fp-scandir-missing-folder",
+  "type": "quiz",
+  "topic": "project",
+  "difficulty": 3,
+  "tags": [
+   "filesystem",
+   "error-handling"
+  ],
+  "title": "Senior asks: someone deletes the storage/ folder on the server. What does action=list return?",
+  "options": [
+   "200 with an empty list, only warnings in the log",
+   "500 with a TypeError",
+   "404 Not Found",
+   "400 with the message from FileServiceException"
+  ],
+  "answer": 0,
+  "explain": "scandir() returns false and gives a warning. In PHP 8, foreach over false is only another warning, not an exception. So the API answers 200 with an empty list, and the real problem is hidden in the logs. Check the folder first and throw a StorageException."
+ },
+ {
+  "id": "fp-constructor-untyped-array",
+  "type": "quiz",
+  "topic": "project",
+  "difficulty": 2,
+  "tags": [
+   "architecture",
+   "type-safety"
+  ],
+  "title": "Senior asks: FileService gets array $fileActionsList. Someone passes [new CsvFileActions(), 'json']. How do you make the failure clear?",
+  "options": [
+   "Check instanceof FileActionsInterface in the loop and throw a clear exception",
+   "Put @ before getFormat() to hide the error",
+   "Wrap the constructor in try/catch and ignore the item",
+   "Change the type to array|string"
+  ],
+  "answer": 0,
+  "explain": "The loop calls getFormat() on the string 'json'. That gives a confusing Error on every request. Check each item in the loop with instanceof FileActionsInterface and throw an InvalidArgumentException that names the wrong item. A PHPDoc @param FileActionsInterface[] helps the IDE too."
+ },
+ {
+  "id": "fp-empty-vs-strict-empty-string",
+  "type": "quiz",
+  "topic": "project",
+  "lang": "php",
+  "difficulty": 2,
+  "tags": [
+   "validation",
+   "request-input"
+  ],
+  "title": "Senior asks: getRequired() checks $value === ''. A PR changes it to empty($value). What breaks?",
+  "code": "$value = trim('0');\necho $value === '' ? 'missing' : 'ok', ' ';\necho empty($value) ? 'missing' : 'ok';",
+  "options": [
+   "The value '0' is treated as missing",
+   "Nothing, it is the same check",
+   "Empty strings are accepted",
+   "It throws a TypeError for strings"
+  ],
+  "answer": 0,
+  "explain": "empty('0') is true in PHP, so the value '0' would count as missing. With === '' only a really empty string is rejected. Use strict checks when 0 can be a valid input. The same trap exists with if ($value).",
+  "verify": {
+   "lang": "php",
+   "expect": "ok missing"
+  }
+ },
+ {
+  "id": "php-string-increment",
+  "type": "quiz",
+  "topic": "php",
+  "lang": "php",
+  "difficulty": 2,
+  "tags": [
+   "type-juggling",
+   "strings"
+  ],
+  "title": "PHP 8. What does this print?",
+  "code": "$s = 'Az';\n$s++;\necho $s;",
+  "options": [
+   "Ba",
+   "Ab",
+   "Az1",
+   "An error"
+  ],
+  "answer": 0,
+  "explain": "PHP can increment a string like a counter. 'Az'++ goes to 'Ba', like 9 to 10 with a carry. This is rare, but it explains odd results when you do ++ on a variable that is a string by mistake.",
+  "verify": {
+   "lang": "php",
+   "expect": "Ba"
+  }
+ },
+ {
+  "id": "oop-destruct-handle",
+  "type": "quiz",
+  "topic": "oop",
+  "lang": "php",
+  "difficulty": 3,
+  "tags": [
+   "objects-vs-arrays",
+   "lifecycle"
+  ],
+  "title": "PHP 8. What does this print?",
+  "code": "class T {\n    public function __construct(private string $n) {}\n    public function __destruct() { echo \"bye {$this->n} \"; }\n}\n$a = new T('a');\n$b = $a;\nunset($a);\necho 'x ';\n$b = null;\necho 'y';",
+  "options": [
+   "x bye a y",
+   "bye a x y",
+   "x y bye a",
+   "bye a x"
+  ],
+  "answer": 0,
+  "explain": "$b = $a copies the handle, not the object. unset($a) removes only one handle. The object lives on until the last handle is gone. After $b = null, __destruct runs. So you see x first, then bye a, then y.",
+  "verify": {
+   "lang": "php",
+   "expect": "x bye a y"
+  }
+ },
+ {
+  "id": "js-async-returns-promise",
+  "type": "quiz",
+  "topic": "js",
+  "lang": "js",
+  "difficulty": 2,
+  "tags": [
+   "async",
+   "promises"
+  ],
+  "title": "What does Node print?",
+  "code": "async function f() {\n  return 1;\n}\nconsole.log(f());",
+  "options": [
+   "Promise { 1 }",
+   "1",
+   "undefined",
+   "Promise { <pending> }"
+  ],
+  "answer": 0,
+  "explain": "An async function always returns a Promise, even when it returns a plain value. console.log shows the Promise, not 1. To get the number, use await or .then().",
+  "verify": {
+   "lang": "js",
+   "expect": "Promise { 1 }"
+  }
+ },
+ {
+  "id": "git-rebase-abort",
+  "type": "quiz",
+  "topic": "git",
+  "difficulty": 1,
+  "tags": [
+   "git-history",
+   "rebase"
+  ],
+  "title": "You ran git rebase main and got conflicts in three files. You are lost and want your branch back as before. What do you run?",
+  "options": [
+   "git rebase --abort",
+   "git reset --hard origin/main",
+   "git commit -am fix and push",
+   "git branch -D my-branch"
+  ],
+  "answer": 0,
+  "explain": "git rebase --abort stops the rebase and puts the branch back to how it was before you started. Nothing is lost. Do not run reset --hard or delete the branch. You can start the rebase again later."
+ }
+]

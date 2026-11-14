@@ -1,0 +1,242 @@
+[
+ {
+  "id": "mine-millis-timeout-add",
+  "type": "quiz",
+  "topic": "c",
+  "lang": "c",
+  "difficulty": 2,
+  "tags": [
+   "millis",
+   "unsigned-wrap"
+  ],
+  "from": "Tinkercad lesson 6 · millis wrap",
+  "title": "uint32_t millis near the wrap. Only 100 ms passed. What does this print?",
+  "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint32_t start = 4294967000u;\n    uint32_t now = 4294967100u;\n    if (now > start + 1000)\n        puts(\"timeout\");\n    else\n        puts(\"waiting\");\n}",
+  "options": [
+   "timeout",
+   "waiting",
+   "compile error",
+   "undefined behavior"
+  ],
+  "answer": 0,
+  "explain": "start + 1000 wraps around to 704. Now now (4294967100) is bigger than 704, so it prints timeout after only 100 ms. Compare time with a subtraction: now - start > 1000. It stays right across the wrap.",
+  "verify": {
+   "lang": "c",
+   "expect": "timeout"
+  },
+  "origin": "mine"
+ },
+ {
+  "id": "mine-hysteresis-trace",
+  "type": "quiz",
+  "topic": "c",
+  "lang": "c",
+  "difficulty": 2,
+  "tags": [
+   "hysteresis",
+   "ldr"
+  ],
+  "from": "Tinkercad lesson 5 · LDR + hysteresis",
+  "title": "Night light: on below 300, off above 400. Readings 350, 290, 350, 410, 350. What is printed?",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    int v[] = {350, 290, 350, 410, 350};\n    int on = 0;\n    for (int i = 0; i < 5; i++) {\n        if (v[i] < 300) on = 1;\n        else if (v[i] > 400) on = 0;\n        printf(\"%d\", on);\n    }\n    printf(\"\\n\");\n}",
+  "options": [
+   "01100",
+   "00100",
+   "01000",
+   "11100"
+  ],
+  "answer": 0,
+  "explain": "Between 300 and 400 the state does not change. 350: off. 290: on. 350: stays on. 410: off. 350: stays off. So you get 01100. One threshold would flicker around 350.",
+  "verify": {
+   "lang": "c",
+   "expect": "01100"
+  },
+  "origin": "mine"
+ },
+ {
+  "id": "mine-bsrr-set-reset",
+  "type": "quiz",
+  "topic": "embedded",
+  "lang": "c",
+  "difficulty": 2,
+  "tags": [
+   "registers",
+   "gpio",
+   "bit-manipulation"
+  ],
+  "from": "STM32 driver · GPIO output",
+  "title": "STM32 PA5 (pin 5). You turn the LED on and off with BSRR. What are the two values?",
+  "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint32_t pin = 5;\n    uint32_t set = 1u << pin;\n    uint32_t reset = 1u << (pin + 16);\n    printf(\"0x%08X 0x%08X\\n\", set, reset);\n}",
+  "options": [
+   "0x00000020 and 0x00200000",
+   "0x00000020 and 0x00000000",
+   "0x00200000 and 0x00000020",
+   "0x00000020 and 0xFFFFFFDF"
+  ],
+  "answer": 0,
+  "explain": "BSRR low 16 bits set a pin. High 16 bits reset it. So set is 1 << 5 = 0x20 and reset is 1 << 21 = 0x200000. Writing 0 bits does nothing. This is one write, not read-modify-write, so an ISR cannot break it like it can with ODR.",
+  "verify": {
+   "lang": "c",
+   "expect": "0x00000020 0x00200000"
+  },
+  "origin": "mine"
+ },
+ {
+  "id": "mine-u8-sum-promotion",
+  "type": "quiz",
+  "topic": "c",
+  "lang": "c",
+  "difficulty": 2,
+  "tags": [
+   "integer-promotion",
+   "integer-overflow"
+  ],
+  "from": "Register mask review · uint8_t math",
+  "title": "a = 200, b = 100, both uint8_t. What does this print?",
+  "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint8_t a = 200, b = 100;\n    uint8_t s = a + b;\n    printf(\"%d %d\\n\", (a + b) > 255, s);\n}",
+  "options": [
+   "1 44",
+   "0 44",
+   "1 300",
+   "0 300"
+  ],
+  "answer": 0,
+  "explain": "In a + b both values are promoted to int, so the sum is 300 and 300 > 255 is true (1). Storing it back into a uint8_t keeps only 8 bits: 300 - 256 = 44. The wrap happens at the store, not in the addition.",
+  "verify": {
+   "lang": "c",
+   "expect": "1 44"
+  },
+  "origin": "mine"
+ },
+ {
+  "id": "mine-parallel-three-330",
+  "type": "quiz",
+  "topic": "electronics",
+  "difficulty": 1,
+  "tags": [
+   "ohms-law",
+   "parallel"
+  ],
+  "from": "Tinkercad · series/parallel resistors",
+  "title": "Three 330 Ω resistors in parallel. What does the multimeter show (power off)?",
+  "options": [
+   "110 Ω",
+   "990 Ω",
+   "330 Ω",
+   "220 Ω"
+  ],
+  "answer": 0,
+  "explain": "In parallel, 1/R = 1/330 + 1/330 + 1/330 = 3/330. So R = 330 / 3 = 110 Ω. Equal resistors in parallel: divide by the count. The total is always smaller than the smallest one.",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-divider-battery-current",
+  "type": "quiz",
+  "topic": "electronics",
+  "difficulty": 2,
+  "tags": [
+   "voltage-divider",
+   "ohms-law",
+   "battery"
+  ],
+  "from": "Tinkercad · voltage divider practice",
+  "title": "Your 9 V divider: R1 = 10 kΩ, R2 = 4.7 kΩ, nothing connected to the output. How much current flows from the battery?",
+  "options": [
+   "about 0.6 mA",
+   "about 6 mA",
+   "about 0.9 mA",
+   "about 61 mA"
+  ],
+  "answer": 0,
+  "explain": "The two resistors are in series: 10 k + 4.7 k = 14.7 kΩ. I = 9 V / 14700 Ω = 0.61 mA. A divider always burns this current. Bigger resistors waste less, but then a load or the ADC input changes the output more.",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-pwm-average-voltage",
+  "type": "quiz",
+  "topic": "electronics",
+  "difficulty": 2,
+  "tags": [
+   "pwm",
+   "multimeter"
+  ],
+  "from": "Tinkercad lesson 4 · PWM + multimeter",
+  "title": "analogWrite(9, 191) on a 5 V Uno. A multimeter in DC volts is on pin 9. What does it show?",
+  "options": [
+   "about 3.7 V",
+   "5 V",
+   "about 1.3 V",
+   "about 2.5 V"
+  ],
+  "answer": 0,
+  "explain": "191 / 255 is about 75% duty. The pin is HIGH (5 V) for 75% of the time, LOW for 25%. The multimeter is slow and shows the average: 0.75 * 5 V = about 3.7 V.",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-bug-delay-in-state",
+  "type": "bug",
+  "topic": "embedded",
+  "lang": "c",
+  "difficulty": 2,
+  "tags": [
+   "state-machine",
+   "blocking-delay"
+  ],
+  "from": "Next step · state machines",
+  "title": "The LED lights for 2 s after a press. During that time button presses are ignored. Tap the bug.",
+  "code": "enum { IDLE, PRESSED } state = IDLE;\n\nvoid loop() {\n  switch (state) {\n  case IDLE:\n    if (digitalRead(2) == LOW)\n      state = PRESSED;\n    break;\n  case PRESSED:\n    digitalWrite(13, HIGH);\n    delay(2000);\n    digitalWrite(13, LOW);\n    state = IDLE;\n    break;\n  }\n}",
+  "bugLines": [
+   11
+  ],
+  "fix": "case PRESSED:\n  digitalWrite(13, HIGH);\n  t0 = millis();\n  state = LED_ON;\n  break;\ncase LED_ON:\n  // no delay: loop() keeps running\n  if (millis() - t0 >= 2000) {\n    digitalWrite(13, LOW);\n    state = IDLE;\n  }\n  break;",
+  "explain": "delay(2000) blocks the whole loop(), so nothing else runs for 2 s. Add a LED_ON state, remember the start time with millis(), and check the time on every pass.",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-isr-reset-loses-events",
+  "type": "quiz",
+  "topic": "embedded",
+  "lang": "c",
+  "difficulty": 3,
+  "tags": [
+   "isr",
+   "volatile",
+   "rmw-race"
+  ],
+  "from": "Next step · interrupts",
+  "title": "ISR does events++. loop() runs process() when events >= 10, then sets events = 0. What can go wrong?",
+  "code": "volatile uint8_t events;\n\nISR(INT0_vect) {\n    events++;\n}\n\nvoid loop() {\n    if (events >= 10) {\n        process();\n        events = 0;\n    }\n}",
+  "options": [
+   "Events that arrive during process() are lost",
+   "Nothing: volatile makes it safe",
+   "The ISR cannot write a volatile variable",
+   "The compiler removes the if"
+  ],
+  "answer": 0,
+  "explain": "volatile only stops the compiler from caching the value. It does not make the code atomic. An event that arrives during process() is thrown away by events = 0. Also, on an 8-bit AVR, events -= 10 in loop() is a read-modify-write that the ISR can interrupt. Copy and subtract with interrupts off.",
+  "origin": "mine"
+ },
+ {
+  "id": "mine-static-local-bss",
+  "type": "quiz",
+  "topic": "embedded",
+  "lang": "c",
+  "difficulty": 2,
+  "tags": [
+   "boot",
+   "memory-layout"
+  ],
+  "from": "Boot · Reset_Handler",
+  "title": "static int n; inside a function. First call does return ++n. Your Reset_Handler clears .bss. Where is n and what is returned?",
+  "code": "int calls(void) {\n    static int n;\n    return ++n;\n}",
+  "options": [
+   "In .bss, returns 1",
+   "On the stack, returns 1",
+   "In .data, returns a random value",
+   "In flash, the program fails"
+  ],
+  "answer": 0,
+  "explain": "A static variable without an initial value goes to .bss. Your Reset_Handler zeroes .bss before main(), so the first call returns 1. If you skip the .bss clear, n starts with random RAM content.",
+  "origin": "mine"
+ }
+]

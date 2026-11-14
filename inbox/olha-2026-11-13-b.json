@@ -1,0 +1,20 @@
+[
+ {
+  "id": "git-cherry-pick-basic",
+  "type": "quiz",
+  "topic": "git",
+  "difficulty": 2,
+  "tags": [
+   "git-basics"
+  ],
+  "title": "A fix is committed on branch feature-a. You need only that one commit on main. Which command, run on main, does it?",
+  "options": [
+   "git cherry-pick <hash>",
+   "git merge feature-a --squash-all",
+   "git checkout feature-a -- .",
+   "git rebase main <hash>"
+  ],
+  "answer": 0,
+  "explain": "git cherry-pick copies one commit onto the current branch as a new commit with a new hash. Merge would bring the whole branch. The other commands do not do this: checkout with a path only copies files, and rebase moves a branch."
+ }
+]

@@ -1,0 +1,45 @@
+[
+ {
+  "id": "php-first-class-callable",
+  "type": "quiz",
+  "topic": "php",
+  "lang": "php",
+  "difficulty": 2,
+  "tags": [
+   "callables",
+   "php8"
+  ],
+  "title": "PHP 8.1. What does this print?",
+  "code": "$f = strtoupper(...);\n$names = ['ann', 'bob'];\necho implode(',', array_map($f, $names));",
+  "options": [
+   "ANN,BOB",
+   "ann,bob",
+   "An error: strtoupper(...) is not valid",
+   "ann,bob,strtoupper"
+  ],
+  "answer": 0,
+  "explain": "strtoupper(...) is the first-class callable syntax from PHP 8.1. It makes a Closure from the function, without a string name. array_map calls it for every item, so you get ANN,BOB.",
+  "verify": {
+   "lang": "php",
+   "expect": "ANN,BOB"
+  }
+ },
+ {
+  "id": "git-stash-untracked",
+  "type": "quiz",
+  "topic": "git",
+  "difficulty": 2,
+  "tags": [
+   "git-basics"
+  ],
+  "title": "You changed app.php and created a new file notes.php (never added). You run git stash. What happens to notes.php?",
+  "options": [
+   "It stays in your folder, because stash ignores untracked files by default",
+   "It is stashed together with app.php",
+   "It is deleted",
+   "git stash fails with an error"
+  ],
+  "answer": 0,
+  "explain": "By default git stash saves only changes to tracked files. A new untracked file stays where it is. Use git stash -u (--include-untracked) to stash it too. Remember that git stash does not touch ignored files unless you add -a."
+ }
+]
