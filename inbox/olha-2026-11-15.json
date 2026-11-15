@@ -1,0 +1,167 @@
+[
+ {
+  "id": "fp-getpath-second-basename",
+  "type": "quiz",
+  "topic": "project",
+  "difficulty": 1,
+  "tags": [
+   "path-traversal",
+   "security"
+  ],
+  "title": "Senior asks: the controller uses basename(), and FileService::getPath() calls basename() again. Remove the second one?",
+  "options": [
+   "Yes. Calling it twice does nothing.",
+   "No. FileService must not trust its caller. Any other caller still cannot leave storage/.",
+   "No. PHP needs basename() before file_exists().",
+   "Yes. basename() is slow."
+  ],
+  "answer": 1,
+  "explain": "FileService is a public class. Today only the controller calls it, but tomorrow a CLI command or a test can too. Each layer that touches the file system protects itself (defense in depth). basename() is cheap. Removing it is a small saving and a possible path traversal."
+ },
+ {
+  "id": "fp-exception-previous",
+  "type": "quiz",
+  "topic": "project",
+  "difficulty": 1,
+  "tags": [
+   "exceptions",
+   "error-handling"
+  ],
+  "title": "Senior asks: readFile() catches InvalidFileContentException and throws a new one with $e as the third argument. Why?",
+  "options": [
+   "PHP requires it when you rethrow.",
+   "The old exception stays as getPrevious(). The user sees a clean message and the log keeps the real reason.",
+   "It changes the HTTP status code.",
+   "It makes the message shorter."
+  ],
+  "answer": 1,
+  "explain": "The third argument is the previous exception. It keeps the original file, line and trace. The new message adds the file name for the user. If you throw a new exception without $e, the first cause is lost for debugging."
+ },
+ {
+  "id": "fp-composer-test-script",
+  "type": "quiz",
+  "topic": "project",
+  "difficulty": 1,
+  "tags": [
+   "composer",
+   "tooling"
+  ],
+  "title": "Senior asks: composer.json has the script \"test\": \"phpunit tests\". Why not just write vendor/bin/phpunit tests in the README?",
+  "options": [
+   "Composer scripts run faster than phpunit.",
+   "One short command for everyone and for CI. Composer puts vendor/bin in PATH, and you can change the command later without changing the docs.",
+   "phpunit cannot run without Composer.",
+   "It is required for autoload."
+  ],
+  "answer": 1,
+  "explain": "composer test is short, the same on every machine, and easy to reuse in CI. Composer adds vendor/bin to PATH while it runs the script. If you add a flag or a config file later, only composer.json changes."
+ },
+ {
+  "id": "fp-pr-drop-second-basename",
+  "type": "pr",
+  "topic": "project",
+  "difficulty": 2,
+  "tags": [
+   "path-traversal",
+   "review-checklist"
+  ],
+  "lang": "php",
+  "pr": {
+   "author": "colleague",
+   "title": "Remove duplicate basename() in getPath()",
+   "body": "The controller already calls basename(). Doing it again in the service is a duplicate. Removed it.",
+   "verdict": "changes"
+  },
+  "diff": " private function getPath(string $fileName): string\n {\n-    return $this->storagePath . '/' . basename($fileName);\n+    return $this->storagePath . '/' . $fileName;\n }",
+  "explain": "The service is public. A caller that skips the controller can send ../../.env and read or delete files outside storage/. A duplicate check at the file system boundary is on purpose. Do not merge. Keep basename() and add a test for a name with ../.",
+  "fix": "private function getPath(string $fileName): string\n{\n    // Keep: this class must not trust its caller.\n    return $this->storagePath . '/' . basename($fileName);\n}"
+ },
+ {
+  "id": "php-static-local-counter",
+  "type": "quiz",
+  "topic": "php",
+  "difficulty": 1,
+  "tags": [
+   "static",
+   "functions"
+  ],
+  "title": "PHP 8. What does this print?",
+  "lang": "php",
+  "code": "function counter(): int {\n    static $n = 0;\n    return ++$n;\n}\necho counter(), counter(), counter();",
+  "options": [
+   "111",
+   "123",
+   "012",
+   "Error"
+  ],
+  "answer": 1,
+  "explain": "A static local variable is set once and keeps its value between calls. The first call sets $n = 0 and returns 1. The next calls return 2 and 3. Without static you would get 111.",
+  "verify": {
+   "lang": "php",
+   "expect": "123"
+  }
+ },
+ {
+  "id": "js-parsefloat-vs-number",
+  "type": "quiz",
+  "topic": "js",
+  "difficulty": 1,
+  "tags": [
+   "type-coercion",
+   "parsing"
+  ],
+  "title": "What does Node print?",
+  "lang": "js",
+  "code": "console.log(\n  parseFloat('3.14abc'),\n  Number('3.14abc'),\n  Number('')\n);",
+  "options": [
+   "3.14 NaN 0",
+   "3.14 3.14 0",
+   "NaN NaN 0",
+   "3.14 NaN NaN"
+  ],
+  "answer": 0,
+  "explain": "parseFloat reads from the left and stops at the first bad character: 3.14. Number() needs the whole string to be a number, so 'abc' at the end gives NaN. Number('') is 0, a known trap for empty form fields.",
+  "verify": {
+   "lang": "js",
+   "expect": "3.14 NaN 0"
+  }
+ },
+ {
+  "id": "sf-doctrine-no-flush",
+  "type": "quiz",
+  "topic": "symfony",
+  "difficulty": 1,
+  "tags": [
+   "doctrine",
+   "persistence"
+  ],
+  "title": "A Symfony controller does $em->persist($product); and returns a response. It never calls $em->flush(). What is in the database?",
+  "options": [
+   "The new product, saved at persist().",
+   "Nothing. persist() only tells Doctrine to track the object. flush() writes it.",
+   "The product, saved when the response is sent.",
+   "An error is thrown."
+  ],
+  "answer": 1,
+  "explain": "persist() marks the object as managed. The SQL INSERT runs at flush(). Without flush() no row is written and there is no error, so the bug is silent. One flush() after several persist() calls also runs them in one transaction."
+ },
+ {
+  "id": "git-cherry-pick-one",
+  "type": "quiz",
+  "topic": "git",
+  "difficulty": 1,
+  "tags": [
+   "git-basics",
+   "git-history"
+  ],
+  "title": "A bug fix is a single commit on branch fix-login. You need only that commit on release, not the whole branch. What do you run on release?",
+  "options": [
+   "git merge fix-login",
+   "git cherry-pick <commit>",
+   "git reset --hard fix-login",
+   "git stash pop"
+  ],
+  "answer": 1,
+  "explain": "git cherry-pick <commit> copies one commit on top of the current branch. It creates a new commit with the same change and a new hash. Merge would bring all commits of fix-login."
+ }
+]

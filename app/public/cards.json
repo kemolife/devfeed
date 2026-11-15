@@ -6558,5 +6558,249 @@
     "title": "static int n; inside a function. First call does return ++n. Your Reset_Handler clears .bss. Where is n and what is returned?",
     "topic": "embedded",
     "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint8_t i = 2;\n    int n = 0;\n    while (i >= 0 && n < 5) {\n        i--;\n        n++;\n    }\n    printf(\"%u %d\", i, n);\n}",
+    "difficulty": 1,
+    "explain": "An unsigned value is never below 0, so i >= 0 is always true. i-- at 0 wraps to 255. After 5 steps from 2 you get 253. Only n < 5 stopped the loop. Use a signed counter, or write the loop so it ends at 0 by itself.",
+    "from": "Tinkercad lesson 6 · review",
+    "id": "mine-u8-countdown-wrap",
+    "lang": "c",
+    "options": [
+      "253 5",
+      "-3 5",
+      "0 3",
+      "Undefined behavior"
+    ],
+    "origin": "mine",
+    "tags": [
+      "loop-counter",
+      "unsigned-wrap"
+    ],
+    "title": "uint8_t counter, i >= 0. The loop stops after 5 rounds. What does this print?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "253 5",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 1,
+    "explain": "A CMOS input has no defined level when it is open. It floats and picks up noise, so the gate can switch all the time. This wastes current and adds noise to your supply. Tie unused inputs to GND or VCC (a gate is cheap, a noisy board is not).",
+    "from": "Tinkercad · 74HC00 NAND",
+    "id": "mine-74hc00-floating-inputs",
+    "options": [
+      "Nothing. Open inputs read as LOW.",
+      "The open inputs pick up noise. The unused gates can switch fast, use extra current and disturb the supply.",
+      "The chip burns at once.",
+      "The unused outputs stay HIGH."
+    ],
+    "origin": "mine",
+    "tags": [
+      "logic-levels",
+      "pull-up"
+    ],
+    "title": "You use 2 of the 4 NAND gates in your 74HC00. The inputs of the 2 unused gates are not connected. What can happen?",
+    "topic": "electronics",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint32_t overflows = 1000;\n    // 256 ticks * 64 / 16 MHz = us\n    uint32_t us = overflows * 256 * 64 / 16;\n    printf(\"%lu ms\", (unsigned long)(us / 1000));\n}",
+    "difficulty": 1,
+    "explain": "One overflow is 256 ticks of 4 us = 1.024 ms, not 1 ms. 1000 overflows are 1024 ms. millis() hides this: it adds 1 ms per overflow and a small extra correction, so it stays close to real time. Know where an 'almost 1 ms' tick comes from.",
+    "from": "Tinkercad lesson 8 · timers",
+    "id": "mine-timer0-overflow-time",
+    "lang": "c",
+    "options": [
+      "1000 ms",
+      "1024 ms",
+      "1016 ms",
+      "1280 ms"
+    ],
+    "origin": "mine",
+    "tags": [
+      "timers",
+      "accuracy"
+    ],
+    "title": "Uno Timer0: 8-bit, prescaler 64, 16 MHz. It overflows 1000 times. How much real time passed? What does this print?",
+    "topic": "embedded",
+    "type": "quiz",
+    "verify": {
+      "expect": "1024 ms",
+      "lang": "c"
+    }
+  },
+  {
+    "bugLines": [
+      5
+    ],
+    "code": "volatile bool pressed = false;\n\nvoid onPress() {\n  pressed = true;\n  Serial.println(\"press\");\n}\n\nvoid setup() {\n  Serial.begin(9600);\n  attachInterrupt(0, onPress, FALLING);\n}",
+    "difficulty": 2,
+    "explain": "At 9600 baud one character takes about 1 ms. println of 'press' blocks the ISR for about 7 ms, and the timer interrupt (millis) is held back. Bounce calls the ISR many times. Keep the ISR to a flag. Print from loop().",
+    "fix": "void onPress() {\n  pressed = true;   // only set the flag\n}\n\nvoid loop() {\n  if (pressed) {\n    pressed = false;\n    Serial.println(\"press\");\n  }\n}",
+    "from": "Tinkercad lesson 8 · interrupts",
+    "id": "mine-bug-isr-serial-print",
+    "lang": "cpp",
+    "origin": "mine",
+    "tags": [
+      "blocking-in-isr",
+      "isr"
+    ],
+    "title": "The button ISR prints a message. With contact bounce the board gets slow and millis() runs late. Tap the bug.",
+    "topic": "embedded",
+    "type": "bug"
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n#include <stdint.h>\n\nstatic void write_pr(uint32_t *pr, uint32_t v) {\n    *pr &= ~v;   // hardware: writing 1 clears\n}\n\nint main(void) {\n    uint32_t a = 0x28, b = 0x28;\n    write_pr(&a, a | (1u << 5));  // PR |= 1<<5\n    write_pr(&b, 1u << 5);        // PR  = 1<<5\n    printf(\"0x%X 0x%X\", a, b);\n}",
+    "difficulty": 2,
+    "explain": "With |= the CPU reads 0x28, ORs bit 5 and writes back 0x28. Every 1 clears a flag, so pin 3 is lost too. Write only the bit you want: EXTI->PR = (1 << 5). Never use |= on a write-1-to-clear register.",
+    "from": "STM32 driver · EXTI",
+    "id": "mine-exti-pr-write-one",
+    "lang": "c",
+    "options": [
+      "0x0 0x8",
+      "0x8 0x8",
+      "0x0 0x0",
+      "0x28 0x8"
+    ],
+    "origin": "mine",
+    "tags": [
+      "w1c-flag",
+      "rmw-race"
+    ],
+    "title": "EXTI->PR is write-1-to-clear. Pins 3 and 5 are pending (0x28). You clear pin 5 in two ways. We simulate the register. What does this print?",
+    "topic": "embedded",
+    "type": "quiz",
+    "verify": {
+      "expect": "0x0 0x8",
+      "lang": "c"
+    }
+  },
+  {
+    "bullets": [
+      "Input cap (about 0.33 uF) close to the IN pin: long wires to the battery add inductance and the regulator can oscillate.",
+      "Output cap (about 0.1 uF) close to the OUT pin: it helps when the load current jumps. Check the values in the datasheet.",
+      "Vin must be about 2 V above 5 V (so 7 V or more), and the heat is (Vin - 5 V) x I. 9 V and 100 mA = 0.4 W.",
+      "Short leads, same GND point. A cap far from the pin does much less."
+    ],
+    "difficulty": 1,
+    "from": "Tinkercad · 7805 regulator",
+    "id": "mine-concept-7805-caps",
+    "origin": "mine",
+    "tags": [
+      "decoupling",
+      "ldo-power"
+    ],
+    "title": "7805 with capacitors: 4 rules",
+    "topic": "electronics",
+    "type": "concept"
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n\nint main(void) {\n    int pin[] = {1, 0, 0, 1};  // idle, press, hold, release\n    int change = 0, falling = 0;\n    for (int i = 1; i < 4; i++) {\n        if (pin[i] != pin[i-1]) change++;\n        if (pin[i-1] == 1 && pin[i] == 0) falling++;\n    }\n    printf(\"%d %d\", change, falling);\n}",
+    "difficulty": 1,
+    "explain": "CHANGE fires on every edge: press (1 to 0) and release (0 to 1) are 2 calls. FALLING fires only on 1 to 0: 1 call. For 'count presses' use FALLING with INPUT_PULLUP. Real buttons also bounce, so add debounce.",
+    "from": "Tinkercad lesson 8 · interrupts",
+    "id": "mine-attach-change-vs-falling",
+    "lang": "c",
+    "options": [
+      "2 1",
+      "1 1",
+      "2 2",
+      "1 2"
+    ],
+    "origin": "mine",
+    "tags": [
+      "isr",
+      "edge-detection"
+    ],
+    "title": "Button with INPUT_PULLUP, no bounce. One press, hold, release. How many ISR calls with mode CHANGE and with mode FALLING? What does this print?",
+    "topic": "embedded",
+    "type": "quiz",
+    "verify": {
+      "expect": "2 1",
+      "lang": "c"
+    }
+  },
+  {
+    "diff": "-volatile uint8_t pulses;\n+volatile uint16_t pulses;\n \n void onPulse() { pulses++; }\n \n void loop() {\n-  report(pulses);\n+  uint16_t n = pulses;\n+  report(n);\n }",
+    "difficulty": 2,
+    "explain": "Widening is right, but on the 8-bit Uno a 16-bit read is two loads. The ISR can run between them and give a torn value (0x00FF then 0x0100 can read 0x01FF). A local copy does not help. Copy it with interrupts off.",
+    "fix": "volatile uint16_t pulses;\n\nvoid onPulse() { pulses++; }\n\nvoid loop() {\n  noInterrupts();\n  uint16_t n = pulses;   // atomic copy\n  interrupts();\n  report(n);\n}",
+    "from": "Tinkercad lesson 8 · interrupts",
+    "id": "mine-pr-pulses-u16-torn",
+    "lang": "cpp",
+    "origin": "mine",
+    "pr": {
+      "author": "junior-dev",
+      "body": "The counter wrapped at 255. Now it is 16-bit. I copy it to a local first, so it is safe.",
+      "title": "Count more than 255 pulses",
+      "verdict": "changes"
+    },
+    "tags": [
+      "torn-read",
+      "atomicity"
+    ],
+    "topic": "embedded",
+    "type": "pr"
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint16_t a = 450;\n    uint32_t b = 450;\n    int ta = (a - 500) / 10;\n    unsigned tb = (b - 500) / 10;\n    printf(\"%d %u\", ta, tb);\n}",
+    "difficulty": 2,
+    "explain": "uint16_t is promoted to int, so 450 - 500 = -50 and the result is -5. uint32_t stays unsigned: 450 - 500 wraps to 4294967246, divided by 10 is 429496724. On the Uno use a signed type (long) for mV math that can go below an offset.",
+    "from": "Tinkercad lesson 6 · TMP36",
+    "id": "mine-tmp36-below-zero-u32",
+    "lang": "c",
+    "options": [
+      "-5 429496724",
+      "-5 -5",
+      "429496724 -5",
+      "-5 0"
+    ],
+    "origin": "mine",
+    "tags": [
+      "signed-unsigned",
+      "integer-promotion"
+    ],
+    "title": "TMP36: 500 mV = 0 C, 10 mV per C. mV is 450. One variable is uint16_t, one is uint32_t. What does this print?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "-5 429496724",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n\nint main(void) {\n    long vout = 5000L * 2000 / (1000 + 2000);\n    printf(\"%ld\", vout);\n}",
+    "difficulty": 1,
+    "explain": "Vout = 5000 x 2000 / (1000 + 2000) = 3333 mV. A divider only shifts down, one way, and it is slow with a big load or cable capacitance. For 3.3 V to 5 V you need a level shifter or a gate. Use long for the product on the Uno.",
+    "from": "Tinkercad · voltage divider",
+    "id": "mine-divider-5v-to-3v3",
+    "lang": "c",
+    "options": [
+      "3333",
+      "2500",
+      "1667",
+      "3300"
+    ],
+    "origin": "mine",
+    "tags": [
+      "level-shifting",
+      "voltage-divider"
+    ],
+    "title": "Uno 5 V signal to a 3.3 V input. Divider: R1 = 1 k on top, R2 = 2 k to GND. What does this print (mV)?",
+    "topic": "electronics",
+    "type": "quiz",
+    "verify": {
+      "expect": "3333",
+      "lang": "c"
+    }
   }
 ]
