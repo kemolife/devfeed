@@ -1,0 +1,137 @@
+[
+ {
+  "id": "fp-getrequired-trim",
+  "type": "quiz",
+  "topic": "project",
+  "difficulty": 1,
+  "tags": ["request-input", "validation"],
+  "title": "Senior asks: getRequired() trims the value, then getFileName() uses basename(). A client sends file=\" fruits.csv \" (spaces around). What does this code print?",
+  "lang": "php",
+  "code": "$raw = ' fruits.csv ';\n$name = basename(trim($raw));\necho '[' . $name . '] ';\necho '[' . basename($raw) . ']';",
+  "options": [
+    "[fruits.csv] [ fruits.csv ]",
+    "[ fruits.csv ] [ fruits.csv ]",
+    "[fruits.csv] [fruits.csv]",
+    "[fruits.csv] []"
+  ],
+  "answer": 0,
+  "explain": "trim() removes the spaces, so the controller finds fruits.csv even when the client sends extra spaces. basename() alone keeps them. This is friendly, but it means two different inputs point to the same file. Decide on purpose: trim and accept, or reject the bad input with 422.",
+  "verify": { "lang": "php", "expect": "[fruits.csv] [ fruits.csv ]" }
+ },
+ {
+  "id": "fp-csv-key-order",
+  "type": "quiz",
+  "topic": "project",
+  "difficulty": 2,
+  "tags": ["csv", "array-keys"],
+  "title": "Senior asks: write sends 2 rows. Row 2 has its keys in another order. The code takes the header from row 1 and reads each row by key. What does this print?",
+  "lang": "php",
+  "code": "$rows = [\n  ['id' => 1, 'fruit' => 'apple'],\n  ['fruit' => 'pear', 'id' => 2],\n];\n$h = array_keys($rows[0]);\nforeach ($rows as $r) {\n  echo implode(',', array_map(fn($k) => $r[$k], $h)), ';';\n}",
+  "options": [
+    "1,apple;2,pear;",
+    "1,apple;pear,2;",
+    "id,fruit;1,apple;",
+    "1,apple;"
+  ],
+  "answer": 0,
+  "explain": "Reading each row by the header keys keeps every value under the right column, whatever the key order in the JSON. array_values($r) would give pear,2 and silently swap the columns. Keys must still be the same set: a missing key gives a warning and a wrong CSV, so check this first.",
+  "verify": { "lang": "php", "expect": "1,apple;2,pear;" }
+ },
+ {
+  "id": "fp-read-without-lock",
+  "type": "quiz",
+  "topic": "project",
+  "difficulty": 3,
+  "tags": ["race-condition", "filesystem"],
+  "title": "Senior asks: saveContent() uses file_put_contents(..., LOCK_EX), but readContent() uses file_get_contents() with no lock. Can a reader see a half-written file?",
+  "options": [
+    "No. LOCK_EX blocks every other reader.",
+    "Yes. The lock is advisory. A reader that does not ask for a lock can read an empty or partial file.",
+    "No. PHP writes the whole file in one atomic step.",
+    "Yes, but only on Windows."
+  ],
+  "answer": 1,
+  "explain": "flock locks only work between processes that use them. file_put_contents opens the file and cuts it to zero length before it writes, so a reader without a lock can see an empty file or half of the data. Fix: write to a temp file in the same folder, then rename() it. rename() on the same disk is atomic."
+ },
+ {
+  "id": "fp-filename-value-object",
+  "type": "quiz",
+  "topic": "project",
+  "difficulty": 2,
+  "tags": ["value-object", "architecture"],
+  "title": "Senior asks: basename() and extension checks are repeated in 3 places. You add a readonly class FileName whose constructor cleans and checks the name. What is the main gain?",
+  "options": [
+    "The code runs faster.",
+    "A FileName object is always valid. Other code cannot get a bad name by mistake.",
+    "You no longer need tests.",
+    "PHP checks the file name automatically."
+  ],
+  "answer": 1,
+  "explain": "Validate once at the border, then pass a type that is already valid (parse, do not validate again and again). FileService::read(FileName $name) cannot get ../x by mistake, and the rules live in one class that is easy to test. Speed is the same. You still need tests, now for one place."
+ },
+ {
+  "id": "php-match-unhandled",
+  "type": "quiz",
+  "topic": "php",
+  "difficulty": 2,
+  "tags": ["match", "exceptions"],
+  "title": "PHP 8. A match without default and no arm for the value. What does this print?",
+  "lang": "php",
+  "code": "try {\n  echo match (5) {\n    1 => 'a',\n    2 => 'b',\n  };\n} catch (\\UnhandledMatchError $e) {\n  echo get_class($e);\n}",
+  "options": [
+    "UnhandledMatchError",
+    "Nothing, match returns null",
+    "A warning, then an empty line",
+    "TypeError"
+  ],
+  "answer": 0,
+  "explain": "Unlike switch, match must be exhaustive. If no arm fits and there is no default, PHP throws UnhandledMatchError. This is good: a forgotten case fails loudly. In a controller, map this error to a clear 4xx or 500, or add an explicit default.",
+  "verify": { "lang": "php", "expect": "UnhandledMatchError" }
+ },
+ {
+  "id": "js-map-parseint",
+  "type": "quiz",
+  "topic": "js",
+  "difficulty": 2,
+  "tags": ["callbacks", "type-coercion"],
+  "title": "What does Node print?",
+  "lang": "js",
+  "code": "const out = ['1', '2', '3'].map(parseInt);\nconsole.log(out.join());",
+  "options": ["1,NaN,NaN", "1,2,3", "1,2,NaN", "NaN,NaN,NaN"],
+  "answer": 0,
+  "explain": "map() calls the function with (value, index, array). parseInt takes (string, radix), so the index becomes the radix. parseInt('2', 1) is NaN (radix 1 is not valid) and parseInt('3', 2) is NaN (3 is not a binary digit). Write map(s => parseInt(s, 10)) or map(Number).",
+  "verify": { "lang": "js", "expect": "1,NaN,NaN" }
+ },
+ {
+  "id": "git-reflog-recover",
+  "type": "quiz",
+  "topic": "git",
+  "difficulty": 2,
+  "tags": ["git-history", "git-safety"],
+  "title": "You ran git reset --hard HEAD~2 and lost 2 local commits. Nothing was pushed. How do you get them back?",
+  "options": [
+    "They are gone for good.",
+    "git reflog shows the old HEAD positions. Then git reset --hard <old-hash>.",
+    "git revert HEAD~2",
+    "git pull from origin brings them back."
+  ],
+  "answer": 1,
+  "explain": "Git does not delete commits at once. git reflog lists where HEAD pointed before, for example HEAD@{1}. Run git reset --hard HEAD@{1} (or the hash) and the commits are back. This works for some weeks, until git cleans up. Uncommitted work lost by reset --hard is the part you cannot recover."
+ },
+ {
+  "id": "composer-lock-commit",
+  "type": "quiz",
+  "topic": "composer",
+  "difficulty": 1,
+  "tags": ["composer-lock", "git-basics"],
+  "title": "Your project is an application (not a library). Should composer.lock be committed to git?",
+  "options": [
+    "No. It is a generated file, like vendor/.",
+    "Yes. Everyone then installs the exact same versions with composer install.",
+    "Only on the production server.",
+    "Yes, but only after composer update --no-dev."
+  ],
+  "answer": 1,
+  "explain": "composer.lock stores the exact version of every package. With it, composer install gives the same code on your laptop, in CI and on the server. Without it, each install may take newer versions and break only in one place. Commit composer.lock for applications. Do not commit vendor/."
+ }
+]

@@ -5329,5 +5329,181 @@
     "title": "A bug fix is a single commit on branch fix-login. You need only that commit on release, not the whole branch. What do you run on release?",
     "topic": "git",
     "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "$raw = ' fruits.csv ';\n$name = basename(trim($raw));\necho '[' . $name . '] ';\necho '[' . basename($raw) . ']';",
+    "difficulty": 1,
+    "explain": "trim() removes the spaces, so the controller finds fruits.csv even when the client sends extra spaces. basename() alone keeps them. This is friendly, but it means two different inputs point to the same file. Decide on purpose: trim and accept, or reject the bad input with 422.",
+    "id": "fp-getrequired-trim",
+    "lang": "php",
+    "options": [
+      "[fruits.csv] [ fruits.csv ]",
+      "[ fruits.csv ] [ fruits.csv ]",
+      "[fruits.csv] [fruits.csv]",
+      "[fruits.csv] []"
+    ],
+    "tags": [
+      "request-input",
+      "validation"
+    ],
+    "title": "Senior asks: getRequired() trims the value, then getFileName() uses basename(). A client sends file=\" fruits.csv \" (spaces around). What does this code print?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "[fruits.csv] [ fruits.csv ]",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 3,
+    "explain": "flock locks only work between processes that use them. file_put_contents opens the file and cuts it to zero length before it writes, so a reader without a lock can see an empty file or half of the data. Fix: write to a temp file in the same folder, then rename() it. rename() on the same disk is atomic.",
+    "id": "fp-read-without-lock",
+    "options": [
+      "No. LOCK_EX blocks every other reader.",
+      "Yes. The lock is advisory. A reader that does not ask for a lock can read an empty or partial file.",
+      "No. PHP writes the whole file in one atomic step.",
+      "Yes, but only on Windows."
+    ],
+    "tags": [
+      "race-condition",
+      "filesystem"
+    ],
+    "title": "Senior asks: saveContent() uses file_put_contents(..., LOCK_EX), but readContent() uses file_get_contents() with no lock. Can a reader see a half-written file?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "Validate once at the border, then pass a type that is already valid (parse, do not validate again and again). FileService::read(FileName $name) cannot get ../x by mistake, and the rules live in one class that is easy to test. Speed is the same. You still need tests, now for one place.",
+    "id": "fp-filename-value-object",
+    "options": [
+      "The code runs faster.",
+      "A FileName object is always valid. Other code cannot get a bad name by mistake.",
+      "You no longer need tests.",
+      "PHP checks the file name automatically."
+    ],
+    "tags": [
+      "value-object",
+      "architecture"
+    ],
+    "title": "Senior asks: basename() and extension checks are repeated in 3 places. You add a readonly class FileName whose constructor cleans and checks the name. What is the main gain?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "try {\n  echo match (5) {\n    1 => 'a',\n    2 => 'b',\n  };\n} catch (\\UnhandledMatchError $e) {\n  echo get_class($e);\n}",
+    "difficulty": 2,
+    "explain": "Unlike switch, match must be exhaustive. If no arm fits and there is no default, PHP throws UnhandledMatchError. This is good: a forgotten case fails loudly. In a controller, map this error to a clear 4xx or 500, or add an explicit default.",
+    "id": "php-match-unhandled",
+    "lang": "php",
+    "options": [
+      "UnhandledMatchError",
+      "Nothing, match returns null",
+      "A warning, then an empty line",
+      "TypeError"
+    ],
+    "tags": [
+      "match",
+      "exceptions"
+    ],
+    "title": "PHP 8. A match without default and no arm for the value. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "UnhandledMatchError",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 2,
+    "explain": "Git does not delete commits at once. git reflog lists where HEAD pointed before, for example HEAD@{1}. Run git reset --hard HEAD@{1} (or the hash) and the commits are back. This works for some weeks, until git cleans up. Uncommitted work lost by reset --hard is the part you cannot recover.",
+    "id": "git-reflog-recover",
+    "options": [
+      "They are gone for good.",
+      "git reflog shows the old HEAD positions. Then git reset --hard <old-hash>.",
+      "git revert HEAD~2",
+      "git pull from origin brings them back."
+    ],
+    "tags": [
+      "git-history",
+      "git-safety"
+    ],
+    "title": "You ran git reset --hard HEAD~2 and lost 2 local commits. Nothing was pushed. How do you get them back?",
+    "topic": "git",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "$line = 'id;fruit';\n$cols = str_getcsv($line);\necho count($cols), ' ', $cols[0];",
+    "difficulty": 2,
+    "explain": "The default delimiter is a comma. The line has no comma, so it is one single column named id;fruit. The next check (column count or unique headers) then fails in a confusing way. Good fix: a clear 422 message such as 'CSV must use commas', or detect the delimiter on purpose.",
+    "id": "fp-csv-semicolon-excel",
+    "lang": "php",
+    "options": [
+      "1 id;fruit",
+      "2 id",
+      "2 id;fruit",
+      "0 "
+    ],
+    "tags": [
+      "csv",
+      "data-types"
+    ],
+    "title": "Senior asks: a user with a German Excel saves fruits.csv with semicolons: id;fruit. The reader splits on commas. What does this print?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "1 id;fruit",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "The caret allows changes that do not touch the left-most non-zero part. For ^1.2.3 that is <2.0.0. For ^0.3.1 the left-most non-zero part is the 3, so the limit is <0.4.0. Versions 0.x are seen as unstable: a minor step can break things, so the caret is tighter there.",
+    "id": "composer-caret-zero",
+    "options": [
+      ">=0.3.1 and <0.4.0",
+      ">=0.3.1 and <1.0.0",
+      ">=0.3.1 and <0.3.2",
+      "Any version from 0.3.1"
+    ],
+    "tags": [
+      "version-constraints",
+      "composer"
+    ],
+    "title": "composer.json has \"vendor/tool\": \"^0.3.1\". Which versions can composer update install?",
+    "topic": "composer",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "const user = {\n  name: 'Ola',\n  hi() { return typeof this.name; },\n};\nconst f = user.hi;\nconsole.log(user.hi(), f.call({ name: 5 }));",
+    "difficulty": 2,
+    "explain": "this is set by how a function is called, not where it is written. user.hi() uses user as this, so this.name is 'Ola'. f.call({ name: 5 }) sets this by hand, so this.name is 5. A method taken out of its object loses its this unless you bind it or use call/apply.",
+    "id": "js-this-in-timeout",
+    "lang": "js",
+    "options": [
+      "string number",
+      "string string",
+      "string undefined",
+      "undefined number"
+    ],
+    "tags": [
+      "this-binding",
+      "async"
+    ],
+    "title": "What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "string number",
+      "lang": "js"
+    }
   }
 ]

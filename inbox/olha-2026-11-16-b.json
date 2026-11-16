@@ -1,0 +1,46 @@
+[
+ {
+  "id": "fp-csv-semicolon-excel",
+  "type": "quiz",
+  "topic": "project",
+  "difficulty": 2,
+  "tags": ["csv", "data-types"],
+  "title": "Senior asks: a user with a German Excel saves fruits.csv with semicolons: id;fruit. The reader splits on commas. What does this print?",
+  "lang": "php",
+  "code": "$line = 'id;fruit';\n$cols = str_getcsv($line);\necho count($cols), ' ', $cols[0];",
+  "options": ["1 id;fruit", "2 id", "2 id;fruit", "0 "],
+  "answer": 0,
+  "explain": "The default delimiter is a comma. The line has no comma, so it is one single column named id;fruit. The next check (column count or unique headers) then fails in a confusing way. Good fix: a clear 422 message such as 'CSV must use commas', or detect the delimiter on purpose.",
+  "verify": { "lang": "php", "expect": "1 id;fruit" }
+ },
+ {
+  "id": "composer-caret-zero",
+  "type": "quiz",
+  "topic": "composer",
+  "difficulty": 2,
+  "tags": ["version-constraints", "composer"],
+  "title": "composer.json has \"vendor/tool\": \"^0.3.1\". Which versions can composer update install?",
+  "options": [
+    ">=0.3.1 and <0.4.0",
+    ">=0.3.1 and <1.0.0",
+    ">=0.3.1 and <0.3.2",
+    "Any version from 0.3.1"
+  ],
+  "answer": 0,
+  "explain": "The caret allows changes that do not touch the left-most non-zero part. For ^1.2.3 that is <2.0.0. For ^0.3.1 the left-most non-zero part is the 3, so the limit is <0.4.0. Versions 0.x are seen as unstable: a minor step can break things, so the caret is tighter there."
+ },
+ {
+  "id": "js-this-in-timeout",
+  "type": "quiz",
+  "topic": "js",
+  "difficulty": 2,
+  "tags": ["this-binding", "async"],
+  "title": "What does Node print?",
+  "lang": "js",
+  "code": "const user = {\n  name: 'Ola',\n  hi() { return typeof this.name; },\n};\nconst f = user.hi;\nconsole.log(user.hi(), f.call({ name: 5 }));",
+  "options": ["string number", "string string", "string undefined", "undefined number"],
+  "answer": 0,
+  "explain": "this is set by how a function is called, not where it is written. user.hi() uses user as this, so this.name is 'Ola'. f.call({ name: 5 }) sets this by hand, so this.name is 5. A method taken out of its object loses its this unless you bind it or use call/apply.",
+  "verify": { "lang": "js", "expect": "string number" }
+ }
+]
