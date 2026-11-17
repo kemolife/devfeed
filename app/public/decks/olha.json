@@ -5505,5 +5505,193 @@
       "expect": "string number",
       "lang": "js"
     }
+  },
+  {
+    "answer": 1,
+    "code": "echo json_encode(['x' => 0.1 + 0.2]);",
+    "difficulty": 1,
+    "explain": "json_encode() writes the exact float. In PHP, 0.1 + 0.2 is 0.30000000000000004 (binary floats). Your API stores what it gets, so it is fine for a file tool. For money, use integers (cents) or strings, not floats.",
+    "id": "fp-json-float-precision",
+    "lang": "php",
+    "options": [
+      "{\"x\":0.3}",
+      "{\"x\":0.30000000000000004}",
+      "{\"x\":\"0.3\"}",
+      "JsonException is thrown"
+    ],
+    "tags": [
+      "json",
+      "data-types"
+    ],
+    "title": "Senior asks: a user saves a price 0.1 + 0.2 in a JSON file with write(). What is stored?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "{\"x\":0.30000000000000004}",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "console.log(['10', '9', '2'].sort().join(','));",
+    "difficulty": 1,
+    "explain": "CSV values are strings. sort() without a compare function sorts as text, so '10' comes before '2'. Fix: convert before sorting, for example sort((a, b) => a - b), which converts the strings to numbers.",
+    "id": "fp-csv-sort-strings",
+    "lang": "js",
+    "options": [
+      "2,9,10",
+      "10,2,9",
+      "2,10,9",
+      "9,10,2"
+    ],
+    "tags": [
+      "csv",
+      "data-types"
+    ],
+    "title": "CsvFileActions::read() gives all values as strings. The jQuery page sorts the ids. What does Node print?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "10,2,9",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "echo \"[\" . basename('..') . \"] [\" . basename('a/..') . \"] [\" . basename('/') . \"]\";",
+    "difficulty": 1,
+    "explain": "basename('..') returns .. and basename('a/..') is '..' too. basename('/') is ''. It cuts the folder part, but it does not remove the name '..'. The path storage/.. is a directory, so is_file() is false and the user gets 404. Safe here, but check is_file() and the extension.",
+    "id": "fp-basename-dots",
+    "lang": "php",
+    "options": [
+      "[..] [..] []",
+      "[] [a] []",
+      "[..] [a] [/]",
+      "[] [] []"
+    ],
+    "tags": [
+      "path-traversal",
+      "filesystem"
+    ],
+    "title": "Senior asks: your getFileName() uses basename(). What do these calls return?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "[..] [..] []",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 3,
+    "explain": "LOCK_EX stops two writes at the same moment, so the file is never half-written. It does not stop a lost update: each client sends the full file, and the last write wins. Fix ideas: ETag with If-Match (answer 412 if changed), or a version field in the data.",
+    "id": "fp-lost-update",
+    "options": [
+      "Both edits are merged",
+      "Ben's write replaces Anna's edit, no error",
+      "The second write fails with 409",
+      "The file is corrupted"
+    ],
+    "tags": [
+      "concurrency",
+      "filesystem"
+    ],
+    "title": "Senior asks: write() uses LOCK_EX. Anna and Ben both read fruits.csv, both edit, both write back. What is the result?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "echo empty('0') ? 'empty' : 'not', ' ';\necho empty('0.0') ? 'empty' : 'not';",
+    "difficulty": 1,
+    "explain": "empty() is true for '0' (the string zero), but not for '0.0'. Only '' and '0' are falsy strings. Never use empty() to check an input that can be 0. Use $x === '' or $x === null.",
+    "id": "php-empty-zero-string",
+    "lang": "php",
+    "options": [
+      "empty not",
+      "empty empty",
+      "not not",
+      "not empty"
+    ],
+    "tags": [
+      "falsy-zero",
+      "loose-compare"
+    ],
+    "title": "PHP 8. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "empty not",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "console.log([1, 2].map(async x => x * 2));",
+    "difficulty": 2,
+    "explain": "An async function always returns a Promise, even for a plain value. map() puts the promises in the array, it does not wait. To get the numbers, use await Promise.all(items.map(async ...)). A common bug in AI code.",
+    "id": "js-map-async",
+    "lang": "js",
+    "options": [
+      "[ 2, 4 ]",
+      "[ Promise { 2 }, Promise { 4 } ]",
+      "[ Promise { <pending> } ]",
+      "undefined"
+    ],
+    "tags": [
+      "async",
+      "ai-code-review"
+    ],
+    "title": "AI wrote items.map(async x => x * 2). What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "[ Promise { 2 }, Promise { 4 } ]",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "final class Cart {\n    public function __construct(\n        public readonly array $items\n    ) {}\n    public function add(int $x): void {\n        $this->items[] = $x;\n    }\n}\ntry {\n    (new Cart([]))->add(1);\n} catch (Error $e) {\n    echo $e->getMessage();\n}",
+    "difficulty": 2,
+    "explain": "readonly means the property can be set only once, inside the class. $this->items[] = $x changes the array inside it, so PHP throws an Error. Fix: return a new object with the new array (a 'with' method): new self([...$this->items, $x]).",
+    "id": "oop-readonly-array-add",
+    "lang": "php",
+    "options": [
+      "Cannot indirectly modify readonly property Cart::$items",
+      "Nothing, the item is added",
+      "Array to string conversion",
+      "Cannot modify readonly property Cart::$items"
+    ],
+    "tags": [
+      "readonly",
+      "objects-vs-arrays"
+    ],
+    "title": "PHP 8.2. A readonly array property and an add() method. What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "Cannot indirectly modify readonly property Cart::$items",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "difficulty": 1,
+    "explain": "install uses composer.lock, so production gets the same versions as your tests. --no-dev skips PHPUnit and other tools, so the server is smaller and safer. --optimize-autoloader makes the class loading faster. update would change versions on the server.",
+    "id": "composer-no-dev-deploy",
+    "options": [
+      "composer update",
+      "composer install --no-dev --optimize-autoloader",
+      "composer require --dev",
+      "composer dump-autoload only"
+    ],
+    "tags": [
+      "composer-commands",
+      "require-dev"
+    ],
+    "title": "You deploy a Symfony app to the production server. Which command installs the packages?",
+    "topic": "composer",
+    "type": "quiz"
   }
 ]

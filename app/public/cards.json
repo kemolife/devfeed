@@ -7040,5 +7040,233 @@
     "title": "8 segments x 3 mA = 24 mA would flow out through one Arduino pin (recommended limit 20 mA). You want the same brightness. What is the fix?",
     "topic": "electronics",
     "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n\nint main(void) {\n    long value = 1000;\n    long mv = value / 1023 * 5000;\n    printf(\"%ld\\n\", mv);\n}",
+    "difficulty": 1,
+    "explain": "value / 1023 is integer division: 1000 / 1023 = 0. Then 0 * 5000 = 0. Multiply first, then divide: value * 5000L / 1023 = 4887. Rule: in fixed-point math, keep the divide as the last step.",
+    "from": "Tinkercad lesson 6 · TMP36 math",
+    "id": "mine-sr-order-of-ops",
+    "lang": "c",
+    "options": [
+      "0",
+      "4887",
+      "4888",
+      "5000"
+    ],
+    "origin": "mine",
+    "tags": [
+      "integer-division",
+      "truncation"
+    ],
+    "title": "Same ADC idea, wrong order of operations. value = 1000. What does this print?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "0",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "The resistor sees 3.3 V - 2 V = 1.3 V. I = U / R = 1.3 / 330 = 3.9 mA. The LED is dimmer than on 5 V (9 mA with 330 Ω). The LED voltage drop does not change much, so a lower supply gives much less current.",
+    "from": "Tinkercad lesson 1 · LED + resistor",
+    "id": "mine-sr-led-3v3",
+    "options": [
+      "About 3.9 mA",
+      "About 6 mA",
+      "About 10 mA",
+      "About 15 mA"
+    ],
+    "origin": "mine",
+    "tags": [
+      "ohms-law",
+      "led"
+    ],
+    "title": "Your first LED circuit, but on a 3.3 V pin. Red LED drops about 2 V, resistor is 330 Ω. What is the current?",
+    "topic": "electronics",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint32_t now = 5;\n    uint32_t deadline = 0xFFFFFFF0u;\n    printf(\"%d \", (int32_t)(now - deadline) >= 0);\n    printf(\"%d\\n\", now >= deadline);\n}",
+    "difficulty": 2,
+    "explain": "Naive now >= deadline is 0: 5 is smaller than 0xFFFFFFF0, but the deadline is already passed in real time. now - deadline wraps to 21. Cast to int32_t gives +21, so >= 0 is true (1). The signed difference works when the times are less than about 24 days apart.",
+    "from": "Tinkercad lesson 6 · millis() wrap",
+    "id": "mine-sr-signed-diff",
+    "lang": "c",
+    "options": [
+      "1 0",
+      "0 1",
+      "1 1",
+      "0 0"
+    ],
+    "origin": "mine",
+    "tags": [
+      "millis",
+      "unsigned-wrap"
+    ],
+    "title": "A deadline set just before the wrap. now = 5, deadline = 0xFFFFFFF0. What does this print (naive, then signed difference)?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "1 0",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n#include <stdint.h>\n#define N 4\n\nstatic uint8_t head, tail;\n\nstatic int push(void) {\n    uint8_t next = (head + 1) & (N - 1);\n    if (next == tail) return 0;\n    head = next;\n    return 1;\n}\n\nint main(void) {\n    int ok = 0;\n    for (int i = 0; i < 6; i++) ok += push();\n    printf(\"%d\\n\", ok);\n}",
+    "difficulty": 2,
+    "explain": "The buffer keeps one slot empty. Otherwise head == tail would mean both empty and full. So size N stores N - 1 bytes. The mask (head + 1) & (N - 1) wraps the index without a division. Only the ISR writes head and only loop() writes tail, so no lock is needed.",
+    "from": "Next step · interrupts, ring buffer",
+    "id": "mine-sr-ring-capacity",
+    "lang": "c",
+    "options": [
+      "3",
+      "4",
+      "5",
+      "6"
+    ],
+    "origin": "mine",
+    "tags": [
+      "isr",
+      "off-by-one"
+    ],
+    "title": "Ring buffer, size 4, power of two. Full when next(head) == tail. 6 bytes arrive and nobody reads. How many are stored?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "3",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "The Servo library takes Timer1 on the Uno to make its pulses. Pins 9 and 10 get their PWM from Timer1, so analogWrite() stops working there, even if no servo is on them. The servo pin itself can be any pin. Plan your PWM LEDs on 3, 5, 6 or 11.",
+    "from": "Next step · lesson 7 servo",
+    "id": "mine-sr-servo-lib-pins",
+    "options": [
+      "Pins 9 and 10",
+      "Pins 5 and 6",
+      "Pins 3 and 11",
+      "None, only pin 5 is used"
+    ],
+    "origin": "mine",
+    "tags": [
+      "pwm",
+      "timers"
+    ],
+    "title": "Uno. You add the Servo library and attach a servo on pin 5. Which pins lose analogWrite() now?",
+    "topic": "embedded",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "The pin is at 0 V, so the resistor has 5 V across it. I = 5 / 10000 = 0.5 mA. This is small but it is wasted as long as the button is held. On a battery device use a bigger pull-up, for example 100 kΩ, or the internal pull-up.",
+    "from": "Tinkercad lesson 3 · button",
+    "id": "mine-sr-pullup-current",
+    "options": [
+      "0.5 mA",
+      "5 mA",
+      "50 mA",
+      "0 mA"
+    ],
+    "origin": "mine",
+    "tags": [
+      "pull-up",
+      "ohms-law"
+    ],
+    "title": "Button with an external 10 kΩ pull-up to 5 V. The button is pressed and connects the pin to GND. What current flows through the resistor?",
+    "topic": "electronics",
+    "type": "quiz"
+  },
+  {
+    "bugLines": [
+      7
+    ],
+    "code": "bool last = HIGH;\n\nvoid loop() {\n  bool now = digitalRead(BTN);\n  if (last == HIGH && now == LOW) {\n    count++;\n    last = now;\n  }\n}",
+    "difficulty": 2,
+    "explain": "last is updated only inside the if. After the first press last stays LOW. On release the code does not store HIGH, so last == HIGH is never true again. Update last on every loop run, after the check, outside the if.",
+    "fix": "bool last = HIGH;\n\nvoid loop() {\n  bool now = digitalRead(BTN);\n  if (last == HIGH && now == LOW) {\n    count++;\n  }\n  last = now;   // every loop, not only on an edge\n}",
+    "from": "Tinkercad lesson 3 · edge detection",
+    "id": "mine-sr-bug-last-in-if",
+    "lang": "cpp",
+    "origin": "mine",
+    "tags": [
+      "edge-detection",
+      "state-machine"
+    ],
+    "title": "The counter counts the first press only. Later presses do nothing. Tap the bug.",
+    "topic": "c",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      9,
+      11
+    ],
+    "code": "void TIM2_IRQHandler(void) {\n    TIM2->SR = 0;\n    GPIOA->ODR ^= (1u << 6);\n}\n\nint main(void) {\n    init();\n    for (;;) {\n        GPIOA->ODR |= (1u << 5);\n        wait_ms(10);\n        GPIOA->ODR &= ~(1u << 5);\n        wait_ms(10);\n    }\n}",
+    "difficulty": 2,
+    "explain": "ODR |= is read, modify, write. If TIM2 fires between the read and the write, main writes back the old PA6 value and the toggle is lost. The ISR itself is fine. In main use BSRR: GPIOA->BSRR = 1u << 5 to set and 1u << (5 + 16) to reset. One write, no race.",
+    "fix": "GPIOA->BSRR = (1u << 5);         // set PA5\nwait_ms(10);\nGPIOA->BSRR = (1u << (5 + 16));  // reset PA5\nwait_ms(10);",
+    "from": "STM32 driver · GPIO output",
+    "id": "mine-sr-bug-odr-rmw-main",
+    "lang": "c",
+    "origin": "mine",
+    "tags": [
+      "rmw-race",
+      "isr"
+    ],
+    "title": "Sometimes the LED on PA6 flips by itself, or the PA5 write is lost. Tap the risky line.",
+    "topic": "embedded",
+    "type": "bug"
+  },
+  {
+    "diff": "-  if (millis() - last_ms >= 500) {\n-    last_ms = millis();\n+  if (millis() >= last_ms + 500) {\n+    last_ms = millis();\n     toggle_led();\n   }",
+    "difficulty": 2,
+    "explain": "last_ms + 500 wraps near the end of the 32-bit range. Then millis() >= small number is true at once, and the LED blinks like crazy for a moment. Or it is false for 49 days. Keep the subtraction: unsigned math gives the right elapsed time over a wrap. Also read millis() once.",
+    "fix": "static uint32_t last_ms;\n\nvoid loop() {\n  uint32_t now = millis();\n  if (now - last_ms >= 500) {   // wrap-safe\n    last_ms = now;\n    toggle_led();\n  }\n}",
+    "from": "Tinkercad lesson 6 · millis() wrap",
+    "id": "mine-sr-pr-millis-plus",
+    "lang": "cpp",
+    "origin": "mine",
+    "pr": {
+      "author": "junior-dev",
+      "body": "The subtraction was hard to read. This version says what we mean.",
+      "title": "Simplify the blink timer",
+      "verdict": "changes"
+    },
+    "tags": [
+      "millis",
+      "unsigned-wrap"
+    ],
+    "topic": "c",
+    "type": "pr"
+  },
+  {
+    "bullets": [
+      "Flag (volatile bool): one event is enough. A second press before loop() runs is lost. Clear it in loop().",
+      "Counter (volatile uint8_t): count events. Reset with interrupts off, or you lose events (read, then zero is a race).",
+      "Ring buffer: every event with data (bytes, timestamps) matters. ISR writes head, loop() writes tail.",
+      "Wider than the CPU word (uint16_t/uint32_t on the Uno)? Copy it with interrupts off.",
+      "Always: short ISR, no Serial.print, no delay()."
+    ],
+    "difficulty": 2,
+    "from": "Next step · interrupts",
+    "id": "mine-sr-concept-isr-to-loop",
+    "origin": "mine",
+    "tags": [
+      "isr",
+      "volatile",
+      "atomicity"
+    ],
+    "title": "ISR to loop(): flag, counter or queue?",
+    "topic": "embedded",
+    "type": "concept"
   }
 ]
