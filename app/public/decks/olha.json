@@ -5693,5 +5693,198 @@
     "title": "You deploy a Symfony app to the production server. Which command installs the packages?",
     "topic": "composer",
     "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "code": "$d = sys_get_temp_dir() . '/fp_' . uniqid();\nmkdir($d);\necho json_encode(scandir($d));\nrmdir($d);",
+    "difficulty": 1,
+    "explain": "scandir() also returns the entries . and .. . They are folders, so is_file() is false for them and the filter removes them. Without the filter, your API would list two fake files.",
+    "id": "fp-scandir-dots",
+    "lang": "php",
+    "options": [
+      "[]",
+      "[\".\", \"..\"]",
+      "[\".\"]",
+      "false"
+    ],
+    "tags": [
+      "filesystem",
+      "validation"
+    ],
+    "title": "Senior asks: listFiles() uses scandir() and then is_file(). What does scandir() return for an empty folder?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "[\".\",\"..\"]",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "echo json_encode(json_decode('{\"id\":12345678901234567890}', true));",
+    "difficulty": 3,
+    "explain": "The number is bigger than PHP_INT_MAX, so json_decode() makes a float and the last digits are lost. After a round trip you get a float in scientific notation. Fix ideas: JSON_BIGINT_AS_STRING, or send big ids as strings.",
+    "id": "fp-json-big-int",
+    "lang": "php",
+    "options": [
+      "{\"id\":12345678901234567890}",
+      "{\"id\":1.2345678901234567e+19}",
+      "{\"id\":\"12345678901234567890\"}",
+      "JsonException is thrown"
+    ],
+    "tags": [
+      "json",
+      "data-types"
+    ],
+    "title": "Senior asks: a client writes the id 12345678901234567890 to a JSON file. read() decodes it, write() encodes it again. What is in the file?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "{\"id\":1.2345678901234567e+19}",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "json_decode('', true);\necho json_last_error_msg();",
+    "difficulty": 2,
+    "explain": "An empty string is not valid JSON. json_decode() returns null and the error is Syntax error. Your decodeJson() turns this into the answer Invalid JSON. A good message would also say the file is empty.",
+    "id": "fp-empty-json-file",
+    "lang": "php",
+    "options": [
+      "No error",
+      "Syntax error",
+      "Empty file",
+      "Control character error"
+    ],
+    "tags": [
+      "json",
+      "error-messages"
+    ],
+    "title": "Senior asks: a.json exists but is empty (0 bytes). read() calls json_decode(). What does json_last_error_msg() say?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "Syntax error",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "class P {\n    public function __construct(public int $x) {}\n}\n$a = new P(1);\n$b = new P(1);\n$c = $a;\necho json_encode([$a == $b, $a === $b, $a === $c]);",
+    "difficulty": 2,
+    "explain": "== compares the class and all property values, so $a == $b is true. === asks if it is the same object. $a and $b are two objects, so false. $c is a second name for $a, so true.",
+    "id": "oop-equal-vs-identical",
+    "lang": "php",
+    "options": [
+      "[true,false,true]",
+      "[true,true,true]",
+      "[false,false,true]",
+      "[false,false,false]"
+    ],
+    "tags": [
+      "objects-vs-arrays",
+      "oop-basics"
+    ],
+    "title": "PHP 8. What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "[true,false,true]",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "First make the branch feature at the current commit, so the commit has a name. Then move main back with reset --hard. If you reset first, the commit is only in the reflog. Never force-push main for this.",
+    "id": "git-commit-on-wrong-branch",
+    "options": [
+      "git branch feature, then git reset --hard origin/main",
+      "git reset --hard origin/main, then git branch feature",
+      "git revert HEAD, then git checkout -b feature",
+      "git push --force origin main"
+    ],
+    "tags": [
+      "git-history",
+      "git-basics"
+    ],
+    "title": "You committed on main by mistake. Nothing is pushed. You want the commit on a new branch feature, and main back to origin/main. What do you run?",
+    "topic": "git",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "code": "echo json_encode(json_decode('{\"a\":1,\"a\":2}', true));",
+    "difficulty": 2,
+    "explain": "PHP does not reject duplicate keys. The last value wins, and the first one is lost without any error. JSON itself does not forbid it. If it matters, check the raw text or tell the client that keys must be unique.",
+    "id": "fp-json-duplicate-keys",
+    "lang": "php",
+    "options": [
+      "{\"a\":1}",
+      "{\"a\":2}",
+      "{\"a\":[1,2]}",
+      "JsonException is thrown"
+    ],
+    "tags": [
+      "json",
+      "data-types"
+    ],
+    "title": "Senior asks: a client sends the JSON {\"a\":1,\"a\":2} to write(). What do you get after json_decode()?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "{\"a\":2}",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "$row = ['note' => null];\necho json_encode([isset($row['note']), array_key_exists('note', $row)]);",
+    "difficulty": 2,
+    "explain": "isset() is false for null, even if the key exists. array_key_exists() only checks the key. Use it when null is a real value, for example a CSV cell that is empty on purpose.",
+    "id": "php-isset-vs-key-exists",
+    "lang": "php",
+    "options": [
+      "[true,true]",
+      "[false,true]",
+      "[true,false]",
+      "[false,false]"
+    ],
+    "tags": [
+      "null-coalescing",
+      "arrays"
+    ],
+    "title": "PHP 8. The key exists, but the value is null. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "[false,true]",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "const o = {\n  n: 'a',\n  g() { return this.n; }\n};\nconsole.log(o.g(), (0, o.g)());",
+    "difficulty": 2,
+    "explain": "o.g() has o before the dot, so this is o. (0, o.g)() is a plain function call, so this is the global object, which has no n. Same bug as a method passed as a callback: use an arrow function or bind().",
+    "id": "js-method-lost-this",
+    "lang": "js",
+    "options": [
+      "a a",
+      "a undefined",
+      "undefined undefined",
+      "TypeError"
+    ],
+    "tags": [
+      "this-binding"
+    ],
+    "title": "What does Node print (a normal .js file, no strict mode)?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "a undefined",
+      "lang": "js"
+    }
   }
 ]

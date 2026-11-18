@@ -1,0 +1,242 @@
+[
+ {
+  "id": "mine-r2-common-anode",
+  "type": "quiz",
+  "topic": "embedded",
+  "tags": [
+   "bit-manipulation",
+   "gpio"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 9 · 7-segment",
+  "title": "Your 7-segment is common anode (segment ON = pin LOW). Pattern for digit 1 on a common cathode is 0x06. What do you send now?",
+  "lang": "c",
+  "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint8_t cathode = 0x06;\n    uint8_t anode = (uint8_t)(~cathode) & 0x7F;\n    printf(\"0x%02X\", anode);\n}",
+  "options": [
+   "0x06",
+   "0x79",
+   "0xF9",
+   "0x7F"
+  ],
+  "answer": 1,
+  "explain": "A common anode needs the inverted pattern. ~0x06 is 0xF9, and bit 7 (the dp or unused bit) must be masked with 0x7F, so you send 0x79. The cast back to uint8_t avoids the int promotion trap.",
+  "verify": {
+   "lang": "c",
+   "expect": "0x79"
+  }
+ },
+ {
+  "id": "mine-r2-led-resistor-power",
+  "type": "quiz",
+  "topic": "electronics",
+  "tags": [
+   "ohms-law",
+   "power-rating"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad · LED + resistor",
+  "title": "5 V, red LED drops 2 V, 220 ohm resistor. How much power does the resistor burn?",
+  "lang": "c",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    double i = (5.0 - 2.0) / 220.0;\n    printf(\"%.0f mW\", i * i * 220.0 * 1000.0);\n}",
+  "options": [
+   "41 mW",
+   "68 mW",
+   "3 mW",
+   "410 mW"
+  ],
+  "answer": 0,
+  "explain": "Current is (5 - 2) / 220 = 13.6 mA. Power in the resistor is I squared times R, about 41 mW. 68 mW is the whole supply power (5 V times 13.6 mA), not the resistor. A 0.25 W resistor is fine.",
+  "verify": {
+   "lang": "c",
+   "expect": "41 mW"
+  }
+ },
+ {
+  "id": "mine-r2-stack-first-push",
+  "type": "quiz",
+  "topic": "embedded",
+  "tags": [
+   "boot",
+   "memory-layout"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Boot to main() · vector table",
+  "title": "Cortex-M reset. Word 0 of the vector table is _estack = 0x20020000 (end of RAM). The first push happens. Where is the value stored?",
+  "options": [
+   "At 0x20020000",
+   "At 0x2001FFFC",
+   "At 0x20000000",
+   "At 0x20020004"
+  ],
+  "answer": 1,
+  "explain": "The stack is full descending. PUSH first lowers SP by 4, then writes. So the first word lands at 0x2001FFFC. The address 0x20020000 is just after RAM, so nothing is ever written there."
+ },
+ {
+  "id": "mine-r2-afr-index",
+  "type": "quiz",
+  "topic": "embedded",
+  "tags": [
+   "registers",
+   "bit-manipulation"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "STM32 driver · GPIO_Init",
+  "title": "STM32 alternate function for PA9. Which AFR register and which bit shift do you use?",
+  "lang": "c",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    int pin = 9;\n    printf(\"AFR[%d], shift %d\", pin / 8, (pin % 8) * 4);\n}",
+  "options": [
+   "AFR[0], shift 36",
+   "AFR[1], shift 4",
+   "AFR[1], shift 2",
+   "AFR[0], shift 18"
+  ],
+  "answer": 1,
+  "explain": "Each pin has 4 bits. AFR[0] (AFRL) holds pins 0 to 7, AFR[1] (AFRH) holds pins 8 to 15. For pin 9: index 9 / 8 = 1, shift (9 % 8) * 4 = 4. Clear the 4 bits first, then set the value.",
+  "verify": {
+   "lang": "c",
+   "expect": "AFR[1], shift 4"
+  }
+ },
+ {
+  "id": "mine-r2-constexpr-reinterpret",
+  "type": "quiz",
+  "topic": "cpp",
+  "tags": [
+   "constexpr",
+   "reinterpret-cast"
+  ],
+  "difficulty": 3,
+  "origin": "mine",
+  "from": "RP2350 bare metal · at<Regs>()",
+  "title": "RP2350 bare metal. You write constexpr auto& sio = *reinterpret_cast<SioRegs*>(0xD0000000); What happens?",
+  "options": [
+   "It works and the compiler folds the address",
+   "Compile error: reinterpret_cast is not allowed in a constant expression",
+   "It compiles, but crashes at run time",
+   "It works only with -O2"
+  ],
+  "answer": 1,
+  "explain": "A constant expression cannot contain reinterpret_cast, because the compiler cannot treat an integer as an object at compile time. That is why your at<Regs>() helper is a normal inline function, not constexpr. At -O2 it still becomes one load or store."
+ },
+ {
+  "id": "mine-r2-nvic-priority-number",
+  "type": "quiz",
+  "topic": "embedded",
+  "tags": [
+   "isr",
+   "latency"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Interrupts · next lesson",
+  "title": "Cortex-M. The TIM ISR (NVIC priority 5) is running. The UART interrupt (priority 2) fires. What happens?",
+  "options": [
+   "UART waits until the TIM ISR returns",
+   "UART preempts the TIM ISR",
+   "Both run at the same time",
+   "The CPU goes to HardFault"
+  ],
+  "answer": 1,
+  "explain": "A lower number means a higher priority. Priority 2 beats priority 5, so UART preempts TIM and TIM continues afterwards. The reverse case (UART running, TIM fires) makes TIM wait. This is the opposite of what many expect."
+ },
+ {
+  "id": "mine-r2-u16-timer-diff",
+  "type": "quiz",
+  "topic": "c",
+  "tags": [
+   "unsigned-wrap",
+   "tick-wrap"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 6 · millis() wrap",
+  "title": "A 16-bit hardware timer wrapped. prev = 65530, now = 5. What does this print?",
+  "lang": "c",
+  "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint16_t prev = 65530, now = 5;\n    printf(\"%u\", (uint16_t)(now - prev));\n}",
+  "options": [
+   "11",
+   "65525",
+   "-11",
+   "0"
+  ],
+  "answer": 0,
+  "explain": "now - prev is computed as int and gives -65525. The cast to uint16_t reduces it modulo 65536, so you get 11 ticks. Same idea as millis() wrap: always subtract, never compare the two values.",
+  "verify": {
+   "lang": "c",
+   "expect": "11"
+  }
+ },
+ {
+  "id": "mine-r2-bug-u8-index",
+  "type": "bug",
+  "topic": "c",
+  "tags": [
+   "loop-counter",
+   "integer-overflow"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 9 · uint8_t loop",
+  "title": "clear() never returns on the Uno. Tap the bug.",
+  "lang": "c",
+  "code": "#include <stdint.h>\n\nuint8_t buf[256];\n\nvoid clear(void) {\n    for (uint8_t i = 0; i < 256; i++) {\n        buf[i] = 0;\n    }\n}",
+  "bugLines": [
+   6
+  ],
+  "explain": "A uint8_t can only go from 0 to 255. After 255 it wraps to 0, so i < 256 is always true and the loop never ends. Use a wider counter (uint16_t or size_t), or test i < sizeof buf with a type that can hold 256.",
+  "fix": "for (uint16_t i = 0; i < 256; i++) {\n    buf[i] = 0;\n}"
+ },
+ {
+  "id": "mine-r2-rc-tau",
+  "type": "quiz",
+  "topic": "electronics",
+  "tags": [
+   "rc-filter",
+   "debounce"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 3 · debounce",
+  "title": "You debounce a button with R = 10 kohm and C = 10 uF. What is the time constant tau?",
+  "lang": "c",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    double r = 10e3, c = 10e-6;\n    printf(\"%.0f\", r * c * 1000.0);\n}",
+  "options": [
+   "100 ms",
+   "1 ms",
+   "10 ms",
+   "0.1 ms"
+  ],
+  "answer": 0,
+  "explain": "tau = R times C = 10 000 ohm times 0.00001 F = 0.1 s = 100 ms. After one tau the capacitor reaches about 63 percent. For a normal button, 100 ms is already slow. A smaller C (100 nF gives 1 ms) is often enough.",
+  "verify": {
+   "lang": "c",
+   "expect": "100"
+  }
+ },
+ {
+  "id": "mine-r2-pr-remove-readback",
+  "type": "pr",
+  "topic": "embedded",
+  "tags": [
+   "errata",
+   "peripheral-timing"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "STM32 driver · clock enable",
+  "lang": "c",
+  "pr": {
+   "title": "Remove the useless dummy read",
+   "author": "dev-anna",
+   "verdict": "changes",
+   "body": "The read of AHB1ENR after the enable does nothing. Removing it."
+  },
+  "diff": " void gpioa_init(void) {\n     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;\n-    (void)RCC->AHB1ENR;\n     GPIOA->MODER &= ~(3u << 10);\n     GPIOA->MODER |= (1u << 10);\n }",
+  "explain": "The read-back is on purpose. The STM32 errata says the peripheral clock starts 1 to 2 cycles after the write, so an immediate register access can be lost. The dummy read gives a short delay. Keep it and add a comment.",
+  "fix": "void gpioa_init(void) {\n    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;\n    (void)RCC->AHB1ENR;  // errata: wait for the clock\n    GPIOA->MODER &= ~(3u << 10);\n    GPIOA->MODER |= (1u << 10);\n}"
+ }
+]

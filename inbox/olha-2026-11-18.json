@@ -1,0 +1,195 @@
+[
+ {
+  "id": "fp-scandir-dots",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "filesystem",
+   "validation"
+  ],
+  "difficulty": 1,
+  "title": "Senior asks: listFiles() uses scandir() and then is_file(). What does scandir() return for an empty folder?",
+  "lang": "php",
+  "code": "$d = sys_get_temp_dir() . '/fp_' . uniqid();\nmkdir($d);\necho json_encode(scandir($d));\nrmdir($d);",
+  "options": [
+   "[]",
+   "[\".\", \"..\"]",
+   "[\".\"]",
+   "false"
+  ],
+  "answer": 1,
+  "explain": "scandir() also returns the entries . and .. . They are folders, so is_file() is false for them and the filter removes them. Without the filter, your API would list two fake files.",
+  "verify": {
+   "lang": "php",
+   "expect": "[\".\",\"..\"]"
+  }
+ },
+ {
+  "id": "fp-json-big-int",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "json",
+   "data-types"
+  ],
+  "difficulty": 3,
+  "title": "Senior asks: a client writes the id 12345678901234567890 to a JSON file. read() decodes it, write() encodes it again. What is in the file?",
+  "lang": "php",
+  "code": "echo json_encode(json_decode('{\"id\":12345678901234567890}', true));",
+  "options": [
+   "{\"id\":12345678901234567890}",
+   "{\"id\":1.2345678901234567e+19}",
+   "{\"id\":\"12345678901234567890\"}",
+   "JsonException is thrown"
+  ],
+  "answer": 1,
+  "explain": "The number is bigger than PHP_INT_MAX, so json_decode() makes a float and the last digits are lost. After a round trip you get a float in scientific notation. Fix ideas: JSON_BIGINT_AS_STRING, or send big ids as strings.",
+  "verify": {
+   "lang": "php",
+   "expect": "{\"id\":1.2345678901234567e+19}"
+  }
+ },
+ {
+  "id": "fp-empty-json-file",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "json",
+   "error-messages"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: a.json exists but is empty (0 bytes). read() calls json_decode(). What does json_last_error_msg() say?",
+  "lang": "php",
+  "code": "json_decode('', true);\necho json_last_error_msg();",
+  "options": [
+   "No error",
+   "Syntax error",
+   "Empty file",
+   "Control character error"
+  ],
+  "answer": 1,
+  "explain": "An empty string is not valid JSON. json_decode() returns null and the error is Syntax error. Your decodeJson() turns this into the answer Invalid JSON. A good message would also say the file is empty.",
+  "verify": {
+   "lang": "php",
+   "expect": "Syntax error"
+  }
+ },
+ {
+  "id": "fp-json-slash-escape",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "json",
+   "data-types"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: a user saves the URL a/b with write(). What does json_encode() store without any flag?",
+  "lang": "php",
+  "code": "echo json_encode(['u' => 'a/b']);",
+  "options": [
+   "{\"u\":\"a/b\"}",
+   "{\"u\":\"a\\/b\"}",
+   "{\"u\":\"a%2Fb\"}",
+   "{\"u\":\"a\\\\b\"}"
+  ],
+  "answer": 1,
+  "explain": "By default json_encode() escapes / as \\/ . It is still valid JSON, and json_decode() gives a/b back. Use JSON_UNESCAPED_SLASHES if humans read the file. Check with the other JSON flags you use.",
+  "verify": {
+   "lang": "php",
+   "expect": "{\"u\":\"a\\/b\"}"
+  }
+ },
+ {
+  "id": "php-null-coalesce-assign",
+  "type": "quiz",
+  "topic": "php",
+  "tags": [
+   "null-coalescing",
+   "arrays"
+  ],
+  "difficulty": 2,
+  "title": "PHP 8. The value 0 is set, the key b is missing. What does this print?",
+  "lang": "php",
+  "code": "$c = ['a' => 0];\n$c['a'] ??= 5;\n$c['b'] ??= 7;\necho json_encode($c);",
+  "options": [
+   "{\"a\":0,\"b\":7}",
+   "{\"a\":5,\"b\":7}",
+   "{\"a\":0}",
+   "{\"a\":5}"
+  ],
+  "answer": 0,
+  "explain": "$x ??= y assigns only when $x is null or not set. The key a holds 0, which is not null, so it stays 0. The key b is missing, so it gets 7. Do not mix it up with ?: , which treats 0 as empty.",
+  "verify": {
+   "lang": "php",
+   "expect": "{\"a\":0,\"b\":7}"
+  }
+ },
+ {
+  "id": "oop-equal-vs-identical",
+  "type": "quiz",
+  "topic": "oop",
+  "tags": [
+   "objects-vs-arrays",
+   "oop-basics"
+  ],
+  "difficulty": 2,
+  "title": "PHP 8. What does this print?",
+  "lang": "php",
+  "code": "class P {\n    public function __construct(public int $x) {}\n}\n$a = new P(1);\n$b = new P(1);\n$c = $a;\necho json_encode([$a == $b, $a === $b, $a === $c]);",
+  "options": [
+   "[true,false,true]",
+   "[true,true,true]",
+   "[false,false,true]",
+   "[false,false,false]"
+  ],
+  "answer": 0,
+  "explain": "== compares the class and all property values, so $a == $b is true. === asks if it is the same object. $a and $b are two objects, so false. $c is a second name for $a, so true.",
+  "verify": {
+   "lang": "php",
+   "expect": "[true,false,true]"
+  }
+ },
+ {
+  "id": "js-includes-nan",
+  "type": "quiz",
+  "topic": "js",
+  "tags": [
+   "type-coercion"
+  ],
+  "difficulty": 2,
+  "title": "What does Node print?",
+  "lang": "js",
+  "code": "console.log([NaN].includes(NaN), [NaN].indexOf(NaN));",
+  "options": [
+   "true -1",
+   "false -1",
+   "true 0",
+   "false 0"
+  ],
+  "answer": 0,
+  "explain": "includes() uses the SameValueZero rule, so NaN equals NaN and it finds it. indexOf() uses strict equality, and NaN === NaN is false, so it returns -1. Prefer includes() when NaN may appear.",
+  "verify": {
+   "lang": "js",
+   "expect": "true -1"
+  }
+ },
+ {
+  "id": "git-commit-on-wrong-branch",
+  "type": "quiz",
+  "topic": "git",
+  "tags": [
+   "git-history",
+   "git-basics"
+  ],
+  "difficulty": 2,
+  "title": "You committed on main by mistake. Nothing is pushed. You want the commit on a new branch feature, and main back to origin/main. What do you run?",
+  "options": [
+   "git branch feature, then git reset --hard origin/main",
+   "git reset --hard origin/main, then git branch feature",
+   "git revert HEAD, then git checkout -b feature",
+   "git push --force origin main"
+  ],
+  "answer": 0,
+  "explain": "First make the branch feature at the current commit, so the commit has a name. Then move main back with reset --hard. If you reset first, the commit is only in the reflog. Never force-push main for this."
+ }
+]
