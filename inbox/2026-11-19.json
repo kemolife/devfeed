@@ -1,0 +1,238 @@
+[
+ {
+  "id": "mine-r7-servo-icr1-top",
+  "type": "quiz",
+  "topic": "embedded",
+  "tags": [
+   "pwm",
+   "timers"
+  ],
+  "difficulty": 2,
+  "title": "Servo prep (lesson 7). Timer1, fast PWM, 16 MHz clock, prescaler 8. Which ICR1 (TOP) gives a 50 Hz period?",
+  "code": "#include <stdio.h>\nint main(void) {\n    long f_cpu = 16000000L;\n    long timer_hz = f_cpu / 8;\n    long top = timer_hz / 50 - 1;\n    printf(\"%ld\\n\", top);\n}",
+  "lang": "c",
+  "options": [
+   "40000",
+   "39999",
+   "20000",
+   "2000"
+  ],
+  "answer": 1,
+  "explain": "Timer clock = 16 MHz / 8 = 2 MHz. 50 Hz means 20 ms = 40000 ticks. The counter goes 0 … TOP, so it has TOP + 1 steps. TOP = 39999. Forgetting the -1 makes the period 0.5 µs too long.",
+  "verify": {
+   "lang": "c",
+   "expect": "39999"
+  },
+  "origin": "mine",
+  "from": "Tinkercad lesson 7 · servo"
+ },
+ {
+  "id": "mine-r7-pwm-scale-overflow",
+  "type": "quiz",
+  "topic": "c",
+  "tags": [
+   "integer-overflow",
+   "int-size"
+  ],
+  "difficulty": 2,
+  "title": "Arduino Uno, int is 16-bit (int16_t here). Scale a 10-bit ADC value to 8-bit PWM. What does this print?",
+  "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    int16_t value = 800;\n    int16_t t = (int16_t)(value * 255);\n    printf(\"%d\\n\", t / 1023);\n}",
+  "lang": "c",
+  "options": [
+   "199",
+   "7",
+   "0",
+   "-7"
+  ],
+  "answer": 1,
+  "explain": "800 * 255 = 204000 does not fit in 16 bits. It wraps to 7392. Then 7392 / 1023 = 7, not 199. Use long: (long)value * 255 / 1023. Or just shift right by 2.",
+  "verify": {
+   "lang": "c",
+   "expect": "7"
+  },
+  "origin": "mine",
+  "from": "Tinkercad lesson 4 · analogRead/PWM"
+ },
+ {
+  "id": "mine-r7-torn-read-16bit",
+  "type": "quiz",
+  "topic": "embedded",
+  "tags": [
+   "torn-read",
+   "isr",
+   "atomicity"
+  ],
+  "difficulty": 3,
+  "title": "Next topic: interrupts. On an 8-bit AVR, an ISR does ticks++ (uint16_t). loop() reads ticks without any protection. What can go wrong?",
+  "options": [
+   "Nothing. A read is one instruction.",
+   "loop() can read the low byte before and the high byte after the ISR. The value is wrong.",
+   "The compiler refuses to build it.",
+   "ticks stops counting."
+  ],
+  "answer": 1,
+  "explain": "A 16-bit read takes two 8-bit loads. If the ISR fires between them, you get half old, half new. Example: 0x00FF becomes 0x01FF, not 0x0100. Fix: disable interrupts for the read, and keep the variable volatile.",
+  "origin": "mine",
+  "from": "Tinkercad · next: interrupts"
+ },
+ {
+  "id": "mine-r7-led-e12",
+  "type": "quiz",
+  "topic": "electronics",
+  "tags": [
+   "ohms-law",
+   "led"
+  ],
+  "difficulty": 1,
+  "title": "5 V supply, red LED drops 2 V. You wanted 15 mA, so you calculated 200 Ω. You only have 220 Ω. What is the LED current?",
+  "options": [
+   "13.6 mA",
+   "22.7 mA",
+   "9.1 mA",
+   "15 mA"
+  ],
+  "answer": 0,
+  "explain": "I = (5 − 2) / 220 = 13.6 mA. The resistor sees only the voltage that is left after the LED: 3 V, not 5 V. A slightly bigger resistor is safe. It only makes the LED a bit dimmer.",
+  "origin": "mine",
+  "from": "Tinkercad · LED + resistor"
+ },
+ {
+  "id": "mine-r7-7805-heat",
+  "type": "quiz",
+  "topic": "electronics",
+  "tags": [
+   "ldo-power",
+   "power"
+  ],
+  "difficulty": 2,
+  "title": "7805 regulator, 9 V battery in, 5 V out, the load takes 100 mA. How much power does the 7805 turn into heat?",
+  "options": [
+   "0.5 W",
+   "0.4 W",
+   "0.9 W",
+   "4 W"
+  ],
+  "answer": 1,
+  "explain": "A linear regulator burns the voltage difference: (9 − 5) V × 0.1 A = 0.4 W. The load gets 0.5 W. So 44% of the battery power is lost. Fine for a lesson, bad for a battery device.",
+  "origin": "mine",
+  "from": "Tinkercad · 7805 + caps"
+ },
+ {
+  "id": "mine-r7-hysteresis-count",
+  "type": "quiz",
+  "topic": "c",
+  "tags": [
+   "hysteresis",
+   "debounce"
+  ],
+  "difficulty": 2,
+  "title": "Your LDR night light with ONE threshold: LED on if value < 320. The light is near the threshold and noisy. How often does the LED toggle?",
+  "code": "#include <stdio.h>\nint main(void) {\n    int v[] = {330, 310, 325, 305, 330, 315, 340};\n    int led = 0, toggles = 0;\n    for (int i = 0; i < 7; i++) {\n        int next = v[i] < 320;\n        if (next != led) toggles++;\n        led = next;\n    }\n    printf(\"%d\\n\", toggles);\n}",
+  "lang": "c",
+  "options": [
+   "0",
+   "2",
+   "6",
+   "7"
+  ],
+  "answer": 2,
+  "explain": "Every sample crosses 320, so the LED flips almost every time: 6 toggles in 7 samples. With two thresholds, for example on below 300 and off above 350, it would not toggle at all. This is hysteresis.",
+  "verify": {
+   "lang": "c",
+   "expect": "6"
+  },
+  "origin": "mine",
+  "from": "Tinkercad lesson 5 · LDR"
+ },
+ {
+  "id": "mine-r7-exticr-index",
+  "type": "quiz",
+  "topic": "embedded",
+  "tags": [
+   "registers",
+   "bit-manipulation"
+  ],
+  "difficulty": 2,
+  "title": "STM32 EXTI: connect PB5 to EXTI line 5. Each EXTICR register has four 4-bit fields. What does this print (port B = 1)?",
+  "code": "#include <stdio.h>\nint main(void) {\n    int pin = 5, port = 1;  // PB5\n    int idx = pin / 4;\n    int shift = (pin % 4) * 4;\n    printf(\"%d %d 0x%X\\n\", idx, shift, port << shift);\n}",
+  "lang": "c",
+  "options": [
+   "0 5 0x20",
+   "1 4 0x10",
+   "1 5 0x20",
+   "5 1 0x10"
+  ],
+  "answer": 1,
+  "explain": "Four pins per register: index = pin / 4 = 1 (EXTICR[1]). Field position = (pin % 4) * 4 = 4 bits. Port B = 1, so you write 1 << 4 = 0x10. Clear the old 4 bits first, then OR the new value.",
+  "verify": {
+   "lang": "c",
+   "expect": "1 4 0x10"
+  },
+  "origin": "mine",
+  "from": "STM32 driver · EXTI/SYSCFG"
+ },
+ {
+  "id": "mine-r7-bug-bss-loop",
+  "type": "bug",
+  "topic": "embedded",
+  "tags": [
+   "boot",
+   "off-by-one",
+   "memory-layout"
+  ],
+  "difficulty": 2,
+  "title": "Your Reset_Handler. A variable right after .bss sometimes becomes 0. Tap the bug.",
+  "lang": "c",
+  "code": "extern uint32_t _sidata, _sdata, _edata;\nextern uint32_t _sbss, _ebss;\n\nvoid Reset_Handler(void) {\n  uint32_t *src = &_sidata;\n  uint32_t *dst = &_sdata;\n  while (dst < &_edata) *dst++ = *src++;\n  for (uint32_t *p = &_sbss; p <= &_ebss; p++)\n    *p = 0;\n  main();\n}",
+  "bugLines": [
+   8
+  ],
+  "explain": "_ebss is the address AFTER the last .bss word. With <= the loop also clears one word past .bss. That word may be another variable. The copy loop above uses < correctly.",
+  "fix": "for (uint32_t *p = &_sbss; p < &_ebss; p++)\n  *p = 0;",
+  "origin": "mine",
+  "from": "Boot to main() · .bss clear"
+ },
+ {
+  "id": "mine-r7-pr-int-elapsed",
+  "type": "pr",
+  "topic": "c",
+  "tags": [
+   "int-size",
+   "millis",
+   "integer-overflow"
+  ],
+  "difficulty": 2,
+  "lang": "c",
+  "pr": {
+   "title": "Simplify the timeout check",
+   "author": "dev-anna",
+   "body": "elapsed is small, so int is enough. Removed the unsigned long.",
+   "verdict": "changes"
+  },
+  "diff": " void loop() {\n-  unsigned long elapsed = millis() - start;\n+  int elapsed = millis() - start;\n   if (elapsed >= 1000) {\n     start = millis();\n     toggleLed();\n   }\n }",
+  "explain": "On Arduino Uno int is 16-bit (max 32767). When 33 s or more pass, elapsed goes negative and the check fails. millis() is unsigned long. Keep the same type for the subtraction.",
+  "fix": "void loop() {\n  unsigned long elapsed = millis() - start;\n  if (elapsed >= 1000) {\n    start = millis();\n    toggleLed();\n  }\n}",
+  "origin": "mine",
+  "from": "Tinkercad lesson 6 · millis()"
+ },
+ {
+  "id": "mine-r7-concept-isr-rules",
+  "type": "concept",
+  "topic": "embedded",
+  "tags": [
+   "isr",
+   "volatile",
+   "atomicity"
+  ],
+  "difficulty": 2,
+  "title": "Before interrupts: 4 rules for shared variables",
+  "bullets": [
+   "volatile: the compiler must re-read the variable every time. Without it, a loop may never see the ISR change.",
+   "volatile does NOT make access atomic. A 16-bit read on an 8-bit CPU takes two loads.",
+   "Short critical section: disable interrupts, copy the value, enable interrupts, then use the copy.",
+   "Keep the ISR short: set a flag or count, do the real work in loop()."
+  ],
+  "origin": "mine",
+  "from": "Tinkercad · next: interrupts"
+ }
+]

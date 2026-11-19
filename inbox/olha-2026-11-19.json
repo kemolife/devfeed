@@ -1,0 +1,190 @@
+[
+ {
+  "id": "fp-csv-list-rows",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "csv",
+   "data-types"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: a client sends a list of lists [[1, \"apple\"], [2, \"pear\"]] to write for a CSV file. CsvFileActions::write() takes the header from array_keys() of row 1. What are the header names?",
+  "lang": "php",
+  "code": "echo implode(',', array_keys([1, 'apple']));",
+  "options": [
+   "id,fruit",
+   "0,1",
+   "1,2",
+   "No header, because the keys are numbers"
+  ],
+  "answer": 1,
+  "explain": "A list has the keys 0, 1, 2 … so the header line is 0,1. The code does not reject it, because each row is an array. The result is a CSV with useless column names. Check that the keys are strings, or answer 422.",
+  "verify": {
+   "lang": "php",
+   "expect": "0,1"
+  }
+ },
+ {
+  "id": "fp-no-extension",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "file-names",
+   "validation"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: findFileActions() uses pathinfo($fileName, PATHINFO_EXTENSION). What does this print for the two names?",
+  "lang": "php",
+  "code": "echo json_encode([\n    pathinfo('fruits', PATHINFO_EXTENSION),\n    pathinfo('.csv', PATHINFO_EXTENSION),\n]);",
+  "options": [
+   "[\"\",\"\"]",
+   "[\"\",\"csv\"]",
+   "[null,\"csv\"]",
+   "[\"fruits\",\"csv\"]"
+  ],
+  "answer": 1,
+  "explain": "No dot gives an empty string, so 'fruits' is unsupported. A name that starts with a dot, '.csv', has the extension 'csv' in PHP, so it is accepted as a CSV file name. A hidden file in storage/ is possible. Think about a rule for the base name.",
+  "verify": {
+   "lang": "php",
+   "expect": "[\"\",\"csv\"]"
+  }
+ },
+ {
+  "id": "fp-csv-both-key-checks",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "csv",
+   "validation"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: getRowValues() checks the count of keys AND array_key_exists() for each header. Row 1 is {id, fruit}, row 2 is {id, color}. What does this print?",
+  "lang": "php",
+  "code": "$headers = ['id', 'fruit'];\n$row = ['id' => 2, 'color' => 'red'];\necho count($row) === count($headers)\n    ? 'same count, ' : 'other count, ';\necho array_key_exists('fruit', $row) ? 'ok' : 'error';",
+  "options": [
+   "same count, ok",
+   "same count, error",
+   "other count, error",
+   "other count, ok"
+  ],
+  "answer": 1,
+  "explain": "Both rows have 2 keys, so the count check passes. But row 2 has no 'fruit' key. The second check finds it. Without it, the row would be saved with a missing value. The count check alone is not enough, and array_key_exists alone would allow extra keys.",
+  "verify": {
+   "lang": "php",
+   "expect": "same count, error"
+  }
+ },
+ {
+  "id": "fp-rtrim-storage",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "file-paths",
+   "composition-root"
+  ],
+  "difficulty": 1,
+  "title": "Senior asks: the constructor does rtrim($storagePath, '/'). The config has '/data/'. What does getPath('a.csv') give?",
+  "lang": "php",
+  "code": "$storage = rtrim('/data/', '/');\necho $storage . '/' . basename('a.csv');",
+  "options": [
+   "/data//a.csv",
+   "/data/a.csv",
+   "/dataa.csv",
+   "/data/a.csv/"
+  ],
+  "answer": 1,
+  "explain": "rtrim removes the trailing slash, then getPath adds one '/'. Without rtrim you get a double slash '/data//a.csv'. It still works on Linux, but it looks wrong in logs and in tests that compare paths.",
+  "verify": {
+   "lang": "php",
+   "expect": "/data/a.csv"
+  }
+ },
+ {
+  "id": "php-array-unique-mixed",
+  "type": "quiz",
+  "topic": "php",
+  "tags": [
+   "arrays",
+   "loose-compare"
+  ],
+  "difficulty": 2,
+  "title": "PHP 8. array_unique compares values as strings by default. What does this print?",
+  "lang": "php",
+  "code": "echo json_encode(array_unique([1, '1', 1.0, true]));",
+  "options": [
+   "[1]",
+   "[1,\"1\"]",
+   "[1,\"1\",true]",
+   "[1,true]"
+  ],
+  "answer": 0,
+  "explain": "(string)1, '1', 1.0 and true all become '1'. So only the first value is kept. Be careful with mixed data: array_unique can remove values that you think are different. Pass SORT_REGULAR or normalise the types first.",
+  "verify": {
+   "lang": "php",
+   "expect": "[1]"
+  }
+ },
+ {
+  "id": "js-array-at",
+  "type": "quiz",
+  "topic": "js",
+  "tags": [
+   "arrays",
+   "edge-cases"
+  ],
+  "difficulty": 1,
+  "title": "Node. What does this print?",
+  "lang": "js",
+  "code": "const a = [10, 20, 30];\nconsole.log(a.at(-1), a[-1]);",
+  "options": [
+   "30 undefined",
+   "30 30",
+   "undefined undefined",
+   "10 30"
+  ],
+  "answer": 0,
+  "explain": "at(-1) counts from the end and gives the last item. The square bracket [-1] looks for a property named '-1'. It does not exist, so it is undefined. JS arrays do not support negative indexes in brackets.",
+  "verify": {
+   "lang": "js",
+   "expect": "30 undefined"
+  }
+ },
+ {
+  "id": "git-log-outgoing",
+  "type": "quiz",
+  "topic": "git",
+  "tags": [
+   "git-basics",
+   "review-checklist"
+  ],
+  "difficulty": 1,
+  "title": "Before you push, you want to list the commits that are on your branch but not yet on origin/main. Which command?",
+  "options": [
+   "git log origin/main..HEAD",
+   "git log HEAD..origin/main",
+   "git status",
+   "git fetch"
+  ],
+  "answer": 0,
+  "explain": "A..B means commits reachable from B but not from A. So origin/main..HEAD is your outgoing commits. The reverse, HEAD..origin/main, shows what you would pull. Run git fetch first so origin/main is fresh."
+ },
+ {
+  "id": "sf-route-requirements",
+  "type": "quiz",
+  "topic": "symfony",
+  "tags": [
+   "routing",
+   "validation"
+  ],
+  "difficulty": 2,
+  "title": "Symfony 7. #[Route('/post/{id}', requirements: ['id' => '\\d+'])]. A user opens /post/abc. What happens?",
+  "options": [
+   "The controller runs with $id = 'abc'",
+   "404: the route does not match",
+   "500 TypeError",
+   "The controller runs with $id = 0"
+  ],
+  "answer": 1,
+  "explain": "The requirement is part of route matching. 'abc' is not digits, so the router finds no route and gives 404, before your controller runs. Requirements are cheap early validation."
+ }
+]
