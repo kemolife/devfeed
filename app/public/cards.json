@@ -7744,5 +7744,250 @@
     "title": "Before interrupts: 4 rules for shared variables",
     "topic": "embedded",
     "type": "concept"
+  },
+  {
+    "answer": 1,
+    "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    int8_t low = (int8_t)0x90;\n    uint8_t high = 0x01;\n    uint16_t v = (high << 8) | low;\n    printf(\"%u\\n\", v);\n}",
+    "difficulty": 3,
+    "explain": "low = 0x90 is negative as int8_t. In the OR it is promoted to int and sign-extended to 0xFFFFFF90. The high bits turn all 1. Result 0xFF90 = 65424, not 0x190 = 400. Cast each byte to uint8_t before you combine them.",
+    "from": "Review · TMP36 and integer promotion",
+    "id": "mine-d20-adc-bytes-signext",
+    "lang": "c",
+    "options": [
+      "400",
+      "65424",
+      "144",
+      "65296"
+    ],
+    "origin": "mine",
+    "tags": [
+      "sign-extension",
+      "bit-manipulation"
+    ],
+    "title": "ADC data comes as two bytes. low is a signed char (as on AVR). What does this print?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "65424",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 2,
+    "difficulty": 2,
+    "explain": "De Morgan: A OR B = NAND(NOT A, NOT B). A NOT is a NAND with both inputs tied together. So: 2 gates for the two NOTs, 1 gate for the final NAND. That is 3 of your 4 gates. Do not leave the inputs of the 4th gate floating.",
+    "from": "Review · 74HC00 NAND",
+    "id": "mine-d20-nand-or",
+    "options": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "origin": "mine",
+    "tags": [
+      "logic-levels"
+    ],
+    "title": "A 74HC00 has 4 NAND gates. You want OR(A, B) using only NAND gates. How many gates do you need?",
+    "topic": "electronics",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n\nint main(void) {\n    long f = 16000000, baud = 115200;\n    long ubrr = f / 16 / baud - 1;\n    long real = f / (16 * (ubrr + 1));\n    printf(\"%ld %ld\\n\", ubrr, real);\n}",
+    "difficulty": 3,
+    "explain": "f/16/baud = 1000000/115200 = 8.68, truncated to 8, minus 1 = 7. The real baud is 16 MHz / (16 * 8) = 125000: 8.5% too fast, so the bytes break. Rounding gives UBRR 8 (111111 baud, 3.5% off). The Arduino core uses double speed (U2X) for a better match.",
+    "from": "Next step · UART baud rate",
+    "id": "mine-d20-ubrr-115200",
+    "lang": "c",
+    "options": [
+      "7 125000",
+      "8 111111",
+      "8 115200",
+      "7 115200"
+    ],
+    "origin": "mine",
+    "tags": [
+      "integer-division",
+      "accuracy"
+    ],
+    "title": "Next step: UART on the Uno (16 MHz). UBRR = f/16/baud - 1 with integer math, baud 115200. What does this print (UBRR, real baud)?",
+    "topic": "embedded",
+    "type": "quiz",
+    "verify": {
+      "expect": "7 125000",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n\nint main(void) {\n    int last = 0, n = 0;\n    for (int now = 0; now <= 100; now += 3) {\n        if (now - last >= 10) {\n            last = now;\n            n++;\n        }\n    }\n    printf(\"%d\\n\", n);\n}",
+    "difficulty": 3,
+    "explain": "loop() sees the time only at 0, 3, 6 ... So each toggle comes late (12, 24, 36 ...) and last = now keeps the delay. The delays add up: 8 toggles. With last += interval the average stays at 10 ms and you get 9. Use += for a steady period.",
+    "from": "Tinkercad lesson 1 · Blink with millis",
+    "id": "mine-d20-blink-drift",
+    "lang": "c",
+    "options": [
+      "8",
+      "9",
+      "10",
+      "11"
+    ],
+    "origin": "mine",
+    "tags": [
+      "millis",
+      "accuracy"
+    ],
+    "title": "Blink timer, interval 10 ms. loop() runs every 3 ms. How many toggles in 100 ms with last = now?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "8",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "#include <stdio.h>\n\nint main(void) {\n    unsigned clk = 16000000, hz = 1000;\n    unsigned load = clk / hz - 1;\n    printf(\"%u\\n\", load);\n}",
+    "difficulty": 2,
+    "explain": "SysTick counts from LOAD down to 0. That is LOAD + 1 clocks per period. For 16000 clocks you write 16000 - 1 = 15999. It is the same off-by-one as PSC + 1 and OCR1A - 1.",
+    "from": "STM32 driver · timers",
+    "id": "mine-d20-systick-load",
+    "lang": "c",
+    "options": [
+      "16000",
+      "15999",
+      "15998",
+      "16001"
+    ],
+    "origin": "mine",
+    "tags": [
+      "off-by-one",
+      "timers"
+    ],
+    "title": "STM32 SysTick runs at 16 MHz. You want a 1 ms tick (1 kHz). What is the LOAD value?",
+    "topic": "embedded",
+    "type": "quiz",
+    "verify": {
+      "expect": "15999",
+      "lang": "c"
+    }
+  },
+  {
+    "bugLines": [
+      6,
+      7
+    ],
+    "code": "int last = HIGH, stable = HIGH;\nunsigned long t = 0;\n\nvoid loop() {\n    int r = digitalRead(PIN);\n    last = r;\n    if (r != last) t = millis();\n    if (millis() - t > 50) stable = r;\n}",
+    "difficulty": 2,
+    "explain": "last = r runs before the compare, so r != last is never true. The timer t never restarts and stable follows every noisy edge. Compare first, then update last at the end of the step.",
+    "fix": "    int r = digitalRead(PIN);\n    if (r != last) t = millis();\n    if (millis() - t > 50) stable = r;\n    last = r;",
+    "from": "Tinkercad lesson 3 · debounce",
+    "id": "mine-d20-bug-debounce-order",
+    "lang": "c",
+    "origin": "mine",
+    "tags": [
+      "debounce",
+      "millis"
+    ],
+    "title": "Debounce does nothing, the counter still jumps. Tap the bug.",
+    "topic": "c",
+    "type": "bug"
+  },
+  {
+    "bullets": [
+      "A floating input reads random values. Always use a pull-up or pull-down.",
+      "INPUT_PULLUP: button between pin and GND. Not pressed = HIGH, pressed = LOW.",
+      "External pull-up value: 10 kΩ is common. 1 kΩ wastes 5 mA at 5 V when pressed. Very large values make the edge slow and noisy.",
+      "A contact bounces for some ms. Debounce in software (about 50 ms) or with an RC filter, then detect the edge."
+    ],
+    "difficulty": 1,
+    "from": "Review · lessons 3 and 5",
+    "id": "mine-d20-concept-button",
+    "origin": "mine",
+    "tags": [
+      "pull-up",
+      "debounce",
+      "gpio"
+    ],
+    "title": "Button on a pin: 4 checks",
+    "topic": "electronics",
+    "type": "concept"
+  },
+  {
+    "diff": " uint16_t read_avg(void) {\n     uint16_t sum = 0;\n-    for (int i = 0; i < 16; i++)\n+    for (int i = 0; i < 128; i++)\n         sum += analogRead(A0);\n-    return sum / 16;\n+    return sum / 128;\n }",
+    "difficulty": 2,
+    "explain": "A 10-bit reading is up to 1023. 128 * 1023 = 130944 does not fit in uint16_t (max 65535). The sum wraps and the average is wrong. 16 samples were safe: 16368. Use a 32-bit sum when you raise the sample count.",
+    "fix": "uint16_t read_avg(void) {\n    uint32_t sum = 0;  // 128 * 1023 needs 17 bits\n    for (int i = 0; i < 128; i++)\n        sum += analogRead(A0);\n    return (uint16_t)(sum / 128);\n}",
+    "from": "Review · ADC and 16-bit overflow",
+    "id": "mine-d20-pr-adc-average",
+    "lang": "c",
+    "origin": "mine",
+    "pr": {
+      "author": "junior-fw",
+      "body": "The temperature jumps around. Average 128 readings instead of 16.",
+      "title": "Less noise: average 128 samples",
+      "verdict": "changes"
+    },
+    "tags": [
+      "integer-overflow",
+      "adc"
+    ],
+    "topic": "c",
+    "type": "pr"
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n\nint main(void) {\n    long pot = 30;\n    long adc = 1023 * pot / 100;\n    printf(\"%ld\\n\", adc);\n}",
+    "difficulty": 1,
+    "explain": "30% of 5 V is 1.5 V. 1.5 / 5 * 1023 = 306.9. Integer math cuts the .9, so you get 306. The ADC range is 0..1023, which is 1024 steps. Multiply first (1023 * 30), then divide, or you lose everything.",
+    "from": "Tinkercad lesson 4 · analogRead",
+    "id": "mine-d20-pot-adc-30",
+    "lang": "c",
+    "options": [
+      "306",
+      "307",
+      "300",
+      "1023"
+    ],
+    "origin": "mine",
+    "tags": [
+      "integer-division",
+      "adc"
+    ],
+    "title": "Pot wiper at 30% of 5 V, 10-bit ADC. The code scales with integers. What does this print?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "306",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "fn main() {\n    let a = 300i32 as u8;\n    let b = -1i32 as u32;\n    let c = 3.9f32 as i32;\n    println!(\"{a} {b} {c}\");\n}",
+    "difficulty": 2,
+    "explain": "`as` between integers keeps the low bits and never panics: 300 as u8 = 300 - 256 = 44. -1i32 as u32 is all ones: 4294967295. A float to int cut the fraction: 3.9 gives 3 (it saturates when out of range). Use u8::try_from(x) when the value must fit.",
+    "from": "Review · integer truncation (Rust)",
+    "id": "mine-d20-rs-as-casts",
+    "lang": "rust",
+    "options": [
+      "44 4294967295 3",
+      "255 -1 4",
+      "0 0 3",
+      "It does not compile"
+    ],
+    "origin": "mine",
+    "tags": [
+      "truncation",
+      "narrowing"
+    ],
+    "title": "Rust `as` casts on sensor values. What does this print?",
+    "topic": "rust",
+    "type": "quiz",
+    "verify": {
+      "expect": "44 4294967295 3",
+      "lang": "rust"
+    }
   }
 ]

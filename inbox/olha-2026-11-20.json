@@ -1,0 +1,168 @@
+[
+ {
+  "id": "fp-delete-ext-check",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "security",
+   "filesystem"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: delete() first checks that the file is .csv or .json. Why not just call unlink()?",
+  "options": [
+   "So the API can not delete other files in storage/, like .gitkeep or a .htaccess",
+   "Because unlink() works only for CSV and JSON",
+   "To make delete faster",
+   "The OS needs the extension to delete"
+  ],
+  "answer": 0,
+  "explain": "The API is for CSV and JSON files only. If delete accepts any name in storage/, a client can remove other files that live there. A short allow-list is a simple guard. basename() already stops ../ paths, the extension check limits the rest."
+ },
+ {
+  "id": "fp-vscode-launch-json",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "git",
+   "tooling"
+  ],
+  "difficulty": 1,
+  "title": "Senior asks: .vscode/launch.json is committed, but storage/ is not ignored. What is the better habit?",
+  "options": [
+   "Ignore personal editor files, commit only what the whole team needs on purpose",
+   "Commit everything, git can handle it",
+   "Never use a debugger",
+   "Delete launch.json after every commit"
+  ],
+  "answer": 0,
+  "explain": "Editor files can hold local paths and ports and cause noisy diffs. Teams sometimes share one clean config on purpose. Decide it and write it in .gitignore. Also add storage/ uploads there, or git status is full of test files."
+ },
+ {
+  "id": "fp-commit-messages",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "git"
+  ],
+  "difficulty": 1,
+  "title": "Senior asks: your first commits are called 'v-1' and '+debuger'. What message is better?",
+  "options": [
+   "Add FileNameResolver so uploads do not overwrite files",
+   "v-2",
+   "fix",
+   "update all files"
+  ],
+  "answer": 0,
+  "explain": "A good message says what changed and why, in one short line, in the imperative: 'Add ...', 'Fix ...'. In half a year, git log is the only story of the project. 'v-1' and 'fix' tell nothing."
+ },
+ {
+  "id": "fp-tests-first-missing",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "testing"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: there are no tests for upload and FileNameResolver. Which one do you write first, and why?",
+  "options": [
+   "FileNameResolver: it has file system races and a loop, so bugs hide there",
+   "The getters, they are easy",
+   "The jQuery code, there is no PHP in it",
+   "None: tests must not touch files"
+  ],
+  "answer": 0,
+  "explain": "Test where the risk is. The resolver creates files with fopen('x') and counts name, name_1, name_2. Write a test with a temp folder: free name, taken name, many taken names. Then add the upload test. Simple getters can wait."
+ },
+ {
+  "id": "php-intdiv-modulo",
+  "type": "quiz",
+  "topic": "php",
+  "tags": [
+   "integer-division"
+  ],
+  "difficulty": 2,
+  "title": "PHP 8. What does this print?",
+  "code": "echo (-7 % 3) . ' ' . intdiv(-7, 3) . ' ' . (7 <=> 3);",
+  "lang": "php",
+  "options": [
+   "-1 -2 1",
+   "-1 -3 1",
+   "1 -2 1",
+   "1 -3 -1"
+  ],
+  "answer": 0,
+  "explain": "% in PHP keeps the sign of the left number: -7 % 3 = -1. intdiv cuts toward zero: -7 / 3 = -2.33 becomes -2 (not -3). The spaceship <=> gives -1, 0 or 1: 7 <=> 3 is 1. Use floor() when you want -3.",
+  "verify": {
+   "lang": "php",
+   "expect": "-1 -2 1"
+  }
+ },
+ {
+  "id": "oop-static-shared-child",
+  "type": "quiz",
+  "topic": "oop",
+  "tags": [
+   "static",
+   "inheritance"
+  ],
+  "difficulty": 3,
+  "title": "What does this print?",
+  "code": "class A {\n    public static int $n = 0;\n    public static function inc(): void {\n        static::$n++;\n    }\n}\nclass B extends A {}\n\nB::inc(); B::inc(); A::inc();\necho A::$n . ' ' . B::$n;",
+  "lang": "php",
+  "options": [
+   "3 3",
+   "3 2",
+   "1 2",
+   "2 1"
+  ],
+  "answer": 0,
+  "explain": "A static property is stored once on the class that declares it. B extends A but does not redeclare $n, so A and B share the same variable. Three calls make it 3 in both. To get a separate counter, declare public static int $n again in B.",
+  "verify": {
+   "lang": "php",
+   "expect": "3 3"
+  }
+ },
+ {
+  "id": "js-event-loop-order",
+  "type": "quiz",
+  "topic": "js",
+  "tags": [
+   "async",
+   "event-loop"
+  ],
+  "difficulty": 2,
+  "title": "What does Node print?",
+  "code": "console.log(1);\nsetTimeout(() => console.log(2), 0);\nPromise.resolve().then(() => console.log(3));\nconsole.log(4);",
+  "lang": "js",
+  "options": [
+   "1 4 3 2",
+   "1 2 3 4",
+   "1 4 2 3",
+   "1 3 4 2"
+  ],
+  "answer": 0,
+  "explain": "Sync code runs first: 1 and 4. Then the microtask queue (promise .then): 3. Last the timers (setTimeout, even with 0 ms): 2. Promise callbacks always go before setTimeout callbacks.",
+  "verify": {
+   "lang": "js",
+   "expect": "1\n4\n3\n2"
+  }
+ },
+ {
+  "id": "git-stash-untracked",
+  "type": "quiz",
+  "topic": "git",
+  "tags": [
+   "git-basics"
+  ],
+  "difficulty": 1,
+  "title": "You changed app.php and created a new file notes.php (never added). You run git stash. What happens?",
+  "options": [
+   "app.php is stashed, notes.php stays in the folder",
+   "Both files are stashed",
+   "Git refuses to stash",
+   "notes.php is deleted"
+  ],
+  "answer": 0,
+  "explain": "git stash saves only tracked changes by default. A new untracked file stays. Use git stash -u to include untracked files too. Check with git status after you stash."
+ }
+]

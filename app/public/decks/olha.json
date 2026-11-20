@@ -6074,5 +6074,172 @@
     "title": "Symfony 7. #[Route('/post/{id}', requirements: ['id' => '\\d+'])]. A user opens /post/abc. What happens?",
     "topic": "symfony",
     "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "The API is for CSV and JSON files only. If delete accepts any name in storage/, a client can remove other files that live there. A short allow-list is a simple guard. basename() already stops ../ paths, the extension check limits the rest.",
+    "id": "fp-delete-ext-check",
+    "options": [
+      "So the API can not delete other files in storage/, like .gitkeep or a .htaccess",
+      "Because unlink() works only for CSV and JSON",
+      "To make delete faster",
+      "The OS needs the extension to delete"
+    ],
+    "tags": [
+      "security",
+      "filesystem"
+    ],
+    "title": "Senior asks: delete() first checks that the file is .csv or .json. Why not just call unlink()?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "Editor files can hold local paths and ports and cause noisy diffs. Teams sometimes share one clean config on purpose. Decide it and write it in .gitignore. Also add storage/ uploads there, or git status is full of test files.",
+    "id": "fp-vscode-launch-json",
+    "options": [
+      "Ignore personal editor files, commit only what the whole team needs on purpose",
+      "Commit everything, git can handle it",
+      "Never use a debugger",
+      "Delete launch.json after every commit"
+    ],
+    "tags": [
+      "git",
+      "tooling"
+    ],
+    "title": "Senior asks: .vscode/launch.json is committed, but storage/ is not ignored. What is the better habit?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "A good message says what changed and why, in one short line, in the imperative: 'Add ...', 'Fix ...'. In half a year, git log is the only story of the project. 'v-1' and 'fix' tell nothing.",
+    "id": "fp-commit-messages",
+    "options": [
+      "Add FileNameResolver so uploads do not overwrite files",
+      "v-2",
+      "fix",
+      "update all files"
+    ],
+    "tags": [
+      "git"
+    ],
+    "title": "Senior asks: your first commits are called 'v-1' and '+debuger'. What message is better?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "Test where the risk is. The resolver creates files with fopen('x') and counts name, name_1, name_2. Write a test with a temp folder: free name, taken name, many taken names. Then add the upload test. Simple getters can wait.",
+    "id": "fp-tests-first-missing",
+    "options": [
+      "FileNameResolver: it has file system races and a loop, so bugs hide there",
+      "The getters, they are easy",
+      "The jQuery code, there is no PHP in it",
+      "None: tests must not touch files"
+    ],
+    "tags": [
+      "testing"
+    ],
+    "title": "Senior asks: there are no tests for upload and FileNameResolver. Which one do you write first, and why?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "console.log(1);\nsetTimeout(() => console.log(2), 0);\nPromise.resolve().then(() => console.log(3));\nconsole.log(4);",
+    "difficulty": 2,
+    "explain": "Sync code runs first: 1 and 4. Then the microtask queue (promise .then): 3. Last the timers (setTimeout, even with 0 ms): 2. Promise callbacks always go before setTimeout callbacks.",
+    "id": "js-event-loop-order",
+    "lang": "js",
+    "options": [
+      "1 4 3 2",
+      "1 2 3 4",
+      "1 4 2 3",
+      "1 3 4 2"
+    ],
+    "tags": [
+      "async",
+      "event-loop"
+    ],
+    "title": "What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "1\n4\n3\n2",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "$a = 1;\n$b = 2;\n[$a, $b] = [$b, $a];\necho $a . ' ' . $b;",
+    "difficulty": 1,
+    "explain": "The right side is built first: [2, 1]. Then [$a, $b] = ... takes the values out in order. This is array destructuring and it swaps without a temp variable.",
+    "id": "php-list-swap",
+    "lang": "php",
+    "options": [
+      "2 1",
+      "1 2",
+      "2 2",
+      "Parse error"
+    ],
+    "tags": [
+      "arrays",
+      "destructuring"
+    ],
+    "title": "PHP 8. Swap two values. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "2 1",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "const o = { b: 1, 2: 1, a: 1, 1: 1 };\nconsole.log(Object.keys(o).join(','));",
+    "difficulty": 2,
+    "explain": "JS puts integer-like keys first, in number order. Other keys follow in the order you added them. So the result is 1,2,b,a. Do not depend on key order for text keys with numbers. Use a Map or an array when the order matters.",
+    "id": "js-object-key-order",
+    "lang": "js",
+    "options": [
+      "1,2,b,a",
+      "b,2,a,1",
+      "2,1,b,a",
+      "a,b,1,2"
+    ],
+    "tags": [
+      "objects",
+      "key-order"
+    ],
+    "title": "What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "1,2,b,a",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "git fetch only downloads the new commits into origin/main. Your branch and files stay as they are. Then you can look with git log HEAD..origin/main. git pull is fetch plus merge, so it changes your files. reset --hard would delete your work.",
+    "id": "git-fetch-vs-pull-safe",
+    "options": [
+      "git fetch, then git log HEAD..origin/main",
+      "git pull",
+      "git reset --hard origin/main",
+      "git merge"
+    ],
+    "tags": [
+      "git-basics"
+    ],
+    "title": "You are in the middle of work and want to see what colleagues pushed, without changing your files. Which command?",
+    "topic": "git",
+    "type": "quiz"
   }
 ]
