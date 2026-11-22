@@ -1,0 +1,223 @@
+[
+ {
+  "id": "mine-e1-and-eq-precedence",
+  "type": "quiz",
+  "topic": "c",
+  "tags": [
+   "bit-manipulation",
+   "macro"
+  ],
+  "difficulty": 2,
+  "title": "Check if bit 1 is set. flags = 0x06. What does this print?",
+  "options": [
+   "set",
+   "clear",
+   "compile error",
+   "undefined behavior"
+  ],
+  "answer": 1,
+  "explain": "== is stronger than &. So it runs as flags & (MASK == MASK), which is flags & 1 = 0. The test fails, although bit 1 is set. Always write (flags & MASK) == MASK. Same trap as in register checks.",
+  "origin": "mine",
+  "from": "Review · EXTI/GPIO register checks",
+  "code": "#include <stdio.h>\n#include <stdint.h>\n#define MASK 0x02\n\nint main(void) {\n    uint8_t flags = 0x06;\n    if (flags & MASK == MASK)\n        printf(\"set\\n\");\n    else\n        printf(\"clear\\n\");\n}",
+  "lang": "c",
+  "verify": {
+   "lang": "c",
+   "expect": "clear"
+  }
+ },
+ {
+  "id": "mine-e1-micros-wrap",
+  "type": "quiz",
+  "topic": "embedded",
+  "tags": [
+   "tick-wrap",
+   "millis"
+  ],
+  "difficulty": 2,
+  "title": "On the Uno, micros() is a 32-bit unsigned long in microseconds. When does it wrap to 0?",
+  "options": [
+   "After about 65 ms",
+   "After about 71.6 minutes",
+   "After about 49.7 days",
+   "After about 136 years"
+  ],
+  "answer": 1,
+  "explain": "2^32 µs = 4294.97 s = 71.6 minutes. millis() wraps after 49.7 days, but micros() is 1000 times faster. The fix is the same as in lesson 6: use unsigned subtraction, now - start >= timeout.",
+  "origin": "mine",
+  "from": "Review · TMP36 lesson, millis() wrap"
+ },
+ {
+  "id": "mine-e1-adc-conversion-time",
+  "type": "quiz",
+  "topic": "embedded",
+  "tags": [
+   "adc",
+   "peripheral-timing"
+  ],
+  "difficulty": 3,
+  "title": "Uno ADC clock = 16 MHz / 128. One conversion takes 13 ADC clocks. How long is one analogRead()?",
+  "options": [
+   "About 1 µs",
+   "About 10 µs",
+   "About 104 µs",
+   "About 1 ms"
+  ],
+  "answer": 2,
+  "explain": "ADC clock = 125 kHz, so 13 / 125000 = 104 µs. That is about 9600 readings per second at most. Reading the TMP36 in a fast loop gives the same value many times. Averaging 8 readings costs less than 1 ms.",
+  "origin": "mine",
+  "from": "Tinkercad lesson 4 · analogRead"
+ },
+ {
+  "id": "mine-e1-7805-dropout",
+  "type": "quiz",
+  "topic": "electronics",
+  "tags": [
+   "ldo-power",
+   "power"
+  ],
+  "difficulty": 2,
+  "title": "A 7805 needs about 2 V of dropout. You feed it 6 V from 4 AA batteries. What is the output?",
+  "options": [
+   "5 V, stable",
+   "About 4 V, it follows the input",
+   "6 V",
+   "0 V"
+  ],
+  "answer": 1,
+  "explain": "A 7805 needs Vin of about 7 V or more to give a stable 5 V. With 6 V in, the output drops to about 4 V and changes with the load. A 9 V battery is fine. For a low input, use a low-dropout (LDO) regulator.",
+  "origin": "mine",
+  "from": "Electronics · 7805 regulator"
+ },
+ {
+  "id": "mine-e1-led-blue-3v3",
+  "type": "quiz",
+  "topic": "electronics",
+  "tags": [
+   "led",
+   "ohms-law"
+  ],
+  "difficulty": 2,
+  "title": "A blue LED has Vf = 3.0 V. It is on a 3.3 V pin with a 220 Ω resistor. What is the LED current?",
+  "options": [
+   "About 15 mA",
+   "About 1.4 mA",
+   "About 13.6 mA",
+   "0 mA, it never lights"
+  ],
+  "answer": 1,
+  "explain": "I = (3.3 - 3.0) / 220 = 1.4 mA. The LED is very dim. Vf changes with the LED and temperature, so some LEDs may not light at all. With a small voltage margin, use a lower resistor or a higher supply.",
+  "origin": "mine",
+  "from": "Electronics · LED + resistor, Ohm's law"
+ },
+ {
+  "id": "mine-e1-bug-stray-semicolon",
+  "type": "bug",
+  "topic": "embedded",
+  "tags": [
+   "stray-semicolon",
+   "logic-inversion"
+  ],
+  "difficulty": 1,
+  "title": "LED is on all the time, even with no button press. Tap the bug.",
+  "code": "void loop() {\n    if (digitalRead(BTN) == LOW);\n    {\n        digitalWrite(LED, HIGH);\n    }\n}",
+  "lang": "c",
+  "bugLines": [
+   2
+  ],
+  "explain": "The ; after the if is an empty statement. The block below always runs. The compiler may not warn. Always put the { on the same line as if, or turn on -Wempty-body.",
+  "fix": "void loop() {\n    if (digitalRead(BTN) == LOW) {\n        digitalWrite(LED, HIGH);\n    }\n}",
+  "origin": "mine",
+  "from": "Tinkercad lesson 3 · button"
+ },
+ {
+  "id": "mine-e1-pr-pin-check-order",
+  "type": "pr",
+  "topic": "embedded",
+  "tags": [
+   "argument-checks",
+   "registers"
+  ],
+  "difficulty": 2,
+  "title": "Reject invalid pin in GPIO_Init",
+  "diff": " int GPIO_Init(GPIO_TypeDef *p, uint8_t pin,\n               uint8_t mode) {\n     p->MODER &= ~(3u << (pin * 2));\n     p->MODER |= (mode << (pin * 2));\n+    if (pin > 15) {\n+        return -1;\n+    }\n     return 0;\n }",
+  "lang": "c",
+  "pr": {
+   "author": "junior-dev",
+   "title": "Reject invalid pin in GPIO_Init",
+   "body": "Added a check. A bad pin now returns -1.",
+   "verdict": "changes"
+  },
+  "explain": "The check comes after the register writes. With pin 20 the shift is 40 on a 32-bit value (undefined), and a wrong register bit may change first. Validate all arguments before the first write. Also check mode <= 3.",
+  "fix": "int GPIO_Init(GPIO_TypeDef *p, uint8_t pin,\n              uint8_t mode) {\n    if (p == NULL || pin > 15 || mode > 3) {\n        return -1;   // nothing is written\n    }\n    p->MODER &= ~(3u << (pin * 2));\n    p->MODER |= ((uint32_t)mode << (pin * 2));\n    return 0;\n}",
+  "origin": "mine",
+  "from": "STM32 driver · GPIO_Init"
+ },
+ {
+  "id": "mine-e1-concept-capacitor-checks",
+  "type": "concept",
+  "topic": "electronics",
+  "tags": [
+   "decoupling",
+   "review-checklist"
+  ],
+  "difficulty": 1,
+  "title": "Before you place a capacitor: 4 checks",
+  "bullets": [
+   "Polarity: an electrolytic has a stripe on the minus side. Reversed, it can heat up and burst.",
+   "Voltage rating: use at least 1.5 to 2 times the real voltage. A 6.3 V cap on a 5 V rail is too close.",
+   "Ceramic (100 nF) next to each chip power pin: it fixes fast spikes. Electrolytic (10 µF and up) near the regulator: it holds slow changes.",
+   "Short wires. A long wire adds inductance, and the cap helps much less."
+  ],
+  "origin": "mine",
+  "from": "Electronics · 7805 caps"
+ },
+ {
+  "id": "mine-e1-pupdr-pull-up",
+  "type": "quiz",
+  "topic": "embedded",
+  "tags": [
+   "registers",
+   "bit-manipulation"
+  ],
+  "difficulty": 2,
+  "title": "STM32F4 PUPDR: 2 bits per pin, 01 = pull-up, 10 = pull-down. You set pull-up for pin 3. What is printed?",
+  "options": [
+   "8",
+   "64",
+   "16",
+   "4"
+  ],
+  "answer": 1,
+  "explain": "Pin 3 uses bits 7:6, so the shift is 3 * 2 = 6. 1u << 6 = 64. A pull-down (10) would be 2u << 6 = 128. As with MODER, clear the 2 bits first with &= ~(3u << 6) before you OR the new value.",
+  "origin": "mine",
+  "from": "STM32 driver · GPIO_Init",
+  "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint32_t pupdr = 0;\n    int pin = 3;\n    pupdr |= (1u << (pin * 2));\n    printf(\"%u\\n\", pupdr);\n}",
+  "lang": "c",
+  "verify": {
+   "lang": "c",
+   "expect": "64"
+  }
+ },
+ {
+  "id": "mine-e1-pwm-gamma",
+  "type": "quiz",
+  "topic": "electronics",
+  "tags": [
+   "pwm",
+   "resolution"
+  ],
+  "difficulty": 2,
+  "title": "analogWrite(LED, 128) gives 50% duty. How does the LED look to your eye?",
+  "options": [
+   "Exactly half as bright",
+   "Much brighter than half",
+   "Much darker than half",
+   "It flickers at 490 Hz"
+  ],
+  "answer": 1,
+  "explain": "Average current is half, but the eye sees brightness on a curve (about gamma 2.2). 50% duty looks like about 70% bright. For smooth fades, use a gamma table. 490 Hz is too fast to see.",
+  "origin": "mine",
+  "from": "Tinkercad lesson 4 · PWM"
+ }
+]

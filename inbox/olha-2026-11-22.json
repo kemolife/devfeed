@@ -1,0 +1,177 @@
+[
+ {
+  "id": "fp-head-request",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "http-methods"
+  ],
+  "difficulty": 2,
+  "title": "A monitoring tool sends HEAD /?action=list. What does your API return?",
+  "options": [
+   "200 and the file list",
+   "405, method not allowed",
+   "404, not found",
+   "400, action missing"
+  ],
+  "answer": 1,
+  "explain": "checkAction() compares the method with the one in ACTION_METHODS. getMethod() gives HEAD, but list expects GET, so MethodNotAllowedException becomes 405. Many tools use HEAD for health checks. You could accept HEAD wherever GET is allowed.",
+  "code": "private function checkAction(string $action, string $method): void\n{\n    if (self::ACTION_METHODS[$action] !== $method) {\n        throw new MethodNotAllowedException(\n            $action, self::ACTION_METHODS[$action], $method\n        );\n    }\n}",
+  "lang": "php"
+ },
+ {
+  "id": "fp-pr-action-enum-from",
+  "type": "pr",
+  "topic": "project",
+  "tags": [
+   "enum",
+   "error-handling"
+  ],
+  "difficulty": 3,
+  "title": "Use a PHP enum for the actions",
+  "diff": "-$action = strtolower($this->getRequired($request, 'action'));\n+$action = Action::from(\n+    strtolower($this->getRequired($request, 'action'))\n+);\n $this->checkAction($action, $request->getMethod());",
+  "lang": "php",
+  "pr": {
+   "author": "olha-dev",
+   "title": "Use a PHP enum for the actions",
+   "body": "Strings are error-prone. A backed enum Action is cleaner.",
+   "verdict": "changes"
+  },
+  "explain": "Action::from() throws ValueError for an unknown value like ?action=hack. That is not a FileServiceException, so the user gets a generic 500 instead of the 400 with the list of actions. Use tryFrom() and throw UnsupportedActionException yourself.",
+  "fix": "$raw = strtolower($this->getRequired($request, 'action'));\n$action = Action::tryFrom($raw)\n    ?? throw new UnsupportedActionException(\n        $raw,\n        array_column(Action::cases(), 'value')\n    );\n$this->checkAction($action, $request->getMethod());"
+ },
+ {
+  "id": "fp-upload-wrong-field",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "file-upload",
+   "http-status"
+  ],
+  "difficulty": 1,
+  "title": "The HTML form has <input type=\"file\" name=\"upload\">. What does upload() answer?",
+  "options": [
+   "201 and the file is saved",
+   "400, \"No file uploaded.\"",
+   "500, generic error",
+   "404, file not found"
+  ],
+  "answer": 1,
+  "explain": "The controller reads $request->files->get('file'). The field is called upload, so the result is null. null is not an UploadedFile, so InvalidRequestException is thrown. Its status is 400. The name in the form and in the code must be the same.",
+  "code": "// form: <input type=\"file\" name=\"upload\">\n$file = $request->files->get('file');\n\nif (!$file instanceof UploadedFile) {\n    throw new InvalidRequestException(\n        'No file uploaded.'\n    );\n}",
+  "lang": "php"
+ },
+ {
+  "id": "fp-private-const-child",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "static",
+   "inheritance"
+  ],
+  "difficulty": 3,
+  "title": "Someone extends FileController and redefines the constants. What does this print?",
+  "options": [
+   "11",
+   "15",
+   "51",
+   "55"
+  ],
+  "answer": 1,
+  "explain": "self::MAX with a private constant always means the constant of the class where the code is written, so it stays 1. static::LIM is resolved at run time on the real class, so it is 5. Your MAX_UPLOAD_SIZE is private, so a child class can not change the limit.",
+  "code": "class A {\n    private const MAX = 1;\n    protected const LIM = 1;\n    function m() { return self::MAX; }\n    function n() { return static::LIM; }\n}\nclass B extends A {\n    private const MAX = 5;\n    protected const LIM = 5;\n}\n$b = new B;\necho $b->m(), $b->n();",
+  "lang": "php",
+  "verify": {
+   "lang": "php",
+   "expect": "15"
+  }
+ },
+ {
+  "id": "php-elvis-vs-coalesce",
+  "type": "quiz",
+  "topic": "php",
+  "tags": [
+   "falsy-zero",
+   "null-coalesce"
+  ],
+  "difficulty": 2,
+  "title": "PHP 8. What does this print?",
+  "options": [
+   "default 0",
+   "default default",
+   "0 0",
+   "0 default"
+  ],
+  "answer": 0,
+  "explain": "?: (Elvis) uses the right side when the left is falsy. The string \"0\" is falsy, so you get default. ?? uses the right side only when the left is null or not set, so \"0\" stays. Use ?? for missing values.",
+  "code": "$a = \"0\";\necho $a ?: 'default', \"\\n\";\necho $a ?? 'default', \"\\n\";",
+  "lang": "php",
+  "verify": {
+   "lang": "php",
+   "expect": "default\n0"
+  }
+ },
+ {
+  "id": "js-default-param-null",
+  "type": "quiz",
+  "topic": "js",
+  "tags": [
+   "default-params",
+   "coercion"
+  ],
+  "difficulty": 2,
+  "title": "What does this print?",
+  "options": [
+   "guest guest []",
+   "guest null []",
+   "guest null [guest]",
+   "undefined null []"
+  ],
+  "answer": 1,
+  "explain": "A default parameter is used only when the value is undefined. null and an empty string are real values, so they are kept. If you want a default for null too, write name ?? 'guest' inside the function.",
+  "code": "function hi(name = 'guest') {\n    return name;\n}\nconsole.log(hi(undefined), hi(null),\n            '[' + hi('') + ']');",
+  "lang": "js",
+  "verify": {
+   "lang": "js",
+   "expect": "guest null []"
+  }
+ },
+ {
+  "id": "git-clean-dry-run",
+  "type": "quiz",
+  "topic": "git",
+  "tags": [
+   "destructive-command",
+   "git-habits"
+  ],
+  "difficulty": 2,
+  "title": "You run git clean -fd to remove build files. What can go wrong?",
+  "options": [
+   "Nothing, it only removes ignored files",
+   "It deletes all untracked files and folders for good",
+   "It resets your last commit",
+   "It removes files from the remote"
+  ],
+  "answer": 1,
+  "explain": "git clean -fd deletes every untracked file and folder, including new work you have not added yet. Git cannot bring them back. Run git clean -nd first (dry run) to see the list. Ignored files are kept unless you add -x."
+ },
+ {
+  "id": "sf-two-impls-autowire",
+  "type": "quiz",
+  "topic": "symfony",
+  "tags": [
+   "autowiring",
+   "services"
+  ],
+  "difficulty": 2,
+  "title": "Two classes implement ReportExporter. A service asks for ReportExporter in its constructor. What happens?",
+  "options": [
+   "Symfony picks the first class by name",
+   "Symfony picks the newest class",
+   "Container error: it can not choose one implementation",
+   "The service gets null"
+  ],
+  "answer": 2,
+  "explain": "Autowiring needs exactly one choice. With two implementations the container fails and says to alias the interface. Fix it with #[AsAlias] on one class, an alias in services.yaml, or #[Autowire(service: ...)] at the argument."
+ }
+]
