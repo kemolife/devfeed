@@ -6416,5 +6416,162 @@
     "title": "Two classes implement ReportExporter. A service asks for ReportExporter in its constructor. What happens?",
     "topic": "symfony",
     "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "$isNew = !file_exists($path);\n$this->saveContent($path, $content);\nreturn $isNew; // 201 if true",
+    "difficulty": 3,
+    "explain": "Both check file_exists() while the file is missing, so both say 'new' and return 201. The last write wins. The check and the save are not one atomic step. A safe way is fopen($path, 'x') for create, like FileNameResolver does.",
+    "id": "fp-write-201-race",
+    "lang": "php",
+    "options": [
+      "Both get 201, but only one file exists",
+      "One request gets a 500 from PHP",
+      "Both get 200",
+      "The second one always gets 409"
+    ],
+    "tags": [
+      "http",
+      "concurrency"
+    ],
+    "title": "Senior asks: write() decides 201 or 200 with file_exists() BEFORE it saves. Two users create new.json at the same moment. What can happen?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "$action = strtolower(\n    $this->getRequired($request, 'action')\n);\n$this->checkAction($action, $request->getMethod());",
+    "difficulty": 2,
+    "explain": "strtolower('DELETE') gives 'delete', which is in ACTION_METHODS and expects the DELETE method. So the request works. It is friendly, but also two spellings for one thing. Decide on one rule and test it.",
+    "id": "fp-action-case-upper",
+    "lang": "php",
+    "options": [
+      "It works like action=delete",
+      "405, method not allowed",
+      "400, unknown action",
+      "404, file not found"
+    ],
+    "tags": [
+      "http",
+      "validation"
+    ],
+    "title": "Senior asks: the controller does strtolower() on the action. A client sends DELETE /?action=DELETE&file=a.csv. What happens?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 1,
+    "code": "final class FileService\n{\n    public function listFiles(): array { /* ... */ }\n}\n\n$mock = $this->createMock(FileService::class);",
+    "difficulty": 3,
+    "explain": "PHPUnit builds a mock as a subclass. A final class cannot be extended, so createMock() throws. Fix: give FileService an interface (FileServiceInterface), type the controller against it, and mock the interface.",
+    "id": "fp-final-service-mock",
+    "lang": "php",
+    "options": [
+      "Nothing, mocks still work",
+      "PHPUnit fails: a final class cannot be doubled",
+      "The test passes but is slower",
+      "PHP 8.4 ignores final in tests"
+    ],
+    "tags": [
+      "testing",
+      "architecture"
+    ],
+    "title": "Senior asks: you want to make FileService final. FileControllerTest uses createMock(FileService::class). What happens?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "$rows = [\n  ['id' => 1, 'fruit' => 'apple'],\n  ['fruit' => 'pear', 'id' => 2],\n];\n$lines = [];\nforeach ($rows as $r) {\n    $lines[] = implode(',', $r);\n}\necho implode('|', $lines);",
+    "difficulty": 2,
+    "explain": "A CSV line has no names, only positions. fputcsv() writes the values in the order of the array. Row 2 starts with fruit, so 'pear' lands under the id column. Re-order every row by the header keys before writing.",
+    "id": "fp-csv-key-order-header",
+    "lang": "php",
+    "options": [
+      "1,apple|pear,2",
+      "1,apple|2,pear",
+      "apple,1|pear,2",
+      "An error"
+    ],
+    "tags": [
+      "csv",
+      "arrays"
+    ],
+    "title": "Senior asks: write() saves each row with fputcsv($out, $row). Row 2 has the keys in another order. What does this print?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "1,apple|pear,2",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "echo 10 <=> 9;\necho \"10\" <=> \"9a\";",
+    "difficulty": 3,
+    "explain": "10 <=> 9 compares two ints: 1. In PHP 8 a number and a NON-numeric string are compared as strings: '10' vs '9a', and '1' < '9', so the result is -1. In PHP 7 this was a number compare. Always cast before you sort.",
+    "id": "php-spaceship-mixed",
+    "lang": "php",
+    "options": [
+      "1-1",
+      "11",
+      "-1-1",
+      "10"
+    ],
+    "tags": [
+      "loose-compare",
+      "sorting"
+    ],
+    "title": "PHP 8. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "1-1",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 1,
+    "code": "class A {\n  static function s() { return new static; }\n  static function f() { return new self; }\n}\nclass B extends A {}\necho get_class(B::s()), get_class(B::f());",
+    "difficulty": 2,
+    "explain": "new static creates the class that was called (late static binding): B::s() gives B. new self is fixed to the class where the code is written: A. Use static for factories that child classes may extend.",
+    "id": "oop-new-static-vs-self",
+    "lang": "php",
+    "options": [
+      "AA",
+      "BA",
+      "BB",
+      "AB"
+    ],
+    "tags": [
+      "static",
+      "inheritance"
+    ],
+    "title": "PHP 8. B extends A. What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "BA",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "git restore --staged takes the file out of the index, the working file stays as it is. git restore config.php (no flag) would throw your edits away. reset --hard drops everything. Check with git status first.",
+    "id": "git-restore-staged",
+    "options": [
+      "git restore --staged config.php",
+      "git restore config.php",
+      "git reset --hard",
+      "git rm config.php"
+    ],
+    "tags": [
+      "git-basics",
+      "git-safety"
+    ],
+    "title": "You ran git add config.php by mistake. You want to unstage it but keep your edits. Which command?",
+    "topic": "git",
+    "type": "quiz"
   }
 ]

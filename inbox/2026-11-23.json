@@ -1,0 +1,241 @@
+[
+ {
+  "id": "mine-l11-ack-who",
+  "type": "quiz",
+  "topic": "electronics",
+  "tags": [
+   "i2c",
+   "peripheral-timing"
+  ],
+  "difficulty": 1,
+  "origin": "mine",
+  "from": "Tinkercad lesson 11 · I2C LCD",
+  "title": "I2C: master sends the address byte. Who sends the ACK?",
+  "options": [
+   "The master, to say the byte was sent",
+   "The slave with that address, by pulling SDA low",
+   "Every slave on the bus together",
+   "The pull-up resistors"
+  ],
+  "answer": 1,
+  "explain": "The slave that owns the address pulls SDA low for one clock: 'I am here'. No ACK (NACK) means no such device. An I2C scanner uses exactly this: it tries all 128 addresses and lists who answered."
+ },
+ {
+  "id": "mine-l11-scanner-d4d5",
+  "type": "quiz",
+  "topic": "electronics",
+  "tags": [
+   "i2c",
+   "gpio"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 11 · I2C LCD",
+  "title": "LCD backpack SDA/SCL wired to D4 and D5 on the Uno. The LCD stays blank. Why?",
+  "options": [
+   "D4 and D5 are normal GPIO. Uno hardware I2C is only on A4 (SDA) and A5 (SCL)",
+   "I2C needs 3.3 V, not 5 V",
+   "The address 0x20 is reserved",
+   "Wire.begin() was not called"
+  ],
+  "answer": 0,
+  "explain": "Hardware I2C is wired to fixed pins: A4 = SDA, A5 = SCL on the Uno. D4/D5 have no I2C unit, so nothing talks and nothing ACKs. There is no error, just silence. A scanner would find 0 devices."
+ },
+ {
+  "id": "mine-l11-lcd-keeps-old",
+  "type": "quiz",
+  "topic": "c",
+  "tags": [
+   "stale-data",
+   "off-by-one"
+  ],
+  "difficulty": 1,
+  "origin": "mine",
+  "from": "Tinkercad lesson 11 · I2C LCD",
+  "title": "Simulated LCD row. You show 10, then 9. What does the row show?",
+  "lang": "c",
+  "code": "#include <stdio.h>\n#include <string.h>\n\nint main(void) {\n    char row[3];\n    strcpy(row, \"10\");\n    row[0] = '9';   // print(9)\n    printf(\"%s\\n\", row);\n}",
+  "options": [
+   "9",
+   "90",
+   "10",
+   "9 followed by a blank"
+  ],
+  "answer": 1,
+  "explain": "The LCD does not clear cells by itself. Writing '9' changes only column 0. Column 1 still holds '0' from '10', so you see 90. Print the number then pad with spaces, or write '9 '.",
+  "verify": {
+   "lang": "c",
+   "expect": "90"
+  }
+ },
+ {
+  "id": "mine-bug-l11-boom-repeat",
+  "type": "bug",
+  "topic": "embedded",
+  "tags": [
+   "i2c",
+   "blocking-in-isr"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 11 · I2C LCD",
+  "title": "After 0 the LCD looks fine, but the I2C bus is busy all the time. Tap the bug.",
+  "lang": "cpp",
+  "code": "void loop() {\n  unsigned long now = millis();\n  if (i == 0) {\n    lcd.setCursor(0, 1);\n    lcd.print(\"BOOM!\");\n  }\n  if (now - prev >= 1000 && i > 0) {\n    prev += 1000;\n    lcd.setCursor(0, 1);\n    lcd.print(i--);\n  }\n}",
+  "bugLines": [
+   3,
+   4,
+   5
+  ],
+  "explain": "When i == 0 this branch runs on every loop(): thousands of I2C transfers per second for the same text. Print BOOM! once, on the tick that reaches 0, or use a flag/state so it runs one time.",
+  "fix": "if (i == 0 && !boomShown) {\n  lcd.setCursor(0, 1);\n  lcd.print(\"BOOM!\");\n  boomShown = true;   // print once\n}"
+ },
+ {
+  "id": "mine-l11-addr-byte",
+  "type": "quiz",
+  "topic": "embedded",
+  "tags": [
+   "i2c",
+   "bit-manipulation"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 11 · I2C LCD",
+  "title": "LCD address 0x27 (7 bit). What are the first bytes on the wire for a write and a read?",
+  "lang": "c",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    unsigned addr = 0x27;\n    printf(\"%02X %02X\\n\",\n           (addr << 1) | 0, (addr << 1) | 1);\n}",
+  "options": [
+   "0x27 and 0x27",
+   "0x4E and 0x4F",
+   "0x13 and 0x14",
+   "0x28 and 0x27"
+  ],
+  "answer": 1,
+  "explain": "The first byte is the 7-bit address shifted left by 1, plus the R/W bit: 0 = write, 1 = read. 0x27 << 1 = 0x4E, so write = 0x4E and read = 0x4F. Arduino Wire takes the 7-bit form and does the shift for you.",
+  "verify": {
+   "lang": "c",
+   "expect": "4E 4F"
+  }
+ },
+ {
+  "id": "mine-l11-first-interval",
+  "type": "quiz",
+  "topic": "c",
+  "tags": [
+   "millis",
+   "accuracy"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 11 · I2C LCD",
+  "title": "lcd.begin() takes 40 ms inside setup(). prev stays 0. When does the first 1000 ms tick come, counted from the end of setup()?",
+  "lang": "c",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    unsigned long setup_end = 40, prev = 0;\n    unsigned long first_tick = prev + 1000;\n    printf(\"%lu\\n\", first_tick - setup_end);\n}",
+  "options": [
+   "After 1000 ms",
+   "After 960 ms",
+   "After 1040 ms",
+   "Immediately"
+  ],
+  "answer": 1,
+  "explain": "millis() is already 40 when loop() starts, and prev is 0. The first tick comes at millis = 1000, which is 960 ms after setup() ended. Fix: set prev = millis() at the end of setup().",
+  "verify": {
+   "lang": "c",
+   "expect": "960"
+  }
+ },
+ {
+  "id": "mine-l12-uart-buffer-time",
+  "type": "quiz",
+  "topic": "embedded",
+  "tags": [
+   "timers",
+   "peripheral-timing"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 12 · Serial commands",
+  "title": "UART 9600 baud, 8N1. The RX buffer holds 64 bytes. loop() is blocked. After about how many ms is it full?",
+  "lang": "c",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    int bytes = 64, baud = 9600;\n    printf(\"%d\\n\", bytes * 10 * 1000 / baud);\n}",
+  "options": [
+   "About 6 ms",
+   "About 66 ms",
+   "About 53 ms",
+   "About 660 ms"
+  ],
+  "answer": 1,
+  "explain": "One byte = 10 bits (start + 8 data + stop). At 9600 bit/s that is 960 bytes/s, so 64 bytes take 64 * 10 * 1000 / 9600 = 66 ms. A delay(100) can lose incoming bytes.",
+  "verify": {
+   "lang": "c",
+   "expect": "66"
+  }
+ },
+ {
+  "id": "mine-bug-l12-read-no-available",
+  "type": "bug",
+  "topic": "embedded",
+  "tags": [
+   "ignored-error",
+   "stale-data"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 12 · Serial commands",
+  "title": "The command parser gets garbage when the PC sends nothing. Tap the bug.",
+  "lang": "cpp",
+  "code": "char buf[16];\nint n = 0;\n\nvoid loop() {\n  char c = Serial.read();\n  if (c == '\\n') {\n    buf[n] = 0;\n    handle(buf);\n    n = 0;\n  } else {\n    buf[n++] = c;\n  }\n}",
+  "bugLines": [
+   5,
+   11
+  ],
+  "explain": "Serial.read() returns -1 when no byte is waiting. Without Serial.available() the loop stores -1 (0xFF) again and again, and n++ also overruns buf[16]. Check available() first and guard n < sizeof buf - 1.",
+  "fix": "while (Serial.available() > 0) {\n  char c = Serial.read();\n  if (c == '\\n') {\n    buf[n] = 0;\n    handle(buf);\n    n = 0;\n  } else if (n < sizeof buf - 1) {\n    buf[n++] = c;\n  }\n}"
+ },
+ {
+  "id": "mine-l12-crlf-strcmp",
+  "type": "quiz",
+  "topic": "c",
+  "tags": [
+   "string-termination",
+   "logic-inversion"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 12 · Serial commands",
+  "title": "Serial Monitor sends \"on\" + CR LF. Your parser stops at '\\n'. Does strcmp(buf, \"on\") == 0 match? (prints 1 if yes)",
+  "lang": "c",
+  "code": "#include <stdio.h>\n#include <string.h>\n\nint main(void) {\n    char buf[8] = {'o', 'n', '\\r', 0};\n    printf(\"%d\\n\", strcmp(buf, \"on\") == 0);\n}",
+  "options": [
+   "1, it matches",
+   "0, buf is \"on\\r\"",
+   "0, buf is empty",
+   "It crashes"
+  ],
+  "answer": 1,
+  "explain": "Stopping at '\\n' leaves the '\\r' in the buffer: buf = \"on\\r\". strcmp sees a different string. Ignore '\\r' or trim it before the compare. Serial Monitor can send NL, CR, both or none.",
+  "verify": {
+   "lang": "c",
+   "expect": "0"
+  }
+ },
+ {
+  "id": "mine-l12-concept-serial-rules",
+  "type": "concept",
+  "topic": "embedded",
+  "tags": [
+   "buffer-overflow",
+   "blocking-delay"
+  ],
+  "difficulty": 1,
+  "origin": "mine",
+  "from": "Tinkercad lesson 12 · Serial commands",
+  "title": "Serial commands on a 2 KB Uno: 4 rules",
+  "bullets": [
+   "Read with available() > 0, one byte at a time. read() gives -1 if empty.",
+   "Use a fixed char buf[] and an index. Check n < size - 1 before every store.",
+   "No String class (heap fragmentation) and no readString() (waits up to 1 s like delay).",
+   "End of command is '\\n'. Also ignore '\\r', the Serial Monitor may send both."
+  ]
+ }
+]
