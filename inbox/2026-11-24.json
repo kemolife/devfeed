@@ -1,0 +1,251 @@
+[
+ {
+  "id": "mine-f1-i2c-pullup-weak",
+  "type": "quiz",
+  "topic": "electronics",
+  "tags": [
+   "i2c",
+   "pull-up"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 11 · I2C LCD",
+  "title": "I2C on the Uno at 400 kHz. You use 100 kΩ pull-ups instead of 4.7 kΩ. What can go wrong?",
+  "options": [
+   "The rising edges are too slow, so bits are read wrong or the LCD is silent",
+   "The pull-ups burn out",
+   "The master can no longer pull SDA low",
+   "Nothing, a bigger value is always better"
+  ],
+  "answer": 0,
+  "explain": "A pull-up and the bus capacitance make an RC circuit. Big R means a slow rise. At 400 kHz the line does not reach HIGH in time. Small R gives fast edges but more current when a device pulls low. 2.2 kΩ to 10 kΩ is normal."
+ },
+ {
+  "id": "mine-f1-snprintf-trunc",
+  "type": "quiz",
+  "topic": "c",
+  "tags": [
+   "truncation",
+   "buffer-overflow"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 12 · Serial",
+  "title": "Label buffer for the LCD. What does this print?",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    char buf[4];\n    int n = snprintf(buf, sizeof buf,\n                     \"%d\", 12345);\n    printf(\"%s %d\\n\", buf, n);\n}",
+  "lang": "c",
+  "options": [
+   "123 5",
+   "12345 5",
+   "123 3",
+   "1234 4"
+  ],
+  "answer": 0,
+  "explain": "snprintf writes at most size-1 characters and then a '\\0'. So buf holds \"123\". The return value is the length it WANTED to write: 5. If n >= sizeof buf, the text was cut. Always check it.",
+  "verify": {
+   "lang": "c",
+   "expect": "123 5"
+  }
+ },
+ {
+  "id": "mine-f1-nested-irq-lock",
+  "type": "quiz",
+  "topic": "c",
+  "tags": [
+   "critical-section",
+   "isr"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "STM32 driver · interrupts prep",
+  "title": "Simulated PRIMASK. log_event() is called inside your critical section. What does this print?",
+  "code": "#include <stdio.h>\n\nstatic int irq_on = 1;\nvoid lock(void)   { irq_on = 0; }\nvoid unlock(void) { irq_on = 1; }\n\nvoid log_event(void) {\n    lock();\n    /* touch shared data */\n    unlock();\n}\n\nint main(void) {\n    lock();\n    log_event();\n    printf(\"%d\\n\", irq_on);\n}",
+  "lang": "c",
+  "options": [
+   "1, interrupts are ON again too early",
+   "0, interrupts are still off",
+   "2",
+   "It does not compile"
+  ],
+  "answer": 0,
+  "explain": "unlock() in log_event() turns interrupts on, but the outer code is still in its critical section. Fix: save the old state in lock() and restore THAT state in unlock(), not always 'on'. This is what critical-section crates do.",
+  "verify": {
+   "lang": "c",
+   "expect": "1"
+  }
+ },
+ {
+  "id": "mine-f1-rs-u8-ops",
+  "type": "quiz",
+  "topic": "rust",
+  "tags": [
+   "integer-overflow",
+   "truncation"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 6 · overflow, in Rust",
+  "title": "A u8 pulse counter is at 250. What do these three lines print?",
+  "code": "fn main() {\n    let a: u8 = 250;\n    println!(\"{}\", a.wrapping_add(10));\n    println!(\"{}\", a.saturating_add(10));\n    println!(\"{:?}\", a.checked_add(10));\n}",
+  "lang": "rust",
+  "options": [
+   "4, 255, None",
+   "4, 4, Some(4)",
+   "255, 255, None",
+   "It panics in release mode"
+  ],
+  "answer": 0,
+  "explain": "wrapping_add wraps around: 260 - 256 = 4. saturating_add stops at 255. checked_add returns None on overflow. A plain + panics in debug and wraps in release. In firmware, choose the behavior on purpose.",
+  "verify": {
+   "lang": "rust",
+   "expect": "4\n255\nNone"
+  }
+ },
+ {
+  "id": "mine-f1-pot-source-z",
+  "type": "quiz",
+  "topic": "electronics",
+  "tags": [
+   "source-impedance",
+   "adc"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 4 · pot on A0",
+  "title": "You replace the 10 kΩ pot on A0 with a 1 MΩ pot. Readings get noisy and lag behind. Why?",
+  "options": [
+   "The ADC sampling capacitor needs a low source impedance (about 10 kΩ or less)",
+   "1 MΩ draws too much current",
+   "The ADC only accepts 10 kΩ parts",
+   "The pot burns out at 5 V"
+  ],
+  "answer": 0,
+  "explain": "The ADC charges a small capacitor through your source resistance. With 1 MΩ it does not settle in the sample time, so values are wrong and depend on the last channel. Use a lower value pot, or add a buffer or a 100 nF cap at the pin."
+ },
+ {
+  "id": "mine-f1-f-macro-sram",
+  "type": "quiz",
+  "topic": "embedded",
+  "tags": [
+   "memory-layout",
+   "memory"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 12 · Serial",
+  "title": "Uno has 2 KB SRAM. Your sketch has many Serial.println(\"long text...\") lines and acts strange. What helps?",
+  "options": [
+   "Serial.println(F(\"text\")) keeps the text in flash",
+   "Use delay() between the prints",
+   "Use a faster baud rate",
+   "Make the strings global const char[]"
+  ],
+  "answer": 0,
+  "explain": "On AVR, string literals are copied into SRAM at start, because flash is a separate address space. Many texts fill the 2 KB and the stack hits the data. F() keeps the text in flash and reads it when printing. A plain const char[] still lives in SRAM."
+ },
+ {
+  "id": "mine-bug-f1-rx-index",
+  "type": "bug",
+  "topic": "c",
+  "tags": [
+   "off-by-one",
+   "buffer-overflow"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 12 · Serial",
+  "title": "Serial command buffer. Sometimes a nearby variable changes. Tap the bug.",
+  "lang": "c",
+  "code": "char buf[8];\nint idx = 0;\n\nvoid on_rx(char c) {\n    if (idx <= 8) {\n        buf[idx++] = c;\n    }\n}",
+  "bugLines": [
+   5,
+   6
+  ],
+  "explain": "buf has indexes 0 to 7. With idx == 8 the check <= 8 passes and buf[8] is written: one byte past the array. Use idx < sizeof buf.",
+  "fix": "char buf[8];\nint idx = 0;\n\nvoid on_rx(char c) {\n    if (idx < sizeof buf) {\n        buf[idx++] = c;\n    }\n}"
+ },
+ {
+  "id": "mine-f1-concept-i2c-checks",
+  "type": "concept",
+  "topic": "electronics",
+  "tags": [
+   "i2c",
+   "review-checklist"
+  ],
+  "difficulty": 1,
+  "origin": "mine",
+  "from": "Tinkercad lesson 11 · I2C LCD",
+  "title": "I2C LCD is blank: 5 checks",
+  "bullets": [
+   "Pins: Uno hardware I2C is A4 (SDA) and A5 (SCL), not D4/D5.",
+   "Address: run a scanner. 0x27 and 0x3F are common. Wrong address = no ACK.",
+   "Pull-ups: 2.2 to 10 kΩ on SDA and SCL to VCC. Not 100 kΩ.",
+   "Power and GND: shared ground, correct supply (5 V for most LCD backpacks).",
+   "Code: Wire.begin() and lcd.begin() called, and the check of endTransmission() is not removed."
+  ]
+ },
+ {
+  "id": "mine-f1-pr-i2c-return",
+  "type": "pr",
+  "topic": "embedded",
+  "tags": [
+   "ignored-error",
+   "i2c"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Tinkercad lesson 11 · I2C LCD",
+  "lang": "cpp",
+  "pr": {
+   "title": "Remove unused variable",
+   "author": "copilot",
+   "body": "The compiler may warn about err. Simplify send_cmd and always return 0.",
+   "verdict": "changes"
+  },
+  "diff": " uint8_t send_cmd(uint8_t addr, uint8_t cmd) {\n     Wire.beginTransmission(addr);\n     Wire.write(cmd);\n-    uint8_t err = Wire.endTransmission();\n-    return err;\n+    Wire.endTransmission();\n+    return 0;\n }",
+  "explain": "endTransmission() returns 0 on success and an error code (for example 2 = NACK on address) otherwise. The PR throws it away, so callers can never see a missing LCD. The variable was used. Keep the return value.",
+  "fix": "uint8_t send_cmd(uint8_t addr, uint8_t cmd) {\n    Wire.beginTransmission(addr);\n    Wire.write(cmd);\n    // 0 = ok, 2 = NACK on address, ...\n    return Wire.endTransmission();\n}"
+ },
+ {
+  "id": "mine-f1-spi-mode0",
+  "type": "quiz",
+  "topic": "embedded",
+  "tags": [
+   "spi",
+   "peripheral-timing"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "next step · SPI",
+  "title": "SPI mode 0 (CPOL = 0, CPHA = 0). When does the slave sample MOSI?",
+  "options": [
+   "On the rising edge of SCK, the clock idles LOW",
+   "On the falling edge of SCK, the clock idles HIGH",
+   "On the falling edge, the clock idles LOW",
+   "Only when CS goes high"
+  ],
+  "answer": 0,
+  "explain": "Mode 0: the clock idles low and data is sampled on the first (rising) edge. The master changes MOSI on the falling edge. If your sensor expects mode 3 and you use mode 0, bytes come out shifted or wrong. Check the datasheet."
+ },
+ {
+  "id": "mine-f1-uart-8n1-bytes",
+  "type": "quiz",
+  "topic": "embedded",
+  "tags": [
+   "peripheral-timing",
+   "timers"
+  ],
+  "difficulty": 1,
+  "origin": "mine",
+  "from": "Tinkercad lesson 12 · Serial",
+  "title": "UART 115200 baud, 8N1. About how many bytes per second can you send?",
+  "options": [
+   "About 11 520",
+   "About 14 400",
+   "About 115 200",
+   "About 9 216"
+  ],
+  "answer": 0,
+  "explain": "8N1 sends 10 bits for each byte: 1 start + 8 data + 1 stop. 115200 / 10 = 11520 bytes per second. Not 115200 / 8. About 87 µs per byte."
+ }
+]

@@ -6573,5 +6573,191 @@
     "title": "You ran git add config.php by mistake. You want to unstage it but keep your edits. Which command?",
     "topic": "git",
     "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "try {\n    array_combine(['id', 'name'], ['1']);\n} catch (ValueError $e) {\n    echo 'error';\n}",
+    "difficulty": 2,
+    "explain": "Since PHP 8, array_combine() throws ValueError when the two arrays have different sizes. Nobody catches it, so the API would answer 500. The own check turns it into a clear 422 message about the bad row.",
+    "id": "fp-array-combine-mismatch",
+    "lang": "php",
+    "options": [
+      "array_combine() throws a ValueError, so the user gets a 500",
+      "It fills the missing value with null",
+      "It skips the row",
+      "It returns false like PHP 7"
+    ],
+    "tags": [
+      "csv",
+      "validation"
+    ],
+    "title": "Senior asks: CsvFileActions::read() checks the column count before array_combine(). What does PHP 8 do without that check?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "error",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "$data = json_decode('{\"id\":1}');\ntry {\n    echo $data['id'];\n} catch (Error $e) {\n    echo get_class($e);\n}",
+    "difficulty": 2,
+    "explain": "Without true, JSON objects become stdClass. Reading $data['id'] on an object throws 'Cannot use object of type stdClass as array'. The whole FileActions code expects arrays, so the second argument must stay true.",
+    "id": "fp-json-object-not-array",
+    "lang": "php",
+    "options": [
+      "The result is a stdClass object and $data['id'] throws an Error",
+      "Nothing, it still returns an array",
+      "It returns null",
+      "Only numbers are decoded"
+    ],
+    "tags": [
+      "json",
+      "data-types"
+    ],
+    "title": "Senior asks: decodeJson() calls json_decode($text, true). What happens if someone removes the true?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "Error",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "$data = json_decode('{}', true);\necho json_encode($data);",
+    "difficulty": 3,
+    "explain": "With true, {} becomes an empty PHP array. An empty array has no keys, so json_encode writes [] . The object turns into a list. The data changes shape. If this matters, use JSON_FORCE_OBJECT or keep the raw text.",
+    "id": "fp-json-empty-object-list",
+    "lang": "php",
+    "options": [
+      "[]",
+      "{}",
+      "null",
+      "An error"
+    ],
+    "tags": [
+      "json",
+      "data-types"
+    ],
+    "title": "Senior asks: a user saves {} (an empty object) with write. JsonFileActions decodes and encodes it. What is in the file?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "[]",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "Composer checks the php requirement as a platform package. PHP 8.2 does not match >=8.4, so it fails at install time. That is good: you find out on deploy, not at runtime. Update PHP on the server or lower the constraint on purpose.",
+    "id": "fp-composer-php-version",
+    "options": [
+      "It stops with an error: your PHP version does not satisfy the requirement",
+      "It installs and the app runs with warnings",
+      "It downloads PHP 8.4",
+      "It ignores the php line"
+    ],
+    "tags": [
+      "composer",
+      "tooling"
+    ],
+    "title": "Senior asks: composer.json has \"php\": \">=8.4\". The server runs PHP 8.2. What does composer install do?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "echo implode(',', [\n    round(2.5),\n    round(-2.5),\n    round(3.5),\n]);",
+    "difficulty": 2,
+    "explain": "PHP round() rounds .5 away from zero: 2.5 gives 3 and -2.5 gives -3. This is not bankers' rounding. Python does it differently. Check the language when money or counters depend on it.",
+    "id": "php-round-half",
+    "lang": "php",
+    "options": [
+      "3,-3,4",
+      "2,-2,4",
+      "3,-2,4",
+      "2,-3,3"
+    ],
+    "tags": [
+      "rounding",
+      "data-types"
+    ],
+    "title": "PHP 8. round() with halves. What does this print?",
+    "topic": "php",
+    "type": "quiz",
+    "verify": {
+      "expect": "3,-3,4",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "console.log(\n  Number(''),\n  Number('12px'),\n  Number(null),\n  Number(undefined)\n);",
+    "difficulty": 2,
+    "explain": "Number('') is 0 and Number(null) is 0. Number('12px') is NaN, and Number(undefined) is NaN. An empty form field becomes 0, which can hide a missing value. Check for '' before converting.",
+    "id": "js-number-conversion",
+    "lang": "js",
+    "options": [
+      "0 NaN 0 NaN",
+      "NaN NaN 0 NaN",
+      "0 12 0 0",
+      "0 NaN NaN NaN"
+    ],
+    "tags": [
+      "type-coercion"
+    ],
+    "title": "What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "0 NaN 0 NaN",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "class Point {\n    public function __construct(\n        public int $x = 0,\n        public int $y = 0,\n    ) {}\n}\n$p = new Point(y: 5);\necho $p->x, ',', $p->y;",
+    "difficulty": 2,
+    "explain": "Named argument y: 5 sets only y. x keeps its default 0. Promoted parameters become public properties, so $p->x and $p->y work. Named arguments let you skip the ones you do not need.",
+    "id": "oop-named-args-promotion",
+    "lang": "php",
+    "options": [
+      "0,5",
+      "5,0",
+      "5,5",
+      "An error"
+    ],
+    "tags": [
+      "constructors",
+      "named-args"
+    ],
+    "title": "PHP 8. Constructor promotion with named arguments. What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "0,5",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "--amend adds the staged file to the last commit and --no-edit keeps the message. This is safe only while the commit is not pushed. After a push, make a new small commit instead.",
+    "id": "git-amend-no-edit",
+    "options": [
+      "git add file, then git commit --amend --no-edit",
+      "git reset --hard HEAD~1",
+      "git push --force",
+      "git revert HEAD"
+    ],
+    "tags": [
+      "git-history"
+    ],
+    "title": "You forgot one file in your last commit. It is not pushed yet. What is the cleanest fix?",
+    "topic": "git",
+    "type": "quiz"
   }
 ]
