@@ -1,0 +1,173 @@
+[
+ {
+  "id": "fp-home-html-static",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "architecture",
+   "performance"
+  ],
+  "difficulty": 1,
+  "title": "Senior asks: index.php sends home.html with PHP when there is no ?action. What is the better way?",
+  "options": [
+   "Let the web server send home.html as a static file. PHP then runs only for the API",
+   "Keep it. PHP is faster than the web server for files",
+   "Put the HTML inside a PHP string",
+   "Send it from JavaScript"
+  ],
+  "answer": 0,
+  "explain": "A web server sends static files fast, with caching headers, and without starting PHP. Your PHP code should handle only the API. For php -S and Apache the rewrite rule can skip existing files."
+ },
+ {
+  "id": "fp-sf-route-attribute",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "symfony",
+   "routing"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: you move the project to full Symfony. #[Route('/files/{name}', methods: ['DELETE'])] on a method. What does it replace in your code?",
+  "options": [
+   "The ACTION_METHODS const and the checkAction() 405 check",
+   "The FileService class",
+   "The .htaccess file only",
+   "Nothing, you still need checkAction()"
+  ],
+  "answer": 0,
+  "explain": "Symfony routing maps path and HTTP method to a controller method and answers 405 itself when the method is wrong. So the ACTION_METHODS map and checkAction() are not needed. The `match ($action)` is also gone: one method per route."
+ },
+ {
+  "id": "fp-csv-latin1-json-false",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "csv",
+   "encoding"
+  ],
+  "difficulty": 3,
+  "title": "Senior asks: an Excel CSV is saved as Windows-1252, so é is the single byte E9. read() returns it and the API calls json_encode(). What is the result?",
+  "code": "<?php\n$row = ['name' => \"caf\\xE9\"];\nvar_dump(json_encode($row));",
+  "lang": "php",
+  "options": [
+   "false (invalid UTF-8)",
+   "\"café\"",
+   "\"caf\\u00e9\"",
+   "\"caf?\""
+  ],
+  "answer": 0,
+  "explain": "json_encode() only accepts UTF-8. The byte E9 is not valid UTF-8, so it returns false (or throws with JSON_THROW_ON_ERROR). The API would send a broken answer. Fix: check or convert the encoding when you read the CSV (mb_convert_encoding) and answer 422 for bad files.",
+  "verify": {
+   "lang": "php",
+   "expect": "bool(false)"
+  }
+ },
+ {
+  "id": "fp-pr-cors-star",
+  "type": "pr",
+  "topic": "project",
+  "tags": [
+   "security",
+   "http"
+  ],
+  "difficulty": 2,
+  "lang": "php",
+  "pr": {
+   "title": "Add CORS so other sites can use the API",
+   "author": "copilot",
+   "body": "The front end of a partner is on another domain. Allow all origins.",
+   "verdict": "changes"
+  },
+  "diff": "     $response = $controller->handle($request);\n+    $response->headers->set('Access-Control-Allow-Origin', '*');\n+    $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, DELETE');\n     $response->send();",
+  "explain": "The API has no login and DELETE removes files. With * every website in the world can call it from a visitor's browser. Allow only the known partner origin, or no CORS at all, and add authentication before you open the API.",
+  "fix": "$allowed = ['https://partner.example.com'];\n$origin = $request->headers->get('Origin');\n\n$response = $controller->handle($request);\nif ($origin !== null && in_array($origin, $allowed, true)) {\n    $response->headers->set('Access-Control-Allow-Origin', $origin);\n    $response->headers->set('Vary', 'Origin');\n}\n$response->send();"
+ },
+ {
+  "id": "php-array-map-keep-keys",
+  "type": "quiz",
+  "topic": "php",
+  "tags": [
+   "arrays",
+   "array-keys"
+  ],
+  "difficulty": 2,
+  "title": "array_map() with one array and string keys. What does this print?",
+  "code": "<?php\n$p = ['a' => 1, 'b' => 2];\n$r = array_map(fn($x) => $x * 2, $p);\necho json_encode($r);",
+  "lang": "php",
+  "options": [
+   "{\"a\":2,\"b\":4}",
+   "[2,4]",
+   "{\"0\":2,\"1\":4}",
+   "An error"
+  ],
+  "answer": 0,
+  "explain": "With ONE array, array_map() keeps the keys, string keys too. With two or more arrays it gives a list with keys 0, 1, 2. If you need keys changed, use array_combine() or a foreach.",
+  "verify": {
+   "lang": "php",
+   "expect": "{\"a\":2,\"b\":4}"
+  }
+ },
+ {
+  "id": "js-array-fill-shared",
+  "type": "quiz",
+  "topic": "js",
+  "tags": [
+   "references",
+   "arrays"
+  ],
+  "difficulty": 2,
+  "title": "A grid of 3 rows. What does this print?",
+  "code": "const rows = Array(3).fill([]);\nrows[0].push(1);\nconsole.log(JSON.stringify(rows));",
+  "lang": "js",
+  "options": [
+   "[[1],[1],[1]]",
+   "[[1],[],[]]",
+   "[[],[],[]]",
+   "An error"
+  ],
+  "answer": 0,
+  "explain": "fill([]) puts the SAME array object in all 3 slots. A push through one row shows in all rows. Make separate arrays: Array.from({ length: 3 }, () => []).",
+  "verify": {
+   "lang": "js",
+   "expect": "[[1],[1],[1]]"
+  }
+ },
+ {
+  "id": "git-revert-merge-m1",
+  "type": "quiz",
+  "topic": "git",
+  "tags": [
+   "git",
+   "undo"
+  ],
+  "difficulty": 3,
+  "title": "A merge commit M on main broke the site. It is already pushed. How do you undo it safely?",
+  "options": [
+   "git revert -m 1 M",
+   "git revert M",
+   "git reset --hard HEAD~1 and force push",
+   "git commit --amend"
+  ],
+  "answer": 0,
+  "explain": "A merge commit has two parents, so git revert needs -m to know which side to keep. -m 1 means: keep the first parent (main). The revert is a new commit, so history stays safe for others. Note: merging that branch again later needs the revert of the revert."
+ },
+ {
+  "id": "sf-autowire-storage-dir",
+  "type": "quiz",
+  "topic": "symfony",
+  "tags": [
+   "autowiring",
+   "services"
+  ],
+  "difficulty": 2,
+  "title": "FileService has a constructor argument `string $storageDir`. Symfony cannot autowire a string. What is a clean fix?",
+  "options": [
+   "#[Autowire('%kernel.project_dir%/storage')] on the argument",
+   "Make the argument nullable",
+   "Use a global variable",
+   "Call new FileService() in every controller"
+  ],
+  "answer": 0,
+  "explain": "Autowiring works with classes and interfaces. For scalar values you tell Symfony the value: the #[Autowire] attribute with a parameter, or bind it in services.yaml. %kernel.project_dir% is a built-in parameter. The path then lives in one place."
+ }
+]

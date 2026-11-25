@@ -1,0 +1,229 @@
+[
+ {
+  "id": "mine-g1-spi-mode-idle-high",
+  "type": "quiz",
+  "topic": "embedded",
+  "tags": [
+   "spi",
+   "registers"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Next step · SPI",
+  "title": "A sensor datasheet: clock idles HIGH, data is sampled on the first clock edge. Which SPI mode is this?",
+  "options": [
+   "Mode 2 (CPOL=1, CPHA=0)",
+   "Mode 0 (CPOL=0, CPHA=0)",
+   "Mode 1 (CPOL=0, CPHA=1)",
+   "Mode 3 (CPOL=1, CPHA=1)"
+  ],
+  "answer": 0,
+  "explain": "CPOL is the idle level of the clock: idle HIGH means CPOL=1. CPHA=0 means sample on the first edge. Mode = CPOL*2 + CPHA = 2. A wrong mode often gives shifted bits, not silence."
+ },
+ {
+  "id": "mine-g1-field-no-mask",
+  "type": "quiz",
+  "topic": "c",
+  "tags": [
+   "bit-manipulation",
+   "registers"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "STM32 driver · GPIO_Init",
+  "title": "A 2-bit field sits at bits 5:4. You clear it, then write val = 5 without a mask. What does this print?",
+  "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main(void) {\n    uint32_t reg = 0x00;\n    uint32_t val = 5;\n    reg &= ~(0x3u << 4);\n    reg |= val << 4;\n    printf(\"%02X\\n\", (unsigned)reg);\n}",
+  "lang": "c",
+  "options": [
+   "50",
+   "10",
+   "15",
+   "00"
+  ],
+  "answer": 0,
+  "explain": "val = 5 is 0b101, so val << 4 is 0x50. It sets bit 6 too, which is outside the field. The right code is (val & 0x3) << 4, which gives 0x10. Always mask a value before you shift it into a register field.",
+  "verify": {
+   "lang": "c",
+   "expect": "50"
+  }
+ },
+ {
+  "id": "mine-bug-g1-dma-stack-buf",
+  "type": "bug",
+  "topic": "embedded",
+  "tags": [
+   "dma",
+   "buffer-lifetime"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "Next step · DMA",
+  "title": "The DMA transfer sends garbage, sometimes. Tap the bug.",
+  "lang": "c",
+  "code": "void send_packet(void) {\n    uint8_t buf[16];\n    fill_packet(buf);\n    dma_start(buf, sizeof buf);\n}",
+  "bugLines": [
+   2,
+   4
+  ],
+  "explain": "dma_start() returns at once and the DMA keeps reading buf. But buf lives on the stack, and the stack is reused as soon as send_packet() returns. Make the buffer static or global, and wait for the done flag before you reuse it.",
+  "fix": "static uint8_t buf[16];\n\nvoid send_packet(void) {\n    fill_packet(buf);\n    dma_start(buf, sizeof buf);\n    // do not touch buf until the DMA done flag is set\n}"
+ },
+ {
+  "id": "mine-g1-caps-parallel",
+  "type": "quiz",
+  "topic": "electronics",
+  "tags": [
+   "decoupling",
+   "parallel"
+  ],
+  "difficulty": 1,
+  "origin": "mine",
+  "from": "Tinkercad · 7805 + caps",
+  "title": "7805 input needs 20 µF but you only have two 10 µF capacitors. How do you connect them?",
+  "options": [
+   "In parallel: capacitances add up to 20 µF",
+   "In series: capacitances add up to 20 µF",
+   "In series: you get 5 µF",
+   "Either way, the result is 10 µF"
+  ],
+  "answer": 0,
+  "explain": "Capacitors in parallel add up: 10 + 10 = 20 µF. In series the total gets smaller (here 5 µF), like resistors in parallel. Check the voltage rating of both too."
+ },
+ {
+  "id": "mine-g1-rs-get-index",
+  "type": "quiz",
+  "topic": "rust",
+  "tags": [
+   "panic-in-firmware",
+   "off-by-one"
+  ],
+  "difficulty": 1,
+  "origin": "mine",
+  "from": "Rust · no_std panics",
+  "title": "Sample index comes from a sensor. What does this print?",
+  "code": "fn main() {\n    let samples = [10u8, 20, 30];\n    let i = 3;\n    println!(\"{:?}\", samples.get(i));\n}",
+  "lang": "rust",
+  "options": [
+   "None",
+   "30",
+   "A panic",
+   "0"
+  ],
+  "answer": 0,
+  "explain": "get() returns an Option and never panics. samples[3] would panic here, and a panic in firmware usually means a reset or a hang. Use get() when the index comes from outside.",
+  "verify": {
+   "lang": "rust",
+   "expect": "None"
+  }
+ },
+ {
+  "id": "mine-g1-concept-spi-checks",
+  "type": "concept",
+  "topic": "embedded",
+  "tags": [
+   "spi",
+   "review-checklist"
+  ],
+  "difficulty": 1,
+  "origin": "mine",
+  "from": "Next step · SPI",
+  "title": "SPI sensor returns 0x00 or 0xFF: 5 checks",
+  "bullets": [
+   "Mode: CPOL and CPHA must match the datasheet.",
+   "Chip select: CS goes LOW before the first clock and stays low for the whole frame.",
+   "Speed: start slow (1 MHz). Check the maximum clock in the datasheet.",
+   "Wires: MOSI to the sensor's input, MISO from its output. Do not cross them.",
+   "Power and GND: shared ground and the right voltage. 0xFF often means MISO floats HIGH."
+  ]
+ },
+ {
+  "id": "mine-g1-dcache-stale",
+  "type": "quiz",
+  "topic": "embedded",
+  "tags": [
+   "cache-coherency",
+   "dma"
+  ],
+  "difficulty": 3,
+  "origin": "mine",
+  "from": "Next step · DMA",
+  "title": "Cortex-M7, DMA fills rx_buf, the transfer-complete flag is set. The CPU reads old bytes. What do you do?",
+  "options": [
+   "Invalidate the D-cache for rx_buf before you read it",
+   "Add volatile to rx_buf",
+   "Clean the D-cache for rx_buf before you read it",
+   "Read rx_buf twice"
+  ],
+  "answer": 0,
+  "explain": "DMA writes to RAM, but the CPU can read old lines from its data cache. Invalidate the cache lines of the buffer after the DMA is done. Clean is for the other direction: before DMA reads data the CPU wrote. volatile does not touch the cache."
+ },
+ {
+  "id": "mine-g1-pr-const-table",
+  "type": "pr",
+  "topic": "embedded",
+  "tags": [
+   "memory-layout",
+   "review-checklist"
+  ],
+  "difficulty": 1,
+  "origin": "mine",
+  "from": "Boot to main() · .data and flash",
+  "lang": "c",
+  "pr": {
+   "title": "Make the 7-segment table const",
+   "author": "copilot",
+   "body": "STM32 build. The table never changes, so it can stay in flash and save RAM.",
+   "verdict": "approve"
+  },
+  "diff": "-static uint8_t seg_table[10] = {\n+static const uint8_t seg_table[10] = {\n     0x3F, 0x06, 0x5B, 0x4F, 0x66,\n     0x6D, 0x7D, 0x07, 0x7F, 0x6F\n };",
+  "explain": "Good change on Cortex-M. A const array with fixed values goes to .rodata in flash. It needs no RAM and no .data copy at boot. A non-const array uses RAM and is copied from flash at start. (On AVR/Uno it is different: you also need PROGMEM.)"
+ },
+ {
+  "id": "mine-g1-macro-shift-plus",
+  "type": "quiz",
+  "topic": "c",
+  "tags": [
+   "macro",
+   "bit-manipulation"
+  ],
+  "difficulty": 2,
+  "origin": "mine",
+  "from": "STM32 driver · register masks",
+  "title": "A macro without brackets. What does this print?",
+  "code": "#include <stdio.h>\n#define BIT(n) 1 << n\n\nint main(void) {\n    printf(\"%d\\n\", BIT(2) + 1);\n}",
+  "lang": "c",
+  "options": [
+   "8",
+   "5",
+   "4",
+   "3"
+  ],
+  "answer": 0,
+  "explain": "The macro expands to 1 << 2 + 1. In C, + binds stronger than <<, so this is 1 << 3 = 8. Write #define BIT(n) (1u << (n)) with brackets around the whole body and around the argument.",
+  "verify": {
+   "lang": "c",
+   "expect": "8"
+  }
+ },
+ {
+  "id": "mine-g1-oversample-shift",
+  "type": "quiz",
+  "topic": "embedded",
+  "tags": [
+   "adc",
+   "resolution"
+  ],
+  "difficulty": 3,
+  "origin": "mine",
+  "from": "Tinkercad lesson 6 · ADC resolution",
+  "title": "You add 16 samples of the 10-bit ADC and want a 12-bit result (oversampling). How far do you shift the sum right?",
+  "options": [
+   "2 bits",
+   "4 bits",
+   "1 bit",
+   "3 bits"
+  ],
+  "answer": 0,
+  "explain": "Oversampling by 4^n samples adds n bits. 16 = 4^2, so n = 2: shift the sum right by 2. Shifting by 4 would only average and give back 10 bits. It works only if the noise is about 1 LSB and random."
+ }
+]
