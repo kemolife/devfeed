@@ -1,0 +1,190 @@
+[
+ {
+  "id": "fp-fopen-x-mode",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "filesystem",
+   "concurrency"
+  ],
+  "difficulty": 3,
+  "title": "Senior asks: reserveFreeName() uses fopen($path, 'x'). The file already exists. What does fopen return?",
+  "code": "<?php\n$p = sys_get_temp_dir() . '/bf_x_test.txt';\n@unlink($p);\n$a = fopen($p, 'x');\n$b = @fopen($p, 'x');\nvar_dump($b);\nfclose($a);\nunlink($p);",
+  "lang": "php",
+  "options": [
+   "false, and a warning (the @ hides it)",
+   "A handle that overwrites the file",
+   "A handle to the end of the file",
+   "It throws an exception"
+  ],
+  "answer": 0,
+  "explain": "Mode 'x' creates the file only if it does not exist, in one atomic step. If it exists, fopen returns false and gives a warning. So two uploads at the same time cannot get the same name. file_exists() then fopen() would have a race between the two calls.",
+  "verify": {
+   "lang": "php",
+   "expect": "bool(false)"
+  }
+ },
+ {
+  "id": "fp-csv-quote-escape",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "csv",
+   "data-types"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: a user writes the row ['a,b', 'say \"hi\"'] to a CSV file. What does fputcsv() write?",
+  "code": "<?php\n$out = fopen('php://output', 'w');\nfputcsv($out, ['a,b', 'say \"hi\"']);",
+  "lang": "php",
+  "options": [
+   "\"a,b\",\"say \"\"hi\"\"\"",
+   "a,b,say \"hi\"",
+   "\"a,b\",say \"hi\"",
+   "a\\,b,say \\\"hi\\\""
+  ],
+  "answer": 0,
+  "explain": "fputcsv() wraps a field in quotes when it has a comma, a quote or a line break. A quote inside is doubled. This is the CSV standard, and read() with SplFileObject understands it back. Never build CSV lines with implode(',').",
+  "verify": {
+   "lang": "php",
+   "expect": "\"a,b\",\"say \"\"hi\"\"\""
+  }
+ },
+ {
+  "id": "fp-splfile-last-empty-row",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "csv",
+   "edge-cases"
+  ],
+  "difficulty": 3,
+  "title": "Senior asks: CsvFileActions reads with SplFileObject and READ_CSV. The file is \"id,fruit\\n1,apple\\n\". How many fields does each row have?",
+  "code": "<?php\n$p = tempnam(sys_get_temp_dir(), 'c');\nfile_put_contents($p, \"id,fruit\\n1,apple\\n\");\n$f = new SplFileObject($p);\n$f->setFlags(SplFileObject::READ_CSV);\nforeach ($f as $row) echo count($row), ' ';\nunlink($p);",
+  "lang": "php",
+  "options": [
+   "2 2 1 (a third, empty row)",
+   "2 2",
+   "2 2 2",
+   "2 1"
+  ],
+  "answer": 0,
+  "explain": "The text ends with a newline, so SplFileObject gives one more row after the last line. It is [null], one field. Without the flags SKIP_EMPTY, READ_AHEAD and DROP_NEW_LINE you must skip this row yourself, or you get a wrong 'column count' error.",
+  "verify": {
+   "lang": "php",
+   "expect": "2 2 1"
+  }
+ },
+ {
+  "id": "fp-test-fixed-temp-names",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "testing",
+   "filesystem"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: your tests write to sys_get_temp_dir() with fixed names and call unlink() at the end of the test. One assert fails in the middle. What is the problem?",
+  "options": [
+   "unlink() never runs, so the file stays and the next run can fail or pass by mistake",
+   "Nothing: PHPUnit deletes the files itself",
+   "The test cannot fail, because the name is fixed",
+   "unlink() runs twice"
+  ],
+  "answer": 0,
+  "explain": "A failed assert stops the test, so cleanup code after it is skipped. Use setUp() and tearDown() for files, and make the name unique (tempnam() or a random suffix). Then every run starts clean, also when tests run in parallel."
+ },
+ {
+  "id": "js-sort-default-string",
+  "type": "quiz",
+  "topic": "js",
+  "tags": [
+   "coercion",
+   "arrays"
+  ],
+  "difficulty": 2,
+  "title": "What does Node print?",
+  "code": "console.log([10, 9, 1].sort().join());",
+  "lang": "js",
+  "options": [
+   "1,10,9",
+   "1,9,10",
+   "10,9,1",
+   "9,10,1"
+  ],
+  "answer": 0,
+  "explain": "sort() without a function compares the items as strings: '1' < '10' < '9'. For numbers always pass a compare function: sort((a, b) => a - b). Also, sort() changes the array in place.",
+  "verify": {
+   "lang": "js",
+   "expect": "1,10,9"
+  }
+ },
+ {
+  "id": "oop-static-inherited-shared",
+  "type": "quiz",
+  "topic": "oop",
+  "tags": [
+   "static",
+   "inheritance"
+  ],
+  "difficulty": 2,
+  "title": "PHP 8. B extends A and does not declare its own $n. What does this print?",
+  "code": "<?php\nclass A { public static int $n = 0; }\nclass B extends A {}\nB::$n++;\necho A::$n;",
+  "lang": "php",
+  "options": [
+   "1",
+   "0",
+   "An error",
+   "2"
+  ],
+  "answer": 0,
+  "explain": "A static property is shared with child classes unless the child declares it again. B::$n and A::$n are the same variable. If each class needs its own counter, redeclare it in the child.",
+  "verify": {
+   "lang": "php",
+   "expect": "1"
+  }
+ },
+ {
+  "id": "git-diff-vs-staged",
+  "type": "quiz",
+  "topic": "git",
+  "tags": [
+   "git-basics",
+   "review-checklist"
+  ],
+  "difficulty": 1,
+  "title": "You ran git add a.php. Then you edited a.php again. What does plain `git diff` show?",
+  "options": [
+   "Only the second edit (not yet staged)",
+   "Both edits",
+   "Nothing",
+   "Only the first edit"
+  ],
+  "answer": 0,
+  "explain": "git diff compares the working tree with the index (staged). So it shows only changes you have not staged. Use git diff --staged to see what the next commit will contain. Check both before you commit."
+ },
+ {
+  "id": "php-str-contains-empty",
+  "type": "quiz",
+  "topic": "php",
+  "tags": [
+   "edge-cases",
+   "php8"
+  ],
+  "difficulty": 2,
+  "title": "PHP 8. A search box sends an empty string. What does this print?",
+  "code": "<?php\nvar_dump(str_contains('apple', ''));",
+  "lang": "php",
+  "options": [
+   "bool(true)",
+   "bool(false)",
+   "NULL",
+   "An error"
+  ],
+  "answer": 0,
+  "explain": "Since PHP 8 an empty needle is always found: str_contains() returns true. So a filter like `if (str_contains($name, $q))` shows every item when $q is empty. Check for an empty $q first if you do not want that.",
+  "verify": {
+   "lang": "php",
+   "expect": "bool(true)"
+  }
+ }
+]

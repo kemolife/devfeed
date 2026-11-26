@@ -6930,5 +6930,168 @@
     "title": "FileService has a constructor argument `string $storageDir`. Symfony cannot autowire a string. What is a clean fix?",
     "topic": "symfony",
     "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "<?php\n$p = sys_get_temp_dir() . '/bf_x_test.txt';\n@unlink($p);\n$a = fopen($p, 'x');\n$b = @fopen($p, 'x');\nvar_dump($b);\nfclose($a);\nunlink($p);",
+    "difficulty": 3,
+    "explain": "Mode 'x' creates the file only if it does not exist, in one atomic step. If it exists, fopen returns false and gives a warning. So two uploads at the same time cannot get the same name. file_exists() then fopen() would have a race between the two calls.",
+    "id": "fp-fopen-x-mode",
+    "lang": "php",
+    "options": [
+      "false, and a warning (the @ hides it)",
+      "A handle that overwrites the file",
+      "A handle to the end of the file",
+      "It throws an exception"
+    ],
+    "tags": [
+      "filesystem",
+      "concurrency"
+    ],
+    "title": "Senior asks: reserveFreeName() uses fopen($path, 'x'). The file already exists. What does fopen return?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "bool(false)",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "<?php\n$out = fopen('php://output', 'w');\nfputcsv($out, ['a,b', 'say \"hi\"']);",
+    "difficulty": 2,
+    "explain": "fputcsv() wraps a field in quotes when it has a comma, a quote or a line break. A quote inside is doubled. This is the CSV standard, and read() with SplFileObject understands it back. Never build CSV lines with implode(',').",
+    "id": "fp-csv-quote-escape",
+    "lang": "php",
+    "options": [
+      "\"a,b\",\"say \"\"hi\"\"\"",
+      "a,b,say \"hi\"",
+      "\"a,b\",say \"hi\"",
+      "a\\,b,say \\\"hi\\\""
+    ],
+    "tags": [
+      "csv",
+      "data-types"
+    ],
+    "title": "Senior asks: a user writes the row ['a,b', 'say \"hi\"'] to a CSV file. What does fputcsv() write?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "\"a,b\",\"say \"\"hi\"\"\"",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "<?php\n$p = tempnam(sys_get_temp_dir(), 'c');\nfile_put_contents($p, \"id,fruit\\n1,apple\\n\");\n$f = new SplFileObject($p);\n$f->setFlags(SplFileObject::READ_CSV);\nforeach ($f as $row) echo count($row), ' ';\nunlink($p);",
+    "difficulty": 3,
+    "explain": "The text ends with a newline, so SplFileObject gives one more row after the last line. It is [null], one field. Without the flags SKIP_EMPTY, READ_AHEAD and DROP_NEW_LINE you must skip this row yourself, or you get a wrong 'column count' error.",
+    "id": "fp-splfile-last-empty-row",
+    "lang": "php",
+    "options": [
+      "2 2 1 (a third, empty row)",
+      "2 2",
+      "2 2 2",
+      "2 1"
+    ],
+    "tags": [
+      "csv",
+      "edge-cases"
+    ],
+    "title": "Senior asks: CsvFileActions reads with SplFileObject and READ_CSV. The file is \"id,fruit\\n1,apple\\n\". How many fields does each row have?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "2 2 1",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "A failed assert stops the test, so cleanup code after it is skipped. Use setUp() and tearDown() for files, and make the name unique (tempnam() or a random suffix). Then every run starts clean, also when tests run in parallel.",
+    "id": "fp-test-fixed-temp-names",
+    "options": [
+      "unlink() never runs, so the file stays and the next run can fail or pass by mistake",
+      "Nothing: PHPUnit deletes the files itself",
+      "The test cannot fail, because the name is fixed",
+      "unlink() runs twice"
+    ],
+    "tags": [
+      "testing",
+      "filesystem"
+    ],
+    "title": "Senior asks: your tests write to sys_get_temp_dir() with fixed names and call unlink() at the end of the test. One assert fails in the middle. What is the problem?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "console.log([10, 9, 1].sort().join());",
+    "difficulty": 2,
+    "explain": "sort() without a function compares the items as strings: '1' < '10' < '9'. For numbers always pass a compare function: sort((a, b) => a - b). Also, sort() changes the array in place.",
+    "id": "js-sort-default-string",
+    "lang": "js",
+    "options": [
+      "1,10,9",
+      "1,9,10",
+      "10,9,1",
+      "9,10,1"
+    ],
+    "tags": [
+      "coercion",
+      "arrays"
+    ],
+    "title": "What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "1,10,9",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "<?php\nclass A { public static int $n = 0; }\nclass B extends A {}\nB::$n++;\necho A::$n;",
+    "difficulty": 2,
+    "explain": "A static property is shared with child classes unless the child declares it again. B::$n and A::$n are the same variable. If each class needs its own counter, redeclare it in the child.",
+    "id": "oop-static-inherited-shared",
+    "lang": "php",
+    "options": [
+      "1",
+      "0",
+      "An error",
+      "2"
+    ],
+    "tags": [
+      "static",
+      "inheritance"
+    ],
+    "title": "PHP 8. B extends A and does not declare its own $n. What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "1",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 1,
+    "explain": "git diff compares the working tree with the index (staged). So it shows only changes you have not staged. Use git diff --staged to see what the next commit will contain. Check both before you commit.",
+    "id": "git-diff-vs-staged",
+    "options": [
+      "Only the second edit (not yet staged)",
+      "Both edits",
+      "Nothing",
+      "Only the first edit"
+    ],
+    "tags": [
+      "git-basics",
+      "review-checklist"
+    ],
+    "title": "You ran git add a.php. Then you edited a.php again. What does plain `git diff` show?",
+    "topic": "git",
+    "type": "quiz"
   }
 ]
