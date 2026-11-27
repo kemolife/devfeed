@@ -9178,5 +9178,232 @@
     ],
     "topic": "embedded",
     "type": "pr"
+  },
+  {
+    "answer": 0,
+    "code": "fn main() {\n    let duty: u8 = 5;\n    let a = duty.saturating_sub(10);\n    let b = duty.wrapping_sub(10);\n    println!(\"{} {}\", a, b);\n}",
+    "difficulty": 1,
+    "explain": "saturating_sub stops at 0. wrapping_sub goes around: 5 - 10 = 251 for u8. Pick the one that matches what the hardware needs. A fade must stop at 0, so use saturating_sub.",
+    "from": "Tinkercad lesson 4 · PWM fade",
+    "id": "mine-g1-rs-saturating-fade",
+    "lang": "rust",
+    "options": [
+      "0 251",
+      "0 0",
+      "251 251",
+      "It panics in debug and release"
+    ],
+    "origin": "mine",
+    "tags": [
+      "integer-overflow",
+      "truncation"
+    ],
+    "title": "LED fade in Rust. duty is a u8 at 5. What do these lines print?",
+    "topic": "rust",
+    "type": "quiz",
+    "verify": {
+      "expect": "0 251",
+      "lang": "rust"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n#include <stdint.h>\ntypedef struct {\n    uint8_t  id;\n    uint16_t value;\n    uint8_t  flags;\n} Packet;\nint main(void) {\n    printf(\"%zu\\n\", sizeof(Packet));\n}",
+    "difficulty": 2,
+    "explain": "uint16_t needs 2-byte alignment. The compiler adds 1 padding byte after id and 1 after the last byte, so the size is 6 and not 4. Never send a struct raw over UART. Write each field to the buffer, or use a packed struct and know its cost.",
+    "from": "Tinkercad lesson 12 · Serial commands",
+    "id": "mine-g1-packet-padding",
+    "lang": "c",
+    "options": [
+      "6",
+      "4",
+      "5",
+      "8"
+    ],
+    "origin": "mine",
+    "tags": [
+      "struct-padding",
+      "alignment"
+    ],
+    "title": "Sensor packet for UART. On a 32-bit MCU or PC, what is sizeof(Packet)?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "6",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "The diode drops 0.7 V, so the 7805 gets 8.3 V. It burns (8.3 - 5) x 0.1 A = 0.33 W. Without the diode it would burn 0.4 W. A series diode helps the heat a little and protects from a reversed battery.",
+    "from": "Tinkercad · 7805 regulator",
+    "id": "mine-g1-diode-7805-heat",
+    "options": [
+      "About 0.33 W",
+      "About 0.40 W",
+      "About 0.83 W",
+      "About 0.50 W"
+    ],
+    "origin": "mine",
+    "tags": [
+      "ldo-power",
+      "power"
+    ],
+    "title": "9 V battery, a reverse-polarity diode (0.7 V drop), then the 7805. Load = 100 mA at 5 V. How much power does the 7805 burn?",
+    "topic": "electronics",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "2π x 10 000 x 0.0000001 = 0.00628, so f = 159 Hz. Slow signals like TMP36 or a pot pass. Fast noise above this goes down. Also check that the divider source impedance (10 kΩ) is fine for the ADC.",
+    "from": "Tinkercad lesson 6 · TMP36 noise",
+    "id": "mine-g1-rc-cutoff",
+    "options": [
+      "About 159 Hz",
+      "About 1.6 kHz",
+      "About 16 Hz",
+      "About 1 kHz"
+    ],
+    "origin": "mine",
+    "tags": [
+      "rc-filter",
+      "adc"
+    ],
+    "title": "You filter ADC noise with R = 10 kΩ and C = 100 nF. What is the cutoff frequency f = 1 / (2πRC)?",
+    "topic": "electronics",
+    "type": "quiz"
+  },
+  {
+    "bugLines": [
+      5
+    ],
+    "code": "enum { IDLE, WAIT } st = IDLE;\nuint32_t t0;\nvoid step(uint32_t now, bool btn) {\n  if (st == IDLE && btn) {\n    st = WAIT;\n  }\n  if (st == WAIT && now - t0 >= 2000) {\n    led_off();\n    st = IDLE;\n  }\n}",
+    "difficulty": 2,
+    "explain": "t0 is never set when the state changes. It stays 0 (or an old time), so now - t0 is already big. Save the time at the moment you enter WAIT. Also run the timeout check in the else branch or the next call.",
+    "fix": "enum { IDLE, WAIT } st = IDLE;\nuint32_t t0;\nvoid step(uint32_t now, bool btn) {\n  if (st == IDLE && btn) {\n    st = WAIT;\n    t0 = now;   // start the 2 s timer here\n    led_on();\n  } else if (st == WAIT && now - t0 >= 2000) {\n    led_off();\n    st = IDLE;\n  }\n}",
+    "from": "Tinkercad · state machines (next step)",
+    "id": "mine-g1-bug-state-t0",
+    "lang": "c",
+    "origin": "mine",
+    "tags": [
+      "state-machine",
+      "millis"
+    ],
+    "title": "The LED turns off at once after the press, not after 2 s. Tap the bug.",
+    "topic": "c",
+    "type": "bug"
+  },
+  {
+    "bugLines": [
+      4,
+      5
+    ],
+    "code": "volatile uint8_t head, tail;\nuint8_t buf[16];\nvoid USART_ISR(void) {\n  head = (head + 1) & 15;\n  buf[head] = UDR;\n}\nint rb_read(void) {\n  if (tail == head) return -1;\n  tail = (tail + 1) & 15;\n  return buf[tail];\n}",
+    "difficulty": 3,
+    "explain": "The ISR moves head first and stores the byte after. If the ISR is still between the two lines when loop() runs, it sees head moved and reads the old byte. Store the data first, then publish the new head. The reader only sees complete entries.",
+    "fix": "void USART_ISR(void) {\n  uint8_t next = (head + 1) & 15;\n  buf[next] = UDR;   // store the data first\n  head = next;       // then publish it\n}\n// rb_read stays the same",
+    "from": "Tinkercad lesson 12 · interrupts prep",
+    "id": "mine-g1-bug-ring-head-first",
+    "lang": "c",
+    "origin": "mine",
+    "tags": [
+      "isr",
+      "atomicity"
+    ],
+    "title": "Sometimes loop() reads an old byte from the UART ring buffer. Tap the bug.",
+    "topic": "embedded",
+    "type": "bug"
+  },
+  {
+    "answer": 0,
+    "difficulty": 3,
+    "explain": "On STM32F4, ORE is cleared by a sequence: read USART_SR, then read USART_DR. Not every flag is write-1-to-clear (like EXTI->PR). Check the reference manual for each flag.",
+    "from": "STM32 driver · interrupt flags",
+    "id": "mine-g1-usart-ore-clear",
+    "options": [
+      "Read SR, then read DR",
+      "Write 0 to ORE in SR",
+      "Write 1 to ORE in SR",
+      "Read DR, then write DR"
+    ],
+    "origin": "mine",
+    "tags": [
+      "w1c-flag",
+      "isr"
+    ],
+    "title": "STM32F4 USART. The ORE (overrun) flag is set and the RX interrupt fires again and again. How do you clear ORE?",
+    "topic": "embedded",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "#include <stdio.h>\n#include <stdint.h>\nint main(void) {\n    uint8_t m = 0x68;\n    m = m & (m - 1);\n    printf(\"0x%02X\\n\", m);\n}",
+    "difficulty": 2,
+    "explain": "m - 1 flips the lowest set bit and all bits under it: 0x68 - 1 = 0x67. The AND with m clears the lowest set bit: 0x68 & 0x67 = 0x60. Repeat it until 0 to count the buttons or to handle them one by one.",
+    "from": "STM32 driver · bit masks",
+    "id": "mine-g1-clear-lowest-bit",
+    "lang": "c",
+    "options": [
+      "0x60",
+      "0x67",
+      "0x08",
+      "0x00"
+    ],
+    "origin": "mine",
+    "tags": [
+      "bit-manipulation",
+      "registers"
+    ],
+    "title": "m = 0x68 is a mask of pressed buttons. What does the code print?",
+    "topic": "c",
+    "type": "quiz",
+    "verify": {
+      "expect": "0x60",
+      "lang": "c"
+    }
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "String allocates and frees small blocks on the heap. After many cycles the free space is split into holes, and one allocation fails or the heap meets the stack. Use fixed char buffers with snprintf instead.",
+    "from": "Tinkercad lesson 12 · 2 KB SRAM",
+    "id": "mine-g1-string-heap",
+    "options": [
+      "Heap fragmentation: free RAM shrinks",
+      "The String class is too slow",
+      "millis() overflow",
+      "The stack grows into .data"
+    ],
+    "origin": "mine",
+    "tags": [
+      "memory",
+      "heap-in-isr"
+    ],
+    "title": "Uno with 2 KB SRAM. loop() builds messages with the Arduino String class (s += ...). It works for minutes, then crashes at random. Most likely cause?",
+    "topic": "embedded",
+    "type": "quiz"
+  },
+  {
+    "diff": " fn timed_out(now: u32, start: u32, timeout: u32) -> bool {\n-    now > start + timeout\n+    now.wrapping_sub(start) >= timeout\n }",
+    "difficulty": 2,
+    "explain": "Good fix. The elapsed time is the difference, computed with wrap-around, so it stays right after the counter wraps. The old start + timeout could overflow (a panic in debug) and compare wrong. Same rule as millis() in C.",
+    "from": "Tinkercad lesson 1 · millis wrap",
+    "id": "mine-g1-pr-rs-wrapping-timeout",
+    "lang": "rust",
+    "origin": "mine",
+    "pr": {
+      "author": "dev",
+      "body": "The old check failed when the 32-bit tick counter wrapped. Use wrapping_sub.",
+      "title": "Fix timeout after the tick counter wraps",
+      "verdict": "approve"
+    },
+    "tags": [
+      "tick-wrap",
+      "millis"
+    ],
+    "topic": "rust",
+    "type": "pr"
   }
 ]

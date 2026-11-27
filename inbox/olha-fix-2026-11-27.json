@@ -1,0 +1,93 @@
+[
+ {
+  "id": "fp-json-depth",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "json",
+   "error-messages"
+  ],
+  "difficulty": 3,
+  "title": "Senior asks: someone posts a JSON array nested 600 levels deep. decodeJson() uses json_decode(..., true). What does it return?",
+  "code": "<?php\n$deep = str_repeat('[', 600) . str_repeat(']', 600);\nvar_dump(json_decode($deep, true));",
+  "lang": "php",
+  "options": [
+   "null (the default depth is 512), so the user sees 'Invalid JSON.'",
+   "The nested array",
+   "An exception is thrown",
+   "A shorter array, cut at 512"
+  ],
+  "answer": 0,
+  "explain": "json_decode() has a depth limit of 512. If the data is deeper, it returns null (and json_last_error() says 'Maximum stack depth exceeded'). decodeJson() treats null as bad input, so the user gets a clear 422, not a crash.",
+  "verify": {
+   "lang": "php",
+   "expect": "NULL"
+  }
+ },
+ {
+  "id": "php-null-coalesce-assign",
+  "type": "quiz",
+  "topic": "php",
+  "tags": [
+   "null-coalescing"
+  ],
+  "difficulty": 1,
+  "title": "The ??= operator sets a value only if the variable is null. What does this print?",
+  "code": "<?php\n$a = null;\n$a ??= 5;\n$a ??= 9;\necho $a;",
+  "lang": "php",
+  "options": [
+   "5",
+   "9",
+   "null",
+   "14"
+  ],
+  "answer": 0,
+  "explain": "$a is null, so the first ??= sets it to 5. The second ??= does nothing, because $a is not null any more. Good for default values.",
+  "verify": {
+   "lang": "php",
+   "expect": "5"
+  }
+ },
+ {
+  "id": "js-includes-nan",
+  "type": "quiz",
+  "topic": "js",
+  "tags": [
+   "type-coercion"
+  ],
+  "difficulty": 2,
+  "title": "includes and indexOf treat NaN in different ways. What does Node print?",
+  "code": "const a = [NaN];\nconsole.log(a.includes(NaN), a.indexOf(NaN));",
+  "lang": "js",
+  "options": [
+   "true -1",
+   "false -1",
+   "true 0",
+   "false 0"
+  ],
+  "answer": 0,
+  "explain": "includes() uses the SameValueZero rule, so NaN equals NaN. indexOf() uses strict equality, where NaN is never equal to anything, so it gives -1. Prefer includes() for a yes/no check.",
+  "verify": {
+   "lang": "js",
+   "expect": "true -1"
+  }
+ },
+ {
+  "id": "git-force-with-lease",
+  "type": "quiz",
+  "topic": "git",
+  "tags": [
+   "git-history"
+  ],
+  "difficulty": 2,
+  "title": "After a rebase of your own feature branch you must force-push. Which command is safer?",
+  "options": [
+   "git push --force-with-lease",
+   "git push --force",
+   "git push --no-verify",
+   "git push origin main"
+  ],
+  "answer": 0,
+  "explain": "--force-with-lease refuses to push if someone added new commits to the remote branch since your last fetch. Plain --force would delete their work without a warning."
+ }
+]

@@ -1,0 +1,177 @@
+[
+ {
+  "id": "fp-delete-ext-check",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "security",
+   "validation"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: delete() calls findFileActions() only to check the extension. Why?",
+  "options": [
+   "So only supported files (csv, json) can be deleted, not .htaccess or other files",
+   "To choose how to delete a csv or json file",
+   "To check the file exists",
+   "To make delete faster"
+  ],
+  "answer": 0,
+  "explain": "The project only manages csv and json files. The extension check blocks delete for any other file in storage/ (for example a .gitkeep or a file you did not upload). The existence check is a different step. It is a small allow-list."
+ },
+ {
+  "id": "fp-upload-order",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "filesystem",
+   "validation"
+  ],
+  "difficulty": 3,
+  "title": "Senior asks: upload() first reads the temp file to validate it, then reserves a free name, then moves the file. What goes wrong if you reserve the name first?",
+  "options": [
+   "A bad file leaves an empty reserved file in storage/",
+   "The name is not unique anymore",
+   "The upload gets slower",
+   "Nothing, the order does not matter"
+  ],
+  "answer": 0,
+  "explain": "reserveFreeName() creates an empty file with fopen('x'). If validation fails after that, the empty file stays in storage/. Validate first, so only valid uploads create a file."
+ },
+ {
+  "id": "fp-getpath-basename-twice",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "security",
+   "path-traversal"
+  ],
+  "difficulty": 2,
+  "title": "Senior asks: the controller uses basename() and FileService::getPath() uses basename() again. Is the second call useless?",
+  "options": [
+   "No: the service may be called from other code, so it protects itself",
+   "Yes, remove it to be DRY",
+   "No: basename is needed to add the folder",
+   "Yes: basename is slow"
+  ],
+  "answer": 0,
+  "explain": "FileService must not trust its callers. If a new controller or a CLI command forgets basename(), '../' in the name would leave storage/. Checks at every boundary are cheap defence in depth."
+ },
+ {
+  "id": "fp-array-combine-count",
+  "type": "quiz",
+  "topic": "project",
+  "tags": [
+   "csv",
+   "error-messages"
+  ],
+  "difficulty": 2,
+  "title": "CsvFileActions::read() checks the column count before array_combine(). What does PHP 8 do if you skip the check and a row is short?",
+  "code": "<?php\ntry {\n    array_combine(['id', 'fruit'], ['1']);\n} catch (ValueError $e) {\n    echo get_class($e);\n}",
+  "lang": "php",
+  "options": [
+   "It throws a ValueError",
+   "It returns false",
+   "It fills the missing value with null",
+   "It returns a shorter array"
+  ],
+  "answer": 0,
+  "explain": "Since PHP 8, array_combine() throws ValueError when the counts differ. Before PHP 8 it returned false with a warning. The own check gives a clear message to the user (a 422) and not a 500.",
+  "verify": {
+   "lang": "php",
+   "expect": "ValueError"
+  }
+ },
+ {
+  "id": "php-array-filter-keys",
+  "type": "quiz",
+  "topic": "php",
+  "tags": [
+   "arrays",
+   "array-keys"
+  ],
+  "difficulty": 2,
+  "title": "array_filter keeps the keys. What does this print?",
+  "code": "<?php\n$a = array_filter([1, 0, 2, 0, 3]);\necho json_encode($a);",
+  "lang": "php",
+  "options": [
+   "{\"0\":1,\"2\":2,\"4\":3}",
+   "[1,2,3]",
+   "{\"1\":1,\"2\":2,\"3\":3}",
+   "[1,0,2,0,3]"
+  ],
+  "answer": 0,
+  "explain": "array_filter() keeps the original keys. The keys are now 0, 2, 4, so the array has gaps and json_encode makes an object. Use array_values() to get a list again.",
+  "verify": {
+   "lang": "php",
+   "expect": "{\"0\":1,\"2\":2,\"4\":3}"
+  }
+ },
+ {
+  "id": "oop-static-property-shared",
+  "type": "quiz",
+  "topic": "oop",
+  "tags": [
+   "static",
+   "oop-basics"
+  ],
+  "difficulty": 2,
+  "title": "A static property belongs to the class, not to the object. What does this print?",
+  "code": "<?php\nclass Counter {\n    public static int $count = 0;\n    public function __construct() { self::$count++; }\n}\n$a = new Counter();\n$b = new Counter();\necho $a::$count, ' ', $b::$count;",
+  "lang": "php",
+  "options": [
+   "2 2",
+   "1 2",
+   "1 1",
+   "2 1"
+  ],
+  "answer": 0,
+  "explain": "static $count is one variable for the whole class. Both objects change the same value, so after two objects both reads give 2. Use a normal property for data of one object.",
+  "verify": {
+   "lang": "php",
+   "expect": "2 2"
+  }
+ },
+ {
+  "id": "js-event-loop-order",
+  "type": "quiz",
+  "topic": "js",
+  "tags": [
+   "async",
+   "event-loop"
+  ],
+  "difficulty": 3,
+  "title": "Promise callbacks run before setTimeout callbacks. What does Node print?",
+  "code": "console.log(1);\nsetTimeout(() => console.log(2), 0);\nPromise.resolve().then(() => console.log(3));\nconsole.log(4);",
+  "lang": "js",
+  "options": [
+   "1, 4, 3, 2",
+   "1, 2, 3, 4",
+   "1, 4, 2, 3",
+   "1, 3, 4, 2"
+  ],
+  "answer": 0,
+  "explain": "Sync code first: 1 and 4. Then the promise microtask: 3. Then the timer, even with 0 ms: 2. Microtasks always run before the next timer.",
+  "verify": {
+   "lang": "js",
+   "expect": "1\n4\n3\n2"
+  }
+ },
+ {
+  "id": "git-revert-pushed",
+  "type": "quiz",
+  "topic": "git",
+  "tags": [
+   "git-history"
+  ],
+  "difficulty": 2,
+  "title": "A bad commit is already pushed to the shared main branch. What is the safest way to undo it?",
+  "options": [
+   "git revert <commit> and push the new commit",
+   "git reset --hard HEAD~1 and git push --force",
+   "git commit --amend and git push --force",
+   "Delete the branch and make it again"
+  ],
+  "answer": 0,
+  "explain": "git revert adds a new commit that undoes the change. The history stays the same, so nobody has to fix their copy. reset or amend with force-push rewrites shared history and breaks the work of your team."
+ }
+]

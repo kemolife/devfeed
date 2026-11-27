@@ -1,0 +1,76 @@
+[
+ {
+  "id": "php-spread-string-keys",
+  "type": "quiz",
+  "topic": "php",
+  "tags": [
+   "arrays",
+   "array-keys"
+  ],
+  "difficulty": 3,
+  "title": "PHP 8.1 allows string keys in array spread. What does this print?",
+  "code": "<?php\n$x = ['a' => 1, 'b' => 2];\n$y = ['a' => 3];\necho json_encode([...$x, ...$y]);",
+  "lang": "php",
+  "options": [
+   "{\"a\":3,\"b\":2}",
+   "{\"a\":1,\"b\":2}",
+   "[1,2,3]",
+   "An error"
+  ],
+  "answer": 0,
+  "explain": "Spread (...) copies the keys. For string keys a later value replaces an earlier one, so 'a' becomes 3. Numeric keys are renumbered.",
+  "verify": {
+   "lang": "php",
+   "expect": "{\"a\":3,\"b\":2}"
+  }
+ },
+ {
+  "id": "js-arrow-vs-function-this-obj",
+  "type": "quiz",
+  "topic": "js",
+  "tags": [
+   "this-binding"
+  ],
+  "difficulty": 3,
+  "title": "An arrow function takes this from the place where it is written. What does Node print?",
+  "code": "const o = {\n  name: 'hello',\n  a: () => this.name,\n  b() { return this.name; },\n};\nconsole.log(o.a(), o.b());",
+  "lang": "js",
+  "options": [
+   "undefined hello",
+   "hello hello",
+   "undefined undefined",
+   "hello undefined"
+  ],
+  "answer": 0,
+  "explain": "In a method written with function, this is the object, so it prints 'hello'. An arrow function as a property does not get its own this. In a module or script it is not the object, so name is undefined.",
+  "verify": {
+   "lang": "js",
+   "expect": "undefined hello"
+  }
+ },
+ {
+  "id": "oop-interface-constant-late",
+  "type": "quiz",
+  "topic": "oop",
+  "tags": [
+   "interfaces",
+   "oop-basics"
+  ],
+  "difficulty": 2,
+  "title": "A class can have an abstract method only in an abstract class or interface. What happens when you run this?",
+  "code": "<?php\nabstract class Shape {\n    abstract public function area(): float;\n}\ntry {\n    new Shape();\n} catch (Error $e) {\n    echo get_class($e);\n}",
+  "lang": "php",
+  "options": [
+   "Fatal error: cannot instantiate abstract class Shape",
+   "Prints 0",
+   "Prints null",
+   "A warning, then it runs"
+  ],
+  "answer": 0,
+  "explain": "An abstract class is a base only. You must create an object of a child class that implements all abstract methods. PHP stops with an Error when you try new Shape().",
+  "verify": {
+   "lang": "php",
+   "expect": "Error"
+  }
+ }
+]

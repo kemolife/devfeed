@@ -7093,5 +7093,167 @@
     "title": "You ran git add a.php. Then you edited a.php again. What does plain `git diff` show?",
     "topic": "git",
     "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 3,
+    "explain": "reserveFreeName() creates an empty file with fopen('x'). If validation fails after that, the empty file stays in storage/. Validate first, so only valid uploads create a file.",
+    "id": "fp-upload-order",
+    "options": [
+      "A bad file leaves an empty reserved file in storage/",
+      "The name is not unique anymore",
+      "The upload gets slower",
+      "Nothing, the order does not matter"
+    ],
+    "tags": [
+      "filesystem",
+      "validation"
+    ],
+    "title": "Senior asks: upload() first reads the temp file to validate it, then reserves a free name, then moves the file. What goes wrong if you reserve the name first?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "difficulty": 2,
+    "explain": "FileService must not trust its callers. If a new controller or a CLI command forgets basename(), '../' in the name would leave storage/. Checks at every boundary are cheap defence in depth.",
+    "id": "fp-getpath-basename-twice",
+    "options": [
+      "No: the service may be called from other code, so it protects itself",
+      "Yes, remove it to be DRY",
+      "No: basename is needed to add the folder",
+      "Yes: basename is slow"
+    ],
+    "tags": [
+      "security",
+      "path-traversal"
+    ],
+    "title": "Senior asks: the controller uses basename() and FileService::getPath() uses basename() again. Is the second call useless?",
+    "topic": "project",
+    "type": "quiz"
+  },
+  {
+    "answer": 0,
+    "code": "<?php\ntry {\n    array_combine(['id', 'fruit'], ['1']);\n} catch (ValueError $e) {\n    echo get_class($e);\n}",
+    "difficulty": 2,
+    "explain": "Since PHP 8, array_combine() throws ValueError when the counts differ. Before PHP 8 it returned false with a warning. The own check gives a clear message to the user (a 422) and not a 500.",
+    "id": "fp-array-combine-count",
+    "lang": "php",
+    "options": [
+      "It throws a ValueError",
+      "It returns false",
+      "It fills the missing value with null",
+      "It returns a shorter array"
+    ],
+    "tags": [
+      "csv",
+      "error-messages"
+    ],
+    "title": "CsvFileActions::read() checks the column count before array_combine(). What does PHP 8 do if you skip the check and a row is short?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "ValueError",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "<?php\nclass Counter {\n    public static int $count = 0;\n    public function __construct() { self::$count++; }\n}\n$a = new Counter();\n$b = new Counter();\necho $a::$count, ' ', $b::$count;",
+    "difficulty": 2,
+    "explain": "static $count is one variable for the whole class. Both objects change the same value, so after two objects both reads give 2. Use a normal property for data of one object.",
+    "id": "oop-static-property-shared",
+    "lang": "php",
+    "options": [
+      "2 2",
+      "1 2",
+      "1 1",
+      "2 1"
+    ],
+    "tags": [
+      "static",
+      "oop-basics"
+    ],
+    "title": "A static property belongs to the class, not to the object. What does this print?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "2 2",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "<?php\n$deep = str_repeat('[', 600) . str_repeat(']', 600);\nvar_dump(json_decode($deep, true));",
+    "difficulty": 3,
+    "explain": "json_decode() has a depth limit of 512. If the data is deeper, it returns null (and json_last_error() says 'Maximum stack depth exceeded'). decodeJson() treats null as bad input, so the user gets a clear 422, not a crash.",
+    "id": "fp-json-depth",
+    "lang": "php",
+    "options": [
+      "null (the default depth is 512), so the user sees 'Invalid JSON.'",
+      "The nested array",
+      "An exception is thrown",
+      "A shorter array, cut at 512"
+    ],
+    "tags": [
+      "json",
+      "error-messages"
+    ],
+    "title": "Senior asks: someone posts a JSON array nested 600 levels deep. decodeJson() uses json_decode(..., true). What does it return?",
+    "topic": "project",
+    "type": "quiz",
+    "verify": {
+      "expect": "NULL",
+      "lang": "php"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "const o = {\n  name: 'hello',\n  a: () => this.name,\n  b() { return this.name; },\n};\nconsole.log(o.a(), o.b());",
+    "difficulty": 3,
+    "explain": "In a method written with function, this is the object, so it prints 'hello'. An arrow function as a property does not get its own this. In a module or script it is not the object, so name is undefined.",
+    "id": "js-arrow-vs-function-this-obj",
+    "lang": "js",
+    "options": [
+      "undefined hello",
+      "hello hello",
+      "undefined undefined",
+      "hello undefined"
+    ],
+    "tags": [
+      "this-binding"
+    ],
+    "title": "An arrow function takes this from the place where it is written. What does Node print?",
+    "topic": "js",
+    "type": "quiz",
+    "verify": {
+      "expect": "undefined hello",
+      "lang": "js"
+    }
+  },
+  {
+    "answer": 0,
+    "code": "<?php\nabstract class Shape {\n    abstract public function area(): float;\n}\ntry {\n    new Shape();\n} catch (Error $e) {\n    echo get_class($e);\n}",
+    "difficulty": 2,
+    "explain": "An abstract class is a base only. You must create an object of a child class that implements all abstract methods. PHP stops with an Error when you try new Shape().",
+    "id": "oop-interface-constant-late",
+    "lang": "php",
+    "options": [
+      "Fatal error: cannot instantiate abstract class Shape",
+      "Prints 0",
+      "Prints null",
+      "A warning, then it runs"
+    ],
+    "tags": [
+      "interfaces",
+      "oop-basics"
+    ],
+    "title": "A class can have an abstract method only in an abstract class or interface. What happens when you run this?",
+    "topic": "oop",
+    "type": "quiz",
+    "verify": {
+      "expect": "Error",
+      "lang": "php"
+    }
   }
 ]
